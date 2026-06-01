@@ -53,14 +53,6 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["providers.listTTS", (c) => c.providers.listTTS(), "GET", "/providers/tts"],
   ["providers.listAll", (c) => c.providers.listAll(), "GET", "/providers/all"],
   ["providers.getVoice", (c) => c.providers.getVoice(ID), "GET", "/providers/voice/7"],
-  ["simulations.list", (c) => c.simulations.list(), "GET", "/simulations"],
-  ["simulations.create", (c) => c.simulations.create(B), "POST", "/simulations"],
-  ["simulations.get", (c) => c.simulations.get(ID), "GET", "/simulations/7"],
-  ["simulations.update", (c) => c.simulations.update(ID, B), "PUT", "/simulations/7"],
-  ["simulations.delete", (c) => c.simulations.delete(ID), "DELETE", "/simulations/7"],
-  ["simulations.start", (c) => c.simulations.start(ID), "POST", "/simulations/7/start"],
-  ["simulations.stop", (c) => c.simulations.stop(ID), "POST", "/simulations/7/stop"],
-  ["simulations.enhancePrompt", (c) => c.simulations.enhancePrompt(ID), "POST", "/simulations/7/enhance-prompt"],
   ["reseller.listOrganizations", (c) => c.reseller.listOrganizations(), "GET", "/reseller/organizations"],
   ["reseller.addUser", (c) => c.reseller.addUser(B), "POST", "/reseller/users/add"],
   ["reseller.setUserAccessControl", (c) => c.reseller.setUserAccessControl(B), "POST", "/reseller/users/access-control"],
@@ -80,7 +72,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(55);
+    expect(cases).toHaveLength(47);
   });
 
   for (const [name, call, method, path] of cases) {

@@ -53,8 +53,8 @@ describe("construction", () => {
       "knowledgeBase",
       "phoneNumbers",
       "providers",
-      "simulations",
       "reseller",
+      "integrations",
     ] as const) {
       expect(c[r]).toBeDefined();
     }
