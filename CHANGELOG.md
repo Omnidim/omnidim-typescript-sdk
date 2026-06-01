@@ -9,6 +9,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Initial release.
 
 - `OmniDimension` client with Bearer-key authentication.
-- Resources: `agents`, `calls`, `bulkCalls`, `knowledgeBase`, `phoneNumbers`, `providers`, `simulations`, `integrations`, `reseller`.
+- Resources: `agents`, `calls`, `bulkCalls`, `knowledgeBase`, `phoneNumbers`, `providers`, `integrations`, `reseller`.
 - Request and response types generated from the OmniDimension OpenAPI spec.
 - `OmniDimensionError` for non-2xx responses, with status code and parsed error body.

@@ -5,7 +5,6 @@ import { BulkCalls } from "./resources/bulkCalls.js";
 import { KnowledgeBase } from "./resources/knowledgeBase.js";
 import { PhoneNumbers } from "./resources/phoneNumbers.js";
 import { Providers } from "./resources/providers.js";
-import { Simulations } from "./resources/simulations.js";
 import { Reseller } from "./resources/reseller.js";
 import { Integrations } from "./resources/integrations.js";
 
@@ -39,7 +38,6 @@ export class OmniDimension {
   readonly knowledgeBase: KnowledgeBase;
   readonly phoneNumbers: PhoneNumbers;
   readonly providers: Providers;
-  readonly simulations: Simulations;
   readonly reseller: Reseller;
   readonly integrations: Integrations;
 
@@ -51,7 +49,6 @@ export class OmniDimension {
     this.knowledgeBase = new KnowledgeBase(http);
     this.phoneNumbers = new PhoneNumbers(http);
     this.providers = new Providers(http);
-    this.simulations = new Simulations(http);
     this.reseller = new Reseller(http);
     this.integrations = new Integrations(http);
   }

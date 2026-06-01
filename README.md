@@ -41,7 +41,6 @@ The client exposes one accessor per API area:
 | `client.knowledgeBase` | Upload, list, attach, detach, delete knowledge files |
 | `client.phoneNumbers` | List numbers, attach, detach, import from Twilio/Exotel/SIP |
 | `client.providers` | List LLM, voice, STT, TTS providers; voice details |
-| `client.simulations` | Create, run, start, stop, and manage simulations |
 | `client.integrations` | List, create (custom API, Cal.com), attach to and detach from agents |
 | `client.reseller` | Partner operations (requires partner-level credentials) |
 
