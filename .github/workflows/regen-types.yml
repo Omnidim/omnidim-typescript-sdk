@@ -1,0 +1,39 @@
+name: regen-types
+
+# Watches the upstream OpenAPI spec. When it changes, regenerates the
+# committed types and opens a PR. Keeps src/generated/types.ts in sync
+# with the API without a human transcribing anything.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run regen
+      - run: npm run typecheck
+      - name: Open PR if the spec changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: regenerate types from updated OpenAPI spec"
+          branch: chore/regen-types
+          delete-branch: true
+          title: "chore: regenerate types from updated OpenAPI spec"
+          body: |
+            The upstream OpenAPI spec changed. This PR regenerates
+            `src/generated/types.ts` and updates the spec hash in `.spec.yml`.
+
+            Review the type diff, bump the version and CHANGELOG if the
+            public surface changed, then merge.
