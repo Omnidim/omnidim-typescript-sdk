@@ -1,0 +1,61 @@
+{
+  "name": "@omnidim-ai/sdk",
+  "version": "0.1.0",
+  "description": "Official JavaScript and TypeScript SDK for the OmniDimension voice-AI REST API. Manage agents, dispatch calls, run bulk campaigns, knowledge bases, phone numbers, and simulations.",
+  "type": "module",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js"
+    }
+  },
+  "files": [
+    "build",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "regen": "node scripts/regen.mjs",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "omnidim",
+    "omnidimension",
+    "voice-ai",
+    "voice-agent",
+    "sdk",
+    "rest-api",
+    "typescript"
+  ],
+  "homepage": "https://omnidim.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Omnidim/omnidim-js-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Omnidim/omnidim-js-sdk/issues"
+  },
+  "author": "OmniDimension <support@omnidim.io>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@vitest/coverage-v8": "^4.1.7",
+    "openapi-typescript": "^7.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.7"
+  }
+}

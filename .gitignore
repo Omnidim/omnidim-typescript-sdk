@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+build
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage
+*.lcov
+.nyc_output
+
+# Editor settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.code-workspace
+.idea
+*.sublime-workspace
+*.sublime-project
+
+# Caches
+.eslintcache
+.node_repl_history
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Local-only docs (architecture, rationale) — never published
+*.local.md
+CLAUDE.local.md
