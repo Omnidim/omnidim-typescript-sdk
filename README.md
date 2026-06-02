@@ -1,8 +1,6 @@
 # @omnidim-ai/sdk
 
-Official JavaScript and TypeScript SDK for the [OmniDimension](https://omnidim.io) voice-AI REST API. Manage agents, dispatch calls, run bulk campaigns, knowledge bases, phone numbers, and simulations from Node.js.
-
-Types are generated from the [OmniDimension OpenAPI spec](https://docs.omnidim.io/openapi.yaml), so request and response shapes stay in sync with the API.
+Official JavaScript and TypeScript SDK for the [OmniDimension](https://omnidim.io) voice-AI REST API. Manage agents, dispatch calls, run bulk campaigns, knowledge bases, and phone numbers from Node.js.
 
 ## Install
 
@@ -92,4 +90,4 @@ import type { Agent, Call, Voice } from "@omnidim-ai/sdk";
 
 ## License
 
-MIT
+[MIT](LICENSE)
