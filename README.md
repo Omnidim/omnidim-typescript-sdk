@@ -84,9 +84,10 @@ import type { Agent, Call, Voice } from "@omnidim-ai/sdk";
 
 ## Links
 
-- API reference: [docs.omnidim.io](https://docs.omnidim.io)
+- TypeScript SDK guide: [docs.omnidim.io/docs/sdks/typescript](https://docs.omnidim.io/docs/sdks/typescript)
+- API reference: [docs.omnidim.io/docs/api-reference](https://docs.omnidim.io/docs/api-reference)
 - OpenAPI spec: [docs.omnidim.io/openapi.yaml](https://docs.omnidim.io/openapi.yaml)
-- Issues: [github.com/Omnidim/omnidim-js-sdk/issues](https://github.com/Omnidim/omnidim-js-sdk/issues)
+- Issues: [github.com/Omnidim/omnidim-typescript-sdk/issues](https://github.com/Omnidim/omnidim-typescript-sdk/issues)
 
 ## License
 
