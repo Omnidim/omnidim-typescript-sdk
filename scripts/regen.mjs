@@ -1,21 +1,7 @@
 #!/usr/bin/env node
-// Regenerate src/generated/types.ts from the OmniDimension OpenAPI spec
-// and stamp the spec hash into .spec.yml.
-//
-// Spec source resolution order:
-//   1. SPEC env var (path or URL)
-//   2. sibling checkout ../omnidim-docs/openapi/omnidim.yaml (local dev)
-//   3. openapi_spec_url in .spec.yml (CI / standalone checkout)
-
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-  rmSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,7 +10,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SPEC_META = join(ROOT, ".spec.yml");
 const OUT = join(ROOT, "src", "generated", "types.ts");
 
-function readSpecUrlFromMeta() {
+function specUrl() {
   const text = readFileSync(SPEC_META, "utf8");
   const match = text.match(/^openapi_spec_url:\s*(\S+)/m);
   if (!match) throw new Error("openapi_spec_url not found in .spec.yml");
@@ -32,8 +18,7 @@ function readSpecUrlFromMeta() {
 }
 
 async function loadSpec() {
-  const local = resolve(ROOT, "..", "omnidim-docs", "openapi", "omnidim.yaml");
-  const source = process.env.SPEC || (existsSync(local) ? local : readSpecUrlFromMeta());
+  const source = process.env.SPEC || specUrl();
   if (/^https?:\/\//.test(source)) {
     const res = await fetch(source);
     if (!res.ok) throw new Error(`failed to fetch spec: ${res.status} ${source}`);

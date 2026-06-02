@@ -1,10 +1,5 @@
 import type { HttpClient } from "../http.js";
 
-// These endpoints are not yet part of the published OpenAPI spec, so their
-// types are maintained here by hand rather than generated. The shapes below
-// match the live API. When the endpoints are added to the spec, these can be
-// replaced with generated types like the other resources.
-
 export type HttpVerb = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
 /** A header sent with every request the integration makes. */

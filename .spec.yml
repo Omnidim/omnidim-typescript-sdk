@@ -1,7 +1,4 @@
-# Source of truth for the generated types in src/generated/types.ts.
-# `npm run regen` reads the spec below, regenerates the types, and
-# updates the hash. CI watches this hash to open a regen PR when the
-# upstream spec changes. Do not edit the hash by hand.
+# Spec used to generate src/generated/types.ts. Run `npm run regen` to refresh.
 openapi_spec_url: https://docs.omnidim.io/openapi.yaml
 openapi_spec_hash: "9a177b03630f750598016b92680223ba7ab6d661bd1a3c0ccb4175a334c23b2d"
 generator: openapi-typescript
