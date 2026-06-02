@@ -38,10 +38,10 @@
   "homepage": "https://omnidim.io",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Omnidim/omnidim-js-sdk.git"
+    "url": "git+https://github.com/Omnidim/omnidim-typescript-sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/Omnidim/omnidim-js-sdk/issues"
+    "url": "https://github.com/Omnidim/omnidim-typescript-sdk/issues"
   },
   "author": "OmniDimension <support@omnidim.io>",
   "license": "MIT",
