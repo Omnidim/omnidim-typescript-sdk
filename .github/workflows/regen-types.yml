@@ -16,8 +16,8 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -25,7 +25,7 @@ jobs:
       - run: npm run regen
       - run: npm run typecheck
       - name: Open PR if the spec changed
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "chore: regenerate types from updated OpenAPI spec"
           branch: chore/regen-types
