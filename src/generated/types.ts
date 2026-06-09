@@ -170,9 +170,47 @@ export interface paths {
         put?: never;
         /**
          * Create bulk call
-         * @description Create a new bulk-call campaign. Supports immediate, scheduled, and auto-retry modes.
+         * @description Create a new bulk-call campaign. Supports immediate, scheduled,
+         *     and auto-retry modes.
+         *
+         *     There are two kinds of campaign:
+         *
+         *     - **Static** (default): you supply the full `contact_list` up
+         *       front and the campaign dials through it.
+         *     - **Dynamic**: set `is_dynamic` to `true` and the campaign accepts
+         *       contacts in real time via the Add contact to dynamic campaign
+         *       webhook. `contact_list` is optional here, so you can start the
+         *       campaign empty and feed it from a CRM, form, or automation. A
+         *       dynamic campaign stays alive waiting for contacts instead of
+         *       completing when its queue drains.
          */
         post: operations["createBulkCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{campaign_id}/add_contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add contact to dynamic campaign
+         * @description Push a single contact into a dynamic bulk-call campaign in real
+         *     time. Dynamic campaigns are created from the dashboard (Bulk Call
+         *     > Create New Campaign > Dynamic Campaign) and stay alive waiting
+         *     for contacts, so this webhook is how you feed them from a CRM,
+         *     form, or automation platform. The contact is queued immediately,
+         *     and the campaign starts calling it as soon as it is within
+         *     operating hours.
+         */
+        post: operations["addBulkCallContact"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2912,11 +2950,23 @@ export interface operations {
                     /** @description Your phone number id to use for making calls. */
                     phone_number_id: string;
                     /**
+                     * @description Set to `true` to create a dynamic campaign that accepts
+                     *     contacts in real time via the Add contact to dynamic
+                     *     campaign webhook. When `true`, `contact_list` is optional
+                     *     and may be omitted to start the campaign empty.
+                     * @default false
+                     */
+                    is_dynamic?: boolean;
+                    /**
                      * @description Array of contact objects. Each row needs `phone_number`.
                      *     Any other key you add on the row (e.g. `customer_name`,
                      *     `account_id`, `priority`) is passed to the agent as a
                      *     context variable for that specific call, so the agent
                      *     can reference it during the conversation.
+                     *
+                     *     Required for static campaigns. Optional when `is_dynamic`
+                     *     is `true` (you can omit it and add contacts later via the
+                     *     webhook).
                      * @example [
                      *       {
                      *         "phone_number": "+15551234567",
@@ -2931,7 +2981,7 @@ export interface operations {
                      *       }
                      *     ]
                      */
-                    contact_list: ({
+                    contact_list?: ({
                         /**
                          * @description Phone number in international format (e.g., +15551234567).
                          * @example +15551234567
@@ -2997,9 +3047,10 @@ export interface operations {
         responses: {
             /**
              * @description Bulk call campaign created. `current_status` is `scheduled`
-             *     for `is_scheduled: true`, otherwise `pending` (the
-             *     campaign starts dispatching to your concurrency limit
-             *     immediately after creation).
+             *     for `is_scheduled: true`. A dynamic campaign created with no
+             *     contacts comes back `waiting` (alive, ready for webhook
+             *     contacts). Otherwise it is dispatching to your concurrency
+             *     limit immediately after creation.
              */
             200: {
                 headers: {
@@ -3012,6 +3063,7 @@ export interface operations {
                      *       "message": "Bulk call created successfully",
                      *       "id": 314,
                      *       "is_scheduled": false,
+                     *       "is_dynamic": false,
                      *       "current_status": "pending"
                      *     }
                      */
@@ -3021,7 +3073,90 @@ export interface operations {
                         /** @description New campaign ID. */
                         id?: number;
                         is_scheduled?: boolean;
+                        is_dynamic?: boolean;
                         current_status?: string;
+                    };
+                };
+            };
+        };
+    };
+    addBulkCallContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of the dynamic campaign to add the contact to. */
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Contact phone number in international format (e.g., +15551234567).
+                     * @example +15551234567
+                     */
+                    to_number: string;
+                    /**
+                     * @description Key-value pairs passed to the agent as context for this
+                     *     call, so the agent can reference them during the
+                     *     conversation (e.g. the contact's name or reason for the
+                     *     call). Match these keys to the variables used in your
+                     *     agent's welcome message or prompt.
+                     * @example {
+                     *       "name": "Demo User",
+                     *       "interest": "Home Insurance"
+                     *     }
+                     */
+                    custom_variables?: {
+                        [key: string]: unknown;
+                    };
+                    /**
+                     * @description Key-value pairs stored on the contact for your own
+                     *     tracking (e.g. CRM or lead IDs). Not shared with the
+                     *     agent.
+                     * @example {
+                     *       "crm_lead_id": "lead_9876",
+                     *       "source": "website_form"
+                     *     }
+                     */
+                    metadata?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description Contact accepted and queued. `campaign_status` reflects the
+             *     campaign state after the contact was added (`in_progress` when
+             *     calling resumes, or `waiting` / `auto_paused` when the contact
+             *     is queued for the next operating window).
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "Contact added successfully",
+                     *       "campaign_id": 123,
+                     *       "line_id": 4567,
+                     *       "campaign_status": "in_progress",
+                     *       "to_number": "+15551234567"
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        message?: string;
+                        campaign_id?: number;
+                        /** @description ID of the new contact record in this campaign. */
+                        line_id?: number | null;
+                        campaign_status?: string;
+                        to_number?: string;
                     };
                 };
             };
