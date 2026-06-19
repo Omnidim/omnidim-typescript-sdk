@@ -9,10 +9,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SPEC_META = join(ROOT, ".spec.yml");
 const OUT = join(ROOT, "src", "generated", "types.ts");
 
-// The spec is only ever fetched from the published docs host. Pinning the
-// scheme and host means a value read from .spec.yml (or $SPEC) can't be
-// turned into an arbitrary outbound request.
-const ALLOWED_SPEC_HOSTS = new Set(["docs.omnidim.io"]);
+// The only spec fetched over the network is the published doc. The value
+// in .spec.yml (or $SPEC) is compared against this constant and the
+// constant itself is fetched, so external data never controls the request.
+const SPEC_URL = "https://docs.omnidim.io/openapi.yaml";
 const MAX_SPEC_BYTES = 8 * 1024 * 1024;
 
 function specUrl() {
@@ -22,37 +22,21 @@ function specUrl() {
   return match[1];
 }
 
-function checkedUrl(raw) {
-  let url;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new Error(`invalid spec URL: ${raw}`);
-  }
-  if (url.protocol !== "https:") {
-    throw new Error(`spec URL must use https: ${raw}`);
-  }
-  if (!ALLOWED_SPEC_HOSTS.has(url.hostname)) {
-    throw new Error(
-      `spec host ${url.hostname} is not allowed (expected: ${[...ALLOWED_SPEC_HOSTS].join(", ")})`,
-    );
-  }
-  return url;
-}
-
 async function loadSpec() {
   const source = process.env.SPEC || specUrl();
   if (/^https?:\/\//.test(source)) {
-    const url = checkedUrl(source);
-    const res = await fetch(url);
+    if (source !== SPEC_URL) {
+      throw new Error(`only ${SPEC_URL} may be fetched over https (got: ${source})`);
+    }
+    const res = await fetch(SPEC_URL);
     if (!res.ok) {
-      throw new Error(`failed to fetch spec: ${res.status} ${url.href}`);
+      throw new Error(`failed to fetch spec: ${res.status} ${SPEC_URL}`);
     }
     const bytes = Buffer.from(await res.arrayBuffer());
     if (bytes.length > MAX_SPEC_BYTES) {
       throw new Error(`spec is unexpectedly large (${bytes.length} bytes)`);
     }
-    return { bytes, source: url.href };
+    return { bytes, source: SPEC_URL };
   }
   // Local file override for development (e.g. SPEC=../omnidim-docs/openapi/omnidim.yaml).
   return { bytes: readFileSync(resolve(source)), source: resolve(source) };
