@@ -60,7 +60,12 @@ export class HttpClient {
       );
     }
     this.apiKey = apiKey;
-    this.baseURL = (options.baseURL ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    // Strip trailing slashes without a backtracking regex (`/\/+$/` is
+    // polynomial on long all-slash inputs; this scan is linear).
+    const rawBase = options.baseURL ?? DEFAULT_BASE_URL;
+    let baseEnd = rawBase.length;
+    while (baseEnd > 0 && rawBase[baseEnd - 1] === "/") baseEnd--;
+    this.baseURL = rawBase.slice(0, baseEnd);
     this.fetchImpl = fetchImpl;
     this.timeout = options.timeout ?? 60_000;
     this.defaultHeaders = options.defaultHeaders ?? {};
