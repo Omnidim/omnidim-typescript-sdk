@@ -22,7 +22,7 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 function buildQuery(query: Record<string, unknown> | undefined): string {
   if (!query) return "";

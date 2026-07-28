@@ -4,6 +4,37 @@
  */
 
 export interface paths {
+    "/sessions/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create session
+         * @description Create a voice Session: a short-lived, single-conversation
+         *     reservation that lets a client hold a live voice chat with your
+         *     agent. This is step 1 of 2. Creating the Session does not start any
+         *     audio on its own; it returns a `ws_url` that a client then connects
+         *     to over WebSocket to actually talk.
+         *
+         *     Call this endpoint from your server with your API key, and return
+         *     only the `ws_url` to your client. The API key must never reach the
+         *     browser. The `ws_url` is the only thing the client needs, and it is
+         *     safe to hand out because it is single-use and expires. For how to
+         *     connect and talk, see "Connect the client and talk" below the
+         *     request details.
+         */
+        post: operations["createSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents": {
         parameters: {
             query?: never;
@@ -39,6 +70,11 @@ export interface paths {
          *     config supports transcriber, model, voice, web search, transfer,
          *     end-call conditions, post-call actions (email + webhook),
          *     ambient background track, initial ringing sound, and multilingual support.
+         *
+         *     > **Voicemail detection is an access-gated feature** that we turn on per
+         *     account. If it isn't enabled for yours yet,
+         *     [request access](https://omnidim.io/contact-us?reason=product&lock=1)
+         *     before configuring the `voicemail` object.
          */
         post: operations["createAgent"];
         delete?: never;
@@ -59,12 +95,14 @@ export interface paths {
         };
         /**
          * Get agent
-         * @description Get details of a specific agent by ID.
+         * @description Get details of a specific agent by ID. The response also includes a `version_history_enabled` boolean showing whether [version history](/docs/api-reference/agent-versions) is turned on for the agent's organization.
          */
         get: operations["getAgent"];
         /**
          * Update agent
          * @description Update an existing agent. Send only the fields you want to change.
+         *
+         *     > **Voicemail detection is an access-gated feature** that we turn on per account. If it isn't enabled for yours yet, [request access](https://omnidim.io/contact-us?reason=product&lock=1) before configuring the `voicemail` object below.
          */
         put: operations["updateAgent"];
         post?: never;
@@ -73,6 +111,112 @@ export interface paths {
          * @description Permanently delete an agent.
          */
         delete: operations["deleteAgent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * List agent versions
+         * @description List an agent's saved versions, newest first. Includes manual (named) versions, automatic versions, and system backups taken before a restore.
+         */
+        get: operations["listAgentVersions"];
+        put?: never;
+        /**
+         * Save an agent version
+         * @description Save the agent's current configuration as a named version.
+         */
+        post: operations["createAgentVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/versions/{version_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The version number, as returned in `version_number` from the list or save endpoints. */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an agent version
+         * @description Delete a saved version.
+         */
+        delete: operations["deleteAgentVersion"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename an agent version
+         * @description Rename a saved version or edit its note. Version history is immutable otherwise; only the name and note can change.
+         */
+        patch: operations["renameAgentVersion"];
+        trace?: never;
+    };
+    "/agents/{agent_id}/versions/{version_number}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The version number, as returned in `version_number` from the list or save endpoints. */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * Diff an agent version
+         * @description Get a record-level diff for this version. By default it shows what changed in this version compared with the version before it. Use `against=current` to compare with the agent's live config (what restoring this version would change), or `against=<number>` to compare with another version.
+         */
+        get: operations["diffAgentVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/versions/{version_number}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The version number, as returned in `version_number` from the list or save endpoints. */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an agent version
+         * @description Restore a version onto the live agent. Your current setup is saved first as a backup version, so restoring is undoable. Configuration is brought back; any knowledge files or integrations that were deleted since this version was saved can't be re-linked, and are reported in `skipped`.
+         */
+        post: operations["restoreAgentVersion"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -962,6 +1106,12 @@ export interface components {
             error?: string;
             message?: string;
         };
+        SessionError: {
+            /** @description Machine-readable error code. */
+            error?: string;
+            /** @description Human-readable explanation. */
+            error_description?: string;
+        };
         /**
          * @description Reseller-managed dashboard menu access flags. Each property is
          *     a boolean toggle for a feature area in the child user's
@@ -1045,7 +1195,9 @@ export interface components {
             background_noice_name?: string | boolean;
             background_audio_volume?: number;
             initial_ringing_sound_enabled?: boolean;
+            /** @description Whether voicemail detection is on. To change it, send the nested `voicemail.enabled` field when creating or updating the agent. */
             voicemail_enabled?: boolean;
+            /** @description Message the agent leaves when voicemail is detected. To change it, send the nested `voicemail.message` field when creating or updating the agent. */
             voicemail_message?: string;
             is_end_call_enabled?: boolean;
             end_call_condition?: string;
@@ -1091,6 +1243,55 @@ export interface components {
             integrations?: Record<string, never>[];
             flow_data?: Record<string, never> | boolean;
             bot_action_name?: string | boolean;
+            /** @description Whether version history is turned on for this agent's organization. */
+            version_history_enabled?: boolean;
+        };
+        /** @description A saved snapshot of an agent's configuration. */
+        AgentVersion: {
+            id?: number;
+            version_number?: number;
+            /** @description Display name of the version. `Auto-saved` for automatic versions and `Backup before restore` for system versions. */
+            name?: string;
+            note?: string;
+            /**
+             * @description `manual`: a person saved it. `auto`: auto-saved after editing went quiet. `system`: a backup taken automatically before a restore.
+             * @enum {string}
+             */
+            kind?: "manual" | "auto" | "system";
+            created_by?: {
+                id?: number;
+                name?: string;
+            };
+            /** Format: date-time */
+            create_date?: string;
+            /** @description At-a-glance counts of what the version contains. */
+            summary?: {
+                llm_service?: string;
+                voice_name?: string;
+                bot_type?: string;
+                languages?: string[];
+                context_sections?: number;
+                transfer_options?: number;
+                post_call_configs?: number;
+                knowledge_files?: number;
+                integrations?: number;
+                flow_nodes?: number;
+            };
+            /** @description What changed in this version compared with the previous one. Included when listing versions. `first` is true for the earliest version, which has nothing before it to compare. */
+            change_summary?: {
+                first?: boolean;
+                /** @description Number of settings that changed. */
+                count?: number;
+                /** @description The changed settings, most useful first. */
+                items?: {
+                    /** @example Transcription */
+                    label?: string;
+                    /** @example Cartesia */
+                    old?: string | null;
+                    /** @example Soniox */
+                    new?: string | null;
+                }[];
+            };
         };
         /** @description A single call log entry. */
         Call: {
@@ -1526,6 +1727,8 @@ export interface components {
              * @example Hello! How can I help you today?
              */
             welcome_message?: string;
+            /** @description When true, the welcome message is treated as a directive the agent uses to generate a tailored greeting for each call, rather than being spoken word for word. When false, the welcome message is spoken exactly as written. */
+            is_welcome_message_dynamic?: boolean;
             /** @description Allow the caller to interrupt the welcome message. When false, the agent finishes speaking the welcome before listening. */
             is_welcome_message_interruption?: boolean;
             /** @description Global toggle for whether the caller can interrupt the agent mid-sentence at any point in the call. */
@@ -1805,9 +2008,9 @@ export interface components {
             };
             /** @description Plays a ringing tone after the call is picked up, until the agent starts speaking. */
             initial_ringing_sound_enabled?: boolean;
-            /** @description Voicemail / answering-machine handling for outbound calls. */
+            /** @description Voicemail / answering-machine handling for outbound calls. Set this with the nested object shown here; the agent object returns these values as the flat fields `voicemail_enabled` and `voicemail_message`. Voicemail detection is an access-gated feature. If it isn't enabled for your account, [request access](https://omnidim.io/contact-us?reason=product&lock=1). */
             voicemail?: {
-                /** @description Detect voicemail and react instead of speaking to a machine. */
+                /** @description Detect voicemail and leave your message instead of speaking to a machine. */
                 enabled?: boolean;
                 /** @description Message to leave when voicemail is detected. */
                 message?: string;
@@ -1830,6 +2033,150 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    createSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description ID of the agent the session talks to.
+                     * @example 158910
+                     */
+                    agent_id: number;
+                    /**
+                     * @description The session type. Only `voice` is supported.
+                     * @enum {string}
+                     */
+                    type: "voice";
+                    /**
+                     * @description Per-session variables that personalize the conversation.
+                     *     Set server-side, so visitors cannot tamper with them.
+                     * @example {
+                     *       "name": "Demo User"
+                     *     }
+                     */
+                    custom_variables?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Session created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Correlate this with call logs and support requests.
+                         * @example 4521
+                         */
+                        session_id?: number;
+                        /**
+                         * @description The Session Token. Single conversation, unguessable.
+                         * @example sess_51gF2qw8LxNz0vY4mT7Ka3RjD9pBcE6HuWiQnZsX0oM
+                         */
+                        token?: string;
+                        /**
+                         * Format: date-time
+                         * @description End of the 15-minute connect window (UTC).
+                         * @example 2026-07-17T12:15:00Z
+                         */
+                        expires_at?: string;
+                        /**
+                         * @description Connect your client to this URL as returned.
+                         * @example wss://live.omnidim.io/chat/start_voice_chat?request_token=sess_51gF2qw8LxNz0vY4mT7Ka3RjD9pBcE6HuWiQnZsX0oM
+                         */
+                        ws_url?: string;
+                    };
+                };
+            };
+            /**
+             * @description Unsupported session type (`unsupported_type`) or a malformed
+             *     request body (`invalid_request`).
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unsupported_type",
+                     *       "error_description": "Only type 'voice' is supported."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The organization balance is too low to start a call. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "insufficient_balance",
+                     *       "error_description": "Balance is low. Please Choose Appropriate plan."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Agent not found in your organization. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "agent_not_found",
+                     *       "error_description": "Agent not found or access denied"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The organization is at its concurrent call limit. Wait for a
+             *     call to finish or purchase more concurrency, then retry.
+             */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "concurrency_limit_reached",
+                     *       "error_description": "Your organization is at its concurrent call limit (2). Wait for a call to finish or purchase more concurrency.",
+                     *       "limit": 2
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Your organization's concurrent call limit. */
+                        limit?: number;
+                    };
+                };
+            };
+        };
+    };
     listAgents: {
         parameters: {
             query?: {
@@ -2299,6 +2646,668 @@ export interface operations {
                     "application/json": {
                         success?: boolean;
                         message?: string;
+                    };
+                };
+            };
+        };
+    };
+    listAgentVersions: {
+        parameters: {
+            query?: {
+                /** @description Page number for pagination. */
+                pageno?: number;
+                /** @description Number of items per page (max 150). */
+                pagesize?: number;
+                /** @description Filter versions whose name matches this substring (case-insensitive). */
+                search?: string;
+                /** @description Filter versions by kind. */
+                kind?: "manual" | "auto" | "system";
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of versions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "versions": [
+                     *         {
+                     *           "id": 4821,
+                     *           "version_number": 5,
+                     *           "name": "Working pricing script",
+                     *           "note": "Before the new discount flow",
+                     *           "kind": "manual",
+                     *           "created_by": {
+                     *             "id": 1234,
+                     *             "name": "Demo User"
+                     *           },
+                     *           "create_date": "2026-07-20T10:15:00Z",
+                     *           "summary": {
+                     *             "llm_service": "gpt-4.1-mini",
+                     *             "voice_name": "asteria",
+                     *             "bot_type": "prompt",
+                     *             "languages": [
+                     *               "English"
+                     *             ],
+                     *             "context_sections": 7,
+                     *             "transfer_options": 1,
+                     *             "post_call_configs": 1,
+                     *             "knowledge_files": 2,
+                     *             "integrations": 0,
+                     *             "flow_nodes": 0
+                     *           }
+                     *         },
+                     *         {
+                     *           "id": 4809,
+                     *           "version_number": 4,
+                     *           "name": "Auto-saved",
+                     *           "note": "",
+                     *           "kind": "auto",
+                     *           "created_by": {
+                     *             "id": 1234,
+                     *             "name": "Demo User"
+                     *           },
+                     *           "create_date": "2026-07-18T09:02:00Z",
+                     *           "summary": {
+                     *             "llm_service": "gpt-4.1-mini",
+                     *             "voice_name": "asteria",
+                     *             "bot_type": "prompt",
+                     *             "languages": [
+                     *               "English"
+                     *             ],
+                     *             "context_sections": 6,
+                     *             "transfer_options": 1,
+                     *             "post_call_configs": 1,
+                     *             "knowledge_files": 2,
+                     *             "integrations": 0,
+                     *             "flow_nodes": 0
+                     *           }
+                     *         }
+                     *       ],
+                     *       "total_count": 5,
+                     *       "counts": {
+                     *         "all": 5,
+                     *         "manual": 2,
+                     *         "auto": 2,
+                     *         "system": 1
+                     *       },
+                     *       "page": 1,
+                     *       "page_size": 30,
+                     *       "version_history_enabled": true
+                     *     }
+                     */
+                    "application/json": {
+                        versions?: components["schemas"]["AgentVersion"][];
+                        /** @description Total number of versions matching the current filters. */
+                        total_count?: number;
+                        /** @description Total counts per kind, unaffected by the current filters. */
+                        counts?: {
+                            all?: number;
+                            manual?: number;
+                            auto?: number;
+                            system?: number;
+                        };
+                        page?: number;
+                        page_size?: number;
+                        /** @description Whether version history is turned on for this agent's organization. */
+                        version_history_enabled?: boolean;
+                    };
+                };
+            };
+            /** @description Version history is not enabled for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Version history is not enabled for this organization"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description No agent with that ID, or it doesn't belong to you. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Agent not found or access denied"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+        };
+    };
+    createAgentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Display name for the version. */
+                    name: string;
+                    /** @description Optional note describing the version. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Version saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "version": {
+                     *         "id": 4830,
+                     *         "version_number": 6,
+                     *         "name": "Working pricing script",
+                     *         "note": "Before the new discount flow",
+                     *         "kind": "manual",
+                     *         "created_by": {
+                     *           "id": 1234,
+                     *           "name": "Demo User"
+                     *         },
+                     *         "create_date": "2026-07-28T11:40:00Z",
+                     *         "summary": {
+                     *           "llm_service": "gpt-4.1-mini",
+                     *           "voice_name": "asteria",
+                     *           "bot_type": "prompt",
+                     *           "languages": [
+                     *             "English"
+                     *           ],
+                     *           "context_sections": 7,
+                     *           "transfer_options": 1,
+                     *           "post_call_configs": 1,
+                     *           "knowledge_files": 2,
+                     *           "integrations": 0,
+                     *           "flow_nodes": 0
+                     *         }
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        version?: components["schemas"]["AgentVersion"];
+                    };
+                };
+            };
+            /** @description Version history is not enabled for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Version history is not enabled for this organization"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description No agent with that ID, or it doesn't belong to you. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Agent not found or access denied"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description The agent has reached the maximum number of versions that can be created through the API. Delete a version to make room. Versions saved from the dashboard are not limited. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "version_limit_reached",
+                     *       "error_description": "This agent has reached the maximum of 50 versions that can be created through the API. Delete a version to make room."
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+        };
+    };
+    deleteAgentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The version number, as returned in `version_number` from the list or save endpoints. */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "message": "Version deleted successfully"
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        message?: string;
+                    };
+                };
+            };
+            /** @description Version history is not enabled for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Version history is not enabled for this organization"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description No agent or version matching that ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Version not found for this agent"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+        };
+    };
+    renameAgentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The version number, as returned in `version_number` from the list or save endpoints. */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description New display name for the version. */
+                    name?: string;
+                    /** @description New note for the version. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Version renamed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "version": {
+                     *         "id": 4821,
+                     *         "version_number": 5,
+                     *         "name": "Pre-launch pricing",
+                     *         "note": "Reviewed with the team",
+                     *         "kind": "manual",
+                     *         "created_by": {
+                     *           "id": 1234,
+                     *           "name": "Demo User"
+                     *         },
+                     *         "create_date": "2026-07-20T10:15:00Z",
+                     *         "summary": {
+                     *           "llm_service": "gpt-4.1-mini",
+                     *           "voice_name": "asteria",
+                     *           "bot_type": "prompt",
+                     *           "languages": [
+                     *             "English"
+                     *           ],
+                     *           "context_sections": 7,
+                     *           "transfer_options": 1,
+                     *           "post_call_configs": 1,
+                     *           "knowledge_files": 2,
+                     *           "integrations": 0,
+                     *           "flow_nodes": 0
+                     *         }
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        version?: components["schemas"]["AgentVersion"];
+                    };
+                };
+            };
+            /** @description Version history is not enabled for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Version history is not enabled for this organization"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description No agent or version matching that ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Version not found for this agent"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+        };
+    };
+    diffAgentVersion: {
+        parameters: {
+            query?: {
+                /** @description What to compare against. Omit or `previous` for the version before this one (the default). `current` for the agent's live config. A version number to compare with that version. */
+                against?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The version number, as returned in `version_number` from the list or save endpoints. */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diff between the two versions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "changed": true,
+                     *       "first": false,
+                     *       "from": {
+                     *         "version_number": 4,
+                     *         "name": "Before pricing tweak"
+                     *       },
+                     *       "to": {
+                     *         "version_number": 5,
+                     *         "name": "Working pricing script"
+                     *       },
+                     *       "groups": [
+                     *         {
+                     *           "area": "Settings",
+                     *           "changes": [
+                     *             {
+                     *               "field": "llm_service",
+                     *               "label": "Model",
+                     *               "old": "gpt-4.1-mini",
+                     *               "new": "gpt-4o-mini"
+                     *             }
+                     *           ]
+                     *         },
+                     *         {
+                     *           "area": "Knowledge",
+                     *           "records": [
+                     *             {
+                     *               "op": "added",
+                     *               "label": "pricing-sheet.pdf"
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        /** @description Whether there is any difference between the two sides. */
+                        changed?: boolean;
+                        /** @description True when this is the earliest version and there is nothing before it to compare (only for the default previous-version comparison). */
+                        first?: boolean;
+                        /** @description The version being compared from, or null when `first` is true. */
+                        from?: {
+                            version_number?: number;
+                            name?: string;
+                        } | null;
+                        /** @description The comparison target: an object with the version number and name for a version, or a text label such as `current setup`. */
+                        to?: {
+                            version_number?: number;
+                            name?: string;
+                        } | string;
+                        groups?: {
+                            /** @description Section of the agent this group of changes belongs to (e.g. Settings, Prompt, Transfer rules, Post-call actions, Knowledge, Integrations, Web widget, Conversation flow, Other settings). */
+                            area?: string;
+                            changes?: {
+                                field?: string;
+                                label?: string;
+                                old?: string;
+                                new?: string;
+                            }[];
+                            records?: {
+                                /** @enum {string} */
+                                op?: "added" | "removed" | "edited";
+                                label?: string;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Version history is not enabled for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Version history is not enabled for this organization"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description No agent or version matching that ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Version not found for this agent"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+        };
+    };
+    restoreAgentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The version number, as returned in `version_number` from the list or save endpoints. */
+                version_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version restored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "restored_from": 5,
+                     *       "safety_version": 7,
+                     *       "skipped": [
+                     *         {
+                     *           "item": "knowledge_file",
+                     *           "label": "old-pricing-sheet.pdf",
+                     *           "reason": "deleted"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        /** @description The version number that was restored. */
+                        restored_from?: number;
+                        /** @description Version number of the backup taken of the agent's setup right before this restore, or null if no backup was needed. */
+                        safety_version?: number | null;
+                        /** @description References the restore could not bring back (e.g. a knowledge file or integration deleted since this version was saved). */
+                        skipped?: {
+                            item?: string;
+                            label?: string;
+                            reason?: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Version history is not enabled for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Version history is not enabled for this organization"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description No agent or version matching that ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Version not found for this agent"
+                     *     }
+                     */
+                    "application/json": {
+                        error?: string;
+                        error_description?: string;
                     };
                 };
             };
