@@ -26,6 +26,12 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["agents.get", (c) => c.agents.get(ID), "GET", "/agents/7"],
   ["agents.update", (c) => c.agents.update(ID, B), "PUT", "/agents/7"],
   ["agents.delete", (c) => c.agents.delete(ID), "DELETE", "/agents/7"],
+  ["agents.listVersions", (c) => c.agents.listVersions(ID), "GET", "/agents/7/versions"],
+  ["agents.saveVersion", (c) => c.agents.saveVersion(ID, B), "POST", "/agents/7/versions"],
+  ["agents.diffVersion", (c) => c.agents.diffVersion(ID, 3), "GET", "/agents/7/versions/3/diff"],
+  ["agents.restoreVersion", (c) => c.agents.restoreVersion(ID, 3), "POST", "/agents/7/versions/3/restore"],
+  ["agents.renameVersion", (c) => c.agents.renameVersion(ID, 3, B), "PATCH", "/agents/7/versions/3"],
+  ["agents.deleteVersion", (c) => c.agents.deleteVersion(ID, 3), "DELETE", "/agents/7/versions/3"],
   ["calls.dispatch", (c) => c.calls.dispatch(B), "POST", "/calls/dispatch"],
   ["calls.listLogs", (c) => c.calls.listLogs(), "GET", "/calls/logs"],
   ["calls.getLog", (c) => c.calls.getLog(ID), "GET", "/calls/logs/7"],
@@ -72,7 +78,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(47);
+    expect(cases).toHaveLength(53);
   });
 
   for (const [name, call, method, path] of cases) {

@@ -33,7 +33,7 @@ The client exposes one accessor per API area:
 
 | Accessor | Covers |
 |---|---|
-| `client.agents` | List, create, get, update, delete agents |
+| `client.agents` | List, create, get, update, delete agents; save, list, diff, restore, rename, and delete version history |
 | `client.calls` | Dispatch outbound calls, list and read call logs |
 | `client.bulkCalls` | Create and manage bulk-call campaigns, live status |
 | `client.knowledgeBase` | Upload, list, attach, detach, delete knowledge files |
@@ -79,7 +79,7 @@ new OmniDimension({
 Schema types are exported for use in your own code:
 
 ```ts
-import type { Agent, Call, Voice } from "@omnidim-ai/sdk";
+import type { Agent, Call, Voice, AgentVersion } from "@omnidim-ai/sdk";
 ```
 
 ## Links

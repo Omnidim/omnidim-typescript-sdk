@@ -28,4 +28,68 @@ export class Agents {
   delete(agentId: number | string) {
     return this.http.request<ResultOf<"deleteAgent">>("DELETE", `/agents/${agentId}`);
   }
+
+  /** List an agent's saved config versions, newest first. */
+  listVersions(agentId: number | string, query?: QueryOf<"listAgentVersions">) {
+    return this.http.request<ResultOf<"listAgentVersions">>(
+      "GET",
+      `/agents/${agentId}/versions`,
+      { query },
+    );
+  }
+
+  /** Save the agent's current configuration as a named version. */
+  saveVersion(agentId: number | string, body: BodyOf<"createAgentVersion">) {
+    return this.http.request<ResultOf<"createAgentVersion">>(
+      "POST",
+      `/agents/${agentId}/versions`,
+      { body },
+    );
+  }
+
+  /**
+   * What changed for a version. By default compares with the previous version
+   * (what changed in it); pass `against: "current"` for what restoring it would
+   * change, or a version number to compare with that version.
+   */
+  diffVersion(
+    agentId: number | string,
+    versionNumber: number | string,
+    query?: QueryOf<"diffAgentVersion">,
+  ) {
+    return this.http.request<ResultOf<"diffAgentVersion">>(
+      "GET",
+      `/agents/${agentId}/versions/${versionNumber}/diff`,
+      { query },
+    );
+  }
+
+  /** Restore a version onto the live agent (saves the current state first). */
+  restoreVersion(agentId: number | string, versionNumber: number | string) {
+    return this.http.request<ResultOf<"restoreAgentVersion">>(
+      "POST",
+      `/agents/${agentId}/versions/${versionNumber}/restore`,
+    );
+  }
+
+  /** Rename a version (name/note only). */
+  renameVersion(
+    agentId: number | string,
+    versionNumber: number | string,
+    body: BodyOf<"renameAgentVersion">,
+  ) {
+    return this.http.request<ResultOf<"renameAgentVersion">>(
+      "PATCH",
+      `/agents/${agentId}/versions/${versionNumber}`,
+      { body },
+    );
+  }
+
+  /** Delete a saved version. */
+  deleteVersion(agentId: number | string, versionNumber: number | string) {
+    return this.http.request<ResultOf<"deleteAgentVersion">>(
+      "DELETE",
+      `/agents/${agentId}/versions/${versionNumber}`,
+    );
+  }
 }

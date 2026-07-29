@@ -18,6 +18,7 @@ export type Voice = Schemas["Voice"];
 export type VoiceDetail = Schemas["VoiceDetail"];
 export type Simulation = Schemas["Simulation"];
 export type Pagination = Schemas["Pagination"];
+export type AgentVersion = Schemas["AgentVersion"];
 
 type Op = operations;
 
