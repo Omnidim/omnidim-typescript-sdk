@@ -1,6 +1,6 @@
 {
   "name": "@omnidim-ai/sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Official JavaScript and TypeScript SDK for the OmniDimension voice-AI REST API. Manage agents, dispatch calls, run bulk campaigns, knowledge bases, phone numbers, and simulations.",
   "type": "module",
   "main": "./build/index.js",
