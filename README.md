@@ -89,6 +89,12 @@ import type { Agent, Call, Voice, AgentVersion } from "@omnidim-ai/sdk";
 - OpenAPI spec: [docs.omnidim.io/openapi.yaml](https://docs.omnidim.io/openapi.yaml)
 - Issues: [github.com/Omnidim/omnidim-typescript-sdk/issues](https://github.com/Omnidim/omnidim-typescript-sdk/issues)
 
+## Support
+
+- Ask in [our Discord](https://discord.gg/kdjzykMTHJ), where engineers from the team answer build questions.
+- Bugs and feature requests: [open an issue](https://github.com/Omnidim/omnidim-typescript-sdk/issues).
+- Account or billing: [support@omnidim.io](mailto:support@omnidim.io).
+
 ## License
 
 [MIT](LICENSE)
