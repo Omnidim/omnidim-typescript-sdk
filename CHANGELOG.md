@@ -6,11 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-26
+
+### Added
+
+- Phone number provisioning on `client.phoneNumbers`: `search`, `purchase` (accepts an idempotency key so a retry cannot charge twice), `release`.
+- `user_id` on `client.phoneNumbers.list`, for reseller accounts listing a client's numbers.
+
+## [0.2.0] - 2026-07-29
+
 ### Added
 
 - Agent version-history methods on `client.agents`: `listVersions`, `saveVersion`, `diffVersion` (with `against` = previous / current / a version number), `restoreVersion`, `renameVersion`, `deleteVersion`.
 - `PATCH` support in the HTTP client (used by `renameVersion`).
-- Phone number provisioning methods on `client.phoneNumbers`: `search`, `purchase` (accepts an idempotency key), `release`.
 
 ## [0.1.1] - 2026-06-19
 
