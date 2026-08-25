@@ -53,6 +53,9 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["phoneNumbers.importTwilio", (c) => c.phoneNumbers.importTwilio(B), "POST", "/phone_number/import/twilio"],
   ["phoneNumbers.importExotel", (c) => c.phoneNumbers.importExotel(B), "POST", "/phone_number/import/exotel"],
   ["phoneNumbers.importSip", (c) => c.phoneNumbers.importSip(B), "POST", "/phone_number/import/sip"],
+  ["phoneNumbers.search", (c) => c.phoneNumbers.search(), "GET", "/phone_number/search"],
+  ["phoneNumbers.purchase", (c) => c.phoneNumbers.purchase(B), "POST", "/phone_number/purchase"],
+  ["phoneNumbers.release", (c) => c.phoneNumbers.release(B), "POST", "/phone_number/release"],
   ["providers.listLLMs", (c) => c.providers.listLLMs(), "GET", "/providers/llms"],
   ["providers.listVoices", (c) => c.providers.listVoices(), "GET", "/providers/voices"],
   ["providers.listSTT", (c) => c.providers.listSTT(), "GET", "/providers/stt"],
@@ -78,7 +81,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(53);
+    expect(cases).toHaveLength(56);
   });
 
   for (const [name, call, method, path] of cases) {

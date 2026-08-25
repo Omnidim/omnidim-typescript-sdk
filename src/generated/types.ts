@@ -95,7 +95,7 @@ export interface paths {
         };
         /**
          * Get agent
-         * @description Get details of a specific agent by ID. The response also includes a `version_history_enabled` boolean showing whether [version history](/docs/api-reference/agent-versions) is turned on for the agent's organization.
+         * @description Get details of a specific agent by ID. The response also includes a `version_history_enabled` boolean showing whether [version history](/docs/api-reference/agents/listAgentVersions) is turned on for the agent's organization.
          */
         get: operations["getAgent"];
         /**
@@ -538,11 +538,79 @@ export interface paths {
         };
         /**
          * List phone numbers
-         * @description Retrieve all phone numbers associated with your account.
+         * @description Retrieve the phone numbers on your account, whether you bought them
+         *     from the OmniDimension number shop or imported your own.
          */
         get: operations["listPhoneNumbers"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/phone_number/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search available phone numbers
+         * @description Search the OmniDimension number shop for phone numbers available to buy
+         *     in a region. Price and validity are flat per region, so every result
+         *     shows the same `monthly_rental_usd` and `validity_days`, and that is the
+         *     exact amount a purchase will charge.
+         */
+        get: operations["searchPhoneNumbers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/phone_number/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Purchase a phone number
+         * @description Buy a phone number from the OmniDimension number shop. The monthly
+         *     rental comes out of your wallet and the number is added to your
+         *     account, ready to attach to an agent.
+         */
+        post: operations["purchasePhoneNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/phone_number/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release a phone number
+         * @description Give up a phone number and stop its rental, so it is not charged at the
+         *     next renewal. Only a number currently allocated to the account can be
+         *     released.
+         */
+        post: operations["releasePhoneNumber"];
         delete?: never;
         options?: never;
         head?: never;
@@ -984,11 +1052,18 @@ export interface paths {
         put?: never;
         /**
          * Set child concurrency limit
-         * @description Set the maximum number of simultaneous calls a child
-         *     organization can run. Slots come from the reseller's shared
-         *     pool. Increasing the limit deducts the delta from your pool
-         *     and fails if you don't have enough slots. Decreasing the
-         *     limit returns the delta to your pool immediately.
+         * @description Set the maximum number of simultaneous calls a client can run.
+         *     `new_limit` is the absolute figure you want, not a change to the
+         *     current one.
+         *
+         *     Assigning is free: any figure is accepted, nothing is deducted from
+         *     you, and this call never fails for lack of capacity.
+         *
+         *     It does not create capacity, though. Your own concurrent call limit is
+         *     the ceiling for your whole account family at dial time, so what you set
+         *     here is a per-client cap, and your own limit is the capacity those caps
+         *     compete for. Assign a client more than you hold and the extra simply
+         *     cannot be dialled.
          */
         post: operations["setChildConcurrency"];
         delete?: never;
@@ -1031,11 +1106,15 @@ export interface paths {
         put?: never;
         /**
          * Transfer credits to a child
-         * @description Transfer minutes from the reseller balance to a child
-         *     organization. Credits are deducted from your balance
-         *     immediately on success. The target organization must be a
-         *     direct child of your reseller. Use the calculate endpoint
-         *     first to preview the cost.
+         * @description Transfer minutes from your balance to a client, at the rate you set.
+         *
+         *     Two different amounts move: your balance is debited at your own rate,
+         *     and the client is credited at `cost_per_min`. The gap between them is
+         *     your margin, so a `cost_per_min` below your own rate is refused as a
+         *     loss rather than silently costing you money on every call.
+         *
+         *     The target organization must be a direct child of your reseller. Use
+         *     the calculate endpoint first to preview both amounts.
          */
         post: operations["transferCreditsToChild"];
         delete?: never;
@@ -1055,11 +1134,12 @@ export interface paths {
         put?: never;
         /**
          * Revert credits
-         * @description Take back unused minutes from a child organization to the
-         *     reseller balance. The refund is calculated at the child's
-         *     current rate, so you don't pass one. This matches exactly
-         *     what was originally charged. Use the calculate endpoint
-         *     first to preview the refund.
+         * @description Take unused minutes back from a client. The exact mirror of a
+         *     transfer, so you do not pass a rate.
+         *
+         *     The client is deducted at their own current rate, which is what they
+         *     were charged, and you are refunded at your rate, which is what it cost
+         *     you. Use the calculate endpoint first to preview both amounts.
          */
         post: operations["revertCreditsFromChild"];
         delete?: never;
@@ -1084,6 +1164,74 @@ export interface paths {
         get: operations["getResellerCreditLogs"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/kyc/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get KYC status
+         * @description Get the identity verification status of a client for every region
+         *     where verification is required. Use `next_step` to know which step
+         *     to call next, so you drive the whole flow off one poll instead of
+         *     hardcoding the sequence.
+         */
+        get: operations["getResellerKycStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/kyc/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get KYC requirements for a region
+         * @description Get the ordered list of verification steps for a region and
+         *     the fields each step needs, so your integration can build a
+         *     verification form without hardcoding the sequence.
+         */
+        get: operations["getResellerKycRequirements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/kyc/steps/{step}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a KYC verification step
+         * @description Run one step of a client's identity verification. One endpoint handles
+         *     every step: the `step` path parameter names the step, and the body
+         *     carries `user_id`, `region`, and whatever that step needs. Pick a step
+         *     from the examples below to see its body.
+         */
+        post: operations["submitResellerKycStep"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1605,12 +1753,9 @@ export interface components {
             sip_host?: string | boolean;
             sip_port?: string | boolean;
             sip_username?: string | boolean;
-            sip_password?: string | boolean;
             sip_trunk_name?: string | boolean;
             sip_id?: string | boolean;
             exotel_phone_number?: string | boolean;
-            exotel_api_key?: string | boolean;
-            exotel_api_token?: string | boolean;
             exotel_subdomain?: string | boolean;
             exotel_account_sid?: string | boolean;
             exotel_app_id?: string | boolean;
@@ -1619,7 +1764,6 @@ export interface components {
             wa_wbaid?: string | boolean;
             wa_app_id?: string | boolean;
             wa_business_id?: string | boolean;
-            wa_access_token?: string | boolean;
         };
         Provider: {
             id?: number;
@@ -1843,16 +1987,16 @@ export interface components {
                  */
                 temperature?: number;
             };
-            /** @description Configuration for the text-to-speech voice. */
+            /** @description Configuration for the text-to-speech voice. `provider` and `voice_id` identify the voice together, so send both to change it. `provider` on its own is not accepted, and a `voice_id` on its own leaves the voice as it was. The other fields here apply independently. */
             voice?: {
                 /**
-                 * @description The voice provider to use. The current catalog is returned by the TTS providers list.
+                 * @description The voice provider to use. The current catalog is returned by the TTS providers list. Send `voice_id` alongside it.
                  * @example eleven_labs
                  * @enum {string}
                  */
                 provider?: "eleven_labs" | "google" | "cartesia" | "sarvam";
                 /**
-                 * @description The provider's voice identifier, returned in the `name` field of the voices list (not the numeric `id`).
+                 * @description The provider's voice identifier, returned in the `name` field of the voices list (not the numeric `id`). Takes effect when `provider` is sent alongside it.
                  * @example JBFqnCBsd6RMkjVDRZzb
                  */
                 voice_id?: string;
@@ -1934,7 +2078,7 @@ export interface components {
             /** @description Conditional call transfer to a human agent or another number. */
             transfer?: {
                 enabled?: boolean;
-                /** @description Where to transfer the call and under what condition. The first matching condition wins. */
+                /** @description Where to transfer the call and under what condition. The first matching condition wins. In an agent update, sending this list replaces all saved options. Omit it to keep them unchanged, or send an empty array to clear them. */
                 transfer_options?: {
                     /**
                      * @description Primary phone number to transfer to. Include country code with leading `+`.
@@ -2061,6 +2205,19 @@ export interface operations {
                      *     }
                      */
                     custom_variables?: {
+                        [key: string]: unknown;
+                    };
+                    /**
+                     * @description Key-value pairs stored on the session for your own
+                     *     tracking (e.g. CRM or lead IDs). Not shared with the
+                     *     agent; echoed back as `metadata` in the post-call
+                     *     webhook so you can correlate results with your records.
+                     * @example {
+                     *       "crm_lead_id": "lead_9876",
+                     *       "source": "website_form"
+                     *     }
+                     */
+                    metadata?: {
                         [key: string]: unknown;
                     };
                 };
@@ -3347,6 +3504,19 @@ export interface operations {
                      *     }
                      */
                     call_context?: {
+                        [key: string]: unknown;
+                    };
+                    /**
+                     * @description Key-value pairs stored on the call for your own tracking
+                     *     (e.g. CRM or lead IDs). Not shared with the agent; echoed
+                     *     back as `metadata` in the post-call webhook so you can
+                     *     correlate results with your records.
+                     * @example {
+                     *       "crm_lead_id": "lead_9876",
+                     *       "source": "website_form"
+                     *     }
+                     */
+                    metadata?: {
                         [key: string]: unknown;
                     };
                 };
@@ -4760,6 +4930,8 @@ export interface operations {
                 pageno?: number;
                 /** @description Items per page (max 150). */
                 pagesize?: number;
+                /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                user_id?: number;
             };
             header?: never;
             path?: never;
@@ -4789,8 +4961,6 @@ export interface operations {
                      *           "location": "US",
                      *           "number_provider": "sip",
                      *           "call_sid": false,
-                     *           "exotel_api_key": false,
-                     *           "exotel_api_token": false,
                      *           "exotel_subdomain": false,
                      *           "exotel_account_sid": false,
                      *           "exotel_phone_number": false,
@@ -4801,11 +4971,9 @@ export interface operations {
                      *           "wa_wbaid": false,
                      *           "wa_app_id": false,
                      *           "wa_business_id": false,
-                     *           "wa_access_token": false,
                      *           "sip_host": "<redacted>",
                      *           "sip_port": "<redacted>",
                      *           "sip_username": "<redacted>",
-                     *           "sip_password": "<redacted>",
                      *           "sip_trunk_name": "inbound-trunk",
                      *           "sip_id": "<redacted>",
                      *           "number_source": "imported",
@@ -4822,6 +4990,497 @@ export interface operations {
                     "application/json": {
                         success?: boolean;
                         phone_numbers?: components["schemas"]["PhoneNumber"][];
+                    };
+                };
+            };
+        };
+    };
+    searchPhoneNumbers: {
+        parameters: {
+            query: {
+                /**
+                 * @description Region to search in.
+                 * @example US
+                 */
+                region: "IN" | "US";
+                /**
+                 * @description Digits or prefix to match within the number.
+                 * @example 555
+                 */
+                pattern?: string;
+                /** @description Page of results to return. */
+                page?: number;
+                /** @description Results per page. */
+                limit?: number;
+                /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                user_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Numbers available in this region. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "region": "US",
+                     *       "numbers": [
+                     *         {
+                     *           "phone_number": "+15551234567",
+                     *           "monthly_rental_usd": 5,
+                     *           "validity_days": 30,
+                     *           "region": "US",
+                     *           "kyc_required": false
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "page": 1,
+                     *       "limit": 20,
+                     *       "total_pages": 1
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        /** @enum {string} */
+                        region?: "IN" | "US";
+                        numbers?: {
+                            phone_number?: string;
+                            /** @description Amount, in USD, that a purchase of this number will charge per month. */
+                            monthly_rental_usd?: number;
+                            /** @description Days the number stays active before it has to be renewed. */
+                            validity_days?: number;
+                            /** @enum {string} */
+                            region?: "IN" | "US";
+                            /** @description Whether identity verification is required before buying this number. */
+                            kyc_required?: boolean;
+                        }[];
+                        total?: number;
+                        page?: number;
+                        limit?: number;
+                        total_pages?: number;
+                    };
+                };
+            };
+            /** @description `page` or `limit` is not a valid integer, or is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "page must be >= 1 and limit between 1 and 150."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or numbers are not available for this region (`not_available`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    purchasePhoneNumber: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Your own unique key for this purchase, for example a
+                 *     fresh UUID. Strongly recommended: it is what makes a
+                 *     retry safe.
+                 * @example 9f2c1d40-7a53-4b8e-9b7a-1c2d3e4f5a6b
+                 */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "region": "US",
+                 *       "phone_number": "+15551234567"
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * @description Region the number belongs to.
+                     * @enum {string}
+                     */
+                    region: "IN" | "US";
+                    /**
+                     * @description The number to buy, as returned by the search operation.
+                     * @example +15551234567
+                     */
+                    phone_number: string;
+                    /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                    user_id?: number;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description The number was purchased, or the same `Idempotency-Key`
+             *     was replayed and the original order is returned.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        /** @description Present only when this key was already used. The order was not charged again. */
+                        replayed?: boolean;
+                        order_id?: number;
+                        phone_number?: string;
+                        /** @description Amount charged, in USD. */
+                        amount?: number;
+                        /** @description The owning account's balance after the charge. Not present on a replay. */
+                        new_balance?: number;
+                        /**
+                         * @description Always `completed` on a successful purchase.
+                         * @enum {string}
+                         */
+                        status?: "completed";
+                    };
+                };
+            };
+            /** @description A required field is missing, or `phone_number` is not valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Invalid phone number format."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The client does not have enough balance for this purchase. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "insufficient_balance",
+                     *       "error_description": "Insufficient balance."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description Phone number access is switched off for the account buying
+             *     (`feature_disabled`), a `user_id` was sent by a key that is not a
+             *     reseller admin, or the named client's account is currently
+             *     unavailable (`forbidden`).
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Phone number access is disabled for this user."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or numbers are not available for this region (`not_available`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The purchase was refused before anything was charged:
+             *     identity verification is not complete (`kyc_incomplete`),
+             *     an earlier purchase is still running (`in_progress`), or the
+             *     number was taken by someone else (`number_unavailable`).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "kyc_incomplete",
+                     *       "error_description": "Complete identity verification for this region first."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The purchase could not be completed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "purchase_failed",
+                     *       "error_description": "The purchase could not be completed. Please try again or contact support."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    releasePhoneNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "phone_number": "+15551234567"
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * @description The number to release.
+                     * @example +15551234567
+                     */
+                    phone_number: string;
+                    /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                    user_id?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The number was released. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "phone_number": "+15551234567",
+                     *       "status": "released"
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        phone_number?: string;
+                        /** @enum {string} */
+                        status?: "released";
+                    };
+                };
+            };
+            /** @description The request body is missing a required field. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: phone_number."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or the account holds no such number (`number_not_found`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "number_not_found",
+                     *       "error_description": "No such number on this user."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The number could not be released. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "release_failed",
+                     *       "error_description": "The number could not be released. Please try again or contact support."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
                     };
                 };
             };
@@ -7500,7 +8159,11 @@ export interface operations {
                         message?: string;
                         /** @description The child organization's new concurrent call limit. */
                         child_limit?: number;
-                        /** @description Slots remaining in the reseller's shared pool. */
+                        /**
+                         * @description Your own concurrent call limit, which is the shared
+                         *     dial-time ceiling for your whole family. Assigning to
+                         *     clients does not draw it down.
+                         */
                         reseller_available?: number;
                     };
                 };
@@ -7516,6 +8179,15 @@ export interface operations {
         };
         requestBody: {
             content: {
+                /**
+                 * @example {
+                 *       "user_id": 1234,
+                 *       "region": "IN",
+                 *       "name": "Demo User",
+                 *       "email": "demo@example.com",
+                 *       "phone": "+919876543210"
+                 *     }
+                 */
                 "application/json": {
                     /** @description Number of minutes to calculate for. */
                     minutes: number;
@@ -7734,6 +8406,547 @@ export interface operations {
                             page_size?: number;
                             total_pages?: number;
                         };
+                    };
+                };
+            };
+        };
+    };
+    getResellerKycStatus: {
+        parameters: {
+            query: {
+                /**
+                 * @description ID of the child user to check.
+                 * @example 1234
+                 */
+                user_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description KYC status per region. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "user_id": 1234,
+                     *       "regions": [
+                     *         {
+                     *           "region": "IN",
+                     *           "kyc_required": true,
+                     *           "can_purchase": false,
+                     *           "status": "pan_verified",
+                     *           "next_step": "aadhaar-otp"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        user_id?: number;
+                        /** @description One entry per region, each with that region's verification state. */
+                        regions?: {
+                            /** @enum {string} */
+                            region?: "IN" | "US";
+                            /** @description Whether this client must complete verification before buying a number in this region. */
+                            kyc_required?: boolean;
+                            /** @description Whether this client can buy a number in this region right now. Always agrees with what a purchase attempt would allow. */
+                            can_purchase?: boolean;
+                            /**
+                             * @description Where this client has reached in verification.
+                             *     `not_started` before anything is submitted,
+                             *     `completed` once they are verified. Drive your
+                             *     integration off `next_step`, not this value.
+                             */
+                            status?: string;
+                            /**
+                             * @description The step to call next. `null` once `status` is `completed`.
+                             * @enum {string|null}
+                             */
+                            next_step?: "register" | "verify-otp" | "verify-pan" | "aadhaar-otp" | "aadhaar-verify" | "verify-gst" | "preview" | "accept" | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Child user not found under this reseller account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    getResellerKycRequirements: {
+        parameters: {
+            query: {
+                /**
+                 * @description Region to get verification requirements for.
+                 * @example IN
+                 */
+                region: "IN" | "US";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verification requirements for the region. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "region": "IN",
+                     *       "steps": [
+                     *         {
+                     *           "step": "register",
+                     *           "required": [
+                     *             "email",
+                     *             "name",
+                     *             "phone"
+                     *           ],
+                     *           "cooldown": false
+                     *         },
+                     *         {
+                     *           "step": "verify-otp",
+                     *           "required": [
+                     *             "email_otp",
+                     *             "mobile_otp"
+                     *           ],
+                     *           "cooldown": false
+                     *         },
+                     *         {
+                     *           "step": "resend-otp",
+                     *           "required": [],
+                     *           "cooldown": false
+                     *         },
+                     *         {
+                     *           "step": "verify-pan",
+                     *           "required": [
+                     *             "business_type",
+                     *             "pan"
+                     *           ],
+                     *           "cooldown": false
+                     *         },
+                     *         {
+                     *           "step": "aadhaar-otp",
+                     *           "required": [
+                     *             "aadhaar"
+                     *           ],
+                     *           "cooldown": true
+                     *         },
+                     *         {
+                     *           "step": "aadhaar-verify",
+                     *           "required": [
+                     *             "otp"
+                     *           ],
+                     *           "cooldown": true
+                     *         },
+                     *         {
+                     *           "step": "verify-gst",
+                     *           "required": [
+                     *             "gst"
+                     *           ],
+                     *           "cooldown": false
+                     *         },
+                     *         {
+                     *           "step": "skip-gst",
+                     *           "required": [],
+                     *           "cooldown": false
+                     *         },
+                     *         {
+                     *           "step": "preview",
+                     *           "required": [],
+                     *           "cooldown": false
+                     *         },
+                     *         {
+                     *           "step": "accept",
+                     *           "required": [],
+                     *           "cooldown": false
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        /** @enum {string} */
+                        region?: "IN" | "US";
+                        steps?: {
+                            /** @enum {string} */
+                            step?: "register" | "verify-otp" | "resend-otp" | "verify-pan" | "aadhaar-otp" | "aadhaar-verify" | "verify-gst" | "skip-gst" | "preview" | "accept";
+                            /** @description Body fields this step requires, beyond `user_id` and `region`. */
+                            required?: string[];
+                            /** @description Whether this step is rate-limited. When true, wait about 30 seconds between attempts. */
+                            cooldown?: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's account cannot use the reseller API. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No verification flow is configured for this region. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_available",
+                     *       "error_description": "Verification is not available for this region."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    submitResellerKycStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The verification step to run. */
+                step: "register" | "verify-otp" | "resend-otp" | "verify-pan" | "aadhaar-otp" | "aadhaar-verify" | "verify-gst" | "skip-gst" | "preview" | "accept";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "user_id": 1234,
+                 *       "region": "IN",
+                 *       "name": "Demo User",
+                 *       "email": "demo@example.com",
+                 *       "phone": "+919876543210"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description ID of the client completing verification. */
+                    user_id: number;
+                    /**
+                     * @description Region this verification is for.
+                     * @enum {string}
+                     */
+                    region: "IN" | "US";
+                    /**
+                     * @description Customer's full name. Required for `register`.
+                     * @example Demo User
+                     */
+                    name?: string;
+                    /**
+                     * Format: email
+                     * @description Customer's email address. Required for `register`.
+                     * @example demo@example.com
+                     */
+                    email?: string;
+                    /**
+                     * @description Customer's phone number including country code. Required for `register`.
+                     * @example +919876543210
+                     */
+                    phone?: string;
+                    /** @description OTP the client received by mobile. Required for `verify-otp`. */
+                    mobile_otp?: string;
+                    /** @description OTP the client received by email. Required for `verify-otp`. */
+                    email_otp?: string;
+                    /** @description Customer's PAN. Required for `verify-pan`. */
+                    pan?: string;
+                    /**
+                     * @description Customer's business type. Required for `verify-pan`.
+                     * @enum {string}
+                     */
+                    business_type?: "proprietorship" | "company" | "firm";
+                    /**
+                     * @description Customer's Aadhaar number. Required for `aadhaar-otp`.
+                     *     Rate limited to one attempt roughly every 30 seconds.
+                     */
+                    aadhaar?: string;
+                    /**
+                     * @description OTP the client received for Aadhaar verification.
+                     *     Required for `aadhaar-verify`. Rate limited to one
+                     *     attempt roughly every 30 seconds.
+                     */
+                    otp?: string;
+                    /** @description Customer's GST number. Required for `verify-gst`. */
+                    gst?: string;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description Step completed. `preview` is only present in the response
+             *     to the `preview` step, and only carries the fields listed
+             *     below; any field the verification provider does not have
+             *     yet is omitted.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        /**
+                         * @description Where this client has reached in verification.
+                         *     `not_started` before anything is submitted,
+                         *     `completed` once they are verified. Drive your
+                         *     integration off `next_step`, not this value.
+                         */
+                        status?: string;
+                        /**
+                         * @description The step to run next. Chain to it without re-reading status. `null` once verification is complete.
+                         * @enum {string|null}
+                         */
+                        next_step?: "register" | "verify-otp" | "verify-pan" | "aadhaar-otp" | "aadhaar-verify" | "verify-gst" | "preview" | "accept" | null;
+                        /** @description Human-readable confirmation for the step that just ran. */
+                        message?: string;
+                        /** @description Present only in the response to the `preview` step. */
+                        preview?: {
+                            client?: {
+                                name?: string;
+                                /** Format: email */
+                                email?: string;
+                                mobile?: string;
+                                country_code?: string;
+                            };
+                            pan?: {
+                                pan?: string;
+                                business_type?: string;
+                            };
+                            aadhar?: {
+                                name?: string;
+                                address?: string;
+                            };
+                            gst?: {
+                                gst_num?: string;
+                                gstin?: string;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description The request body is missing a field the step requires. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: pan, business_type."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The child user was not found (`not_found`), or verification
+             *     is not available for this region or step (`not_available`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description This step was called before its prerequisite step was completed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "step_order",
+                     *       "error_description": "Complete the contact verification (OTP) step first."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The verification provider rejected the submitted details. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "verification_failed",
+                     *       "error_description": "OTP verification failed. Please try again."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description An Aadhaar step was retried before the cooldown elapsed. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "too_fast",
+                     *       "error_description": "Please wait a moment before retrying this step."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
                     };
                 };
             };
