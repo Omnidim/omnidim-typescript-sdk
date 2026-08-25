@@ -97,6 +97,18 @@ describe("requests", () => {
     });
   });
 
+  it("sends an Idempotency-Key header on purchase only when supplied", async () => {
+    const { fetch, calls } = fakeFetch({ success: true });
+    const body = { region: "US", phone_number: "+15551234567" } as never;
+    await client(fetch).phoneNumbers.purchase(body, "9f2c1d40-7a53-4b8e-9b7a-1c2d3e4f5a6b");
+    const withKey = calls[0]!.init.headers as Record<string, string>;
+    expect(withKey["Idempotency-Key"]).toBe("9f2c1d40-7a53-4b8e-9b7a-1c2d3e4f5a6b");
+
+    await client(fetch).phoneNumbers.purchase(body);
+    const withoutKey = calls[1]!.init.headers as Record<string, string>;
+    expect(withoutKey["Idempotency-Key"]).toBeUndefined();
+  });
+
   it("interpolates path parameters", async () => {
     const { fetch, calls } = fakeFetch({ id: 42 });
     await client(fetch).agents.get(42);
