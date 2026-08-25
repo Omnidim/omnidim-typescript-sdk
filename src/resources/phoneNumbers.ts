@@ -33,4 +33,23 @@ export class PhoneNumbers {
   importSip(body: BodyOf<"importSipTrunk">) {
     return this.http.request<ResultOf<"importSipTrunk">>("POST", "/phone_number/import/sip", { body });
   }
+
+  /** Search numbers available to purchase in a region. */
+  search(query?: QueryOf<"searchPhoneNumbers">) {
+    return this.http.request<ResultOf<"searchPhoneNumbers">>("GET", "/phone_number/search", { query });
+  }
+
+  /** Purchase a number. Pass an idempotency key to make a retry safe. */
+  purchase(body: BodyOf<"purchasePhoneNumber">, idempotencyKey?: string) {
+    return this.http.request<ResultOf<"purchasePhoneNumber">>("POST", "/phone_number/purchase", {
+      body,
+      // Same key replays the original order instead of charging twice.
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    });
+  }
+
+  /** Release a purchased number. */
+  release(body: BodyOf<"releasePhoneNumber">) {
+    return this.http.request<ResultOf<"releasePhoneNumber">>("POST", "/phone_number/release", { body });
+  }
 }
