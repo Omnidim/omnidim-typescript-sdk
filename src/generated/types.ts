@@ -1557,6 +1557,11 @@ export interface components {
             /** @example gpt-4o-mini */
             llm_service?: string;
             llm_temperature?: number;
+            /**
+             * @description IANA timezone set on this agent. `false` when unset, in which case the account timezone applies.
+             * @example America/New_York
+             */
+            timezone?: string;
             llm_straming_enabled?: boolean;
             /** @example deepgram_stream */
             asr_service?: string;
@@ -2221,6 +2226,11 @@ export interface components {
              * @enum {string}
              */
             call_type?: "Incoming" | "Outgoing";
+            /**
+             * @description IANA timezone for this agent, for example `Asia/Kolkata`. Sets the local date and time the agent works with during calls. If not set, the account timezone is used as fallback. Pass an empty string to clear it.
+             * @example America/New_York
+             */
+            timezone?: string;
             /** @description Configuration for the speech-to-text transcriber. */
             transcriber?: {
                 /**
