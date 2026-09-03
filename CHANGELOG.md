@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-03
+
+### Added
+
+- `timezone` on agent create and update input and on the agent response: an IANA timezone name (e.g. `Asia/Kolkata`) that sets the local date and time the agent works with during calls. Unset, the account timezone applies.
+
+### Changed
+
+- Regenerated types from the current published API spec, catching up additions the previous release predated (per-contact bulk-call results types, per-call languages).
+
 ## [0.3.0] - 2026-08-26
 
 ### Added
