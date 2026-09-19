@@ -72,11 +72,21 @@ jobs:
       # longer compiles) are already required checks, and auto-merge will not
       # override a red one. Branch protection is what makes this safe; this
       # step only says "when it is green, stop waiting for me".
+      # Two complementary cases, and only one of them can be served by --auto.
+      # While checks are still pending the PR is "blocked" or "unstable" and
+      # enablePullRequestAutoMerge arms it. Once they have already finished the
+      # PR is "clean", the mutation has nothing left to wait for, and it fails
+      # with "Pull request is in clean status". A fast dispatch hits the second
+      # case, so the arm-then-merge fallback is what makes both land.
       - name: Auto-merge the refresh once its checks pass
         if: steps.pr.outputs.pull-request-number != ''
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
-        run: gh pr merge ${{ steps.pr.outputs.pull-request-number }} --auto --squash --delete-branch
+          PR: ${{ steps.pr.outputs.pull-request-number }}
+        run: |
+          gh pr merge "$PR" --auto --squash --delete-branch && exit 0
+          echo "Could not arm auto-merge; the PR is likely already green. Merging it."
+          gh pr merge "$PR" --squash --delete-branch
 
       # A regen that dies before opening a PR leaves nothing behind, and a red
       # scheduled run in a tab nobody has open is how the spec drifted in the
