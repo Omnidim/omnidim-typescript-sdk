@@ -1,0 +1,37 @@
+name: Peer Review
+
+# Compliance gate (Sprinto: "Code changes should be reviewed by peers before
+# merging"). Fails until someone other than the PR author approves. Make this
+# check required in branch protection so unapproved PRs cannot merge.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  peer-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              ...context.repo, pull_number: pr.number,
+            });
+            // Latest decisive review per reviewer; comments don't change a decision.
+            const latest = {};
+            for (const r of reviews) {
+              if (r.user.login === pr.user.login || r.state === 'COMMENTED') continue;
+              latest[r.user.login] = r.state;
+            }
+            const approvers = Object.keys(latest).filter(u => latest[u] === 'APPROVED');
+            if (approvers.length === 0) {
+              core.setFailed(`Needs an approval from someone other than @${pr.user.login}.`);
+            } else {
+              core.info(`Approved by: ${approvers.join(', ')}`);
+            }
