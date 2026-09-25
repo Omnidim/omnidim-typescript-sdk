@@ -6828,8 +6828,10 @@ export interface operations {
                      * @description SIP authentication password.
                      */
                     sip_password?: string;
-                    /** @description Optional prefix to prepend before the destination number when dialing (e.g. to strip the country code). */
+                    /** @description Digits added in front of every number dialed through this trunk. See `sip_strip_country_code` for how it combines with the country code. */
                     sip_dial_prefix?: string;
+                    /** @description When true, the country code is removed from every number dialed through this trunk. When omitted and `sip_dial_prefix` is set, the country code is removed, so send `false` to keep it. */
+                    sip_strip_country_code?: boolean;
                     /** @description When true, strips the leading `+` from the dialed number. */
                     sip_strip_plus?: boolean;
                 };
