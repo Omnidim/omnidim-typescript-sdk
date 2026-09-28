@@ -1,4 +1,5 @@
 import { HttpClient, type ClientOptions } from "./http.js";
+import { Account } from "./resources/account.js";
 import { Agents } from "./resources/agents.js";
 import { Calls } from "./resources/calls.js";
 import { BulkCalls } from "./resources/bulkCalls.js";
@@ -11,6 +12,15 @@ import { Integrations } from "./resources/integrations.js";
 export { OmniDimensionError } from "./errors.js";
 export type { ClientOptions } from "./http.js";
 export * from "./types.js";
+export type {
+  AccountBalance,
+  AccountBalanceAmount,
+  AccountMinutesRemaining,
+  AccountRates,
+  AccountPlan,
+  AccountConcurrency,
+  AccountAutoRecharge,
+} from "./resources/account.js";
 export type {
   Integration,
   IntegrationHeader,
@@ -32,6 +42,7 @@ export type {
  * ```
  */
 export class OmniDimension {
+  readonly account: Account;
   readonly agents: Agents;
   readonly calls: Calls;
   readonly bulkCalls: BulkCalls;
@@ -43,6 +54,7 @@ export class OmniDimension {
 
   constructor(options: ClientOptions) {
     const http = new HttpClient(options);
+    this.account = new Account(http);
     this.agents = new Agents(http);
     this.calls = new Calls(http);
     this.bulkCalls = new BulkCalls(http);

@@ -33,6 +33,7 @@ The client exposes one accessor per API area:
 
 | Accessor | Covers |
 |---|---|
+| `client.account` | Wallet balance, minutes remaining, plan, concurrency headroom, auto-recharge |
 | `client.agents` | List, create, get, update, delete agents; save, list, diff, restore, rename, and delete version history |
 | `client.calls` | Dispatch outbound calls, list and read call logs |
 | `client.bulkCalls` | Create and manage bulk-call campaigns, live status |
@@ -43,6 +44,22 @@ The client exposes one accessor per API area:
 | `client.reseller` | Partner operations (requires partner-level credentials) |
 
 Every method returns a promise that resolves to the parsed JSON response, typed from the spec.
+
+### Checking credit before you dial
+
+```ts
+const wallet = await client.account.balance();
+
+if (!wallet.balance.can_place_calls) {
+  throw new Error("Out of credit. Top up before dialing.");
+}
+console.log(wallet.balance.amount, wallet.balance.currency);
+console.log(wallet.estimated_minutes_remaining.basic_model, "basic-model minutes left");
+```
+
+Branch on `can_place_calls` rather than comparing the balance against zero:
+an organization on usage-based billing can still place calls at a zero
+balance. The API key's user needs Billing access in the organization.
 
 ## Error handling
 
@@ -79,7 +96,7 @@ new OmniDimension({
 Schema types are exported for use in your own code:
 
 ```ts
-import type { Agent, Call, Voice, AgentVersion } from "@omnidim-ai/sdk";
+import type { Agent, AccountBalance, Call, Voice, AgentVersion } from "@omnidim-ai/sdk";
 ```
 
 ## Links

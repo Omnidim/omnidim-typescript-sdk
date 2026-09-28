@@ -21,6 +21,7 @@ const ID = 7;
 const B = {} as never;
 
 const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
+  ["account.balance", (c) => c.account.balance(), "GET", "/account/balance"],
   ["agents.list", (c) => c.agents.list(), "GET", "/agents"],
   ["agents.create", (c) => c.agents.create(B), "POST", "/agents/create"],
   ["agents.get", (c) => c.agents.get(ID), "GET", "/agents/7"],
@@ -78,7 +79,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(53);
+    expect(cases).toHaveLength(54);
   });
 
   for (const [name, call, method, path] of cases) {
