@@ -15,8 +15,6 @@ export * from "./types.js";
 export type {
   AccountBalance,
   AccountBalanceAmount,
-  AccountMinutesRemaining,
-  AccountRates,
   AccountPlan,
   AccountConcurrency,
   AccountAutoRecharge,

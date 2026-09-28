@@ -19,46 +19,16 @@ export interface AccountBalanceAmount {
   amount: number;
   /** Always `USD`. The balance and every platform rate are held in USD. */
   currency: string;
-  /** The same balance converted into the organization's display currency. */
-  display_amount: number;
-  display_currency: string;
-  display_currency_symbol: string;
-  /** True when the balance has dropped below $0.50. */
-  is_low: boolean;
-  /**
-   * Whether the balance currently allows calls. Branch on this rather than
-   * comparing `amount` against zero: an organization on usage-based billing
-   * can still place calls at a zero balance.
-   *
-   * Credit only. An account stopped for any other reason never reaches this
-   * endpoint; every request returns 403.
-   */
-  can_place_calls: boolean;
-}
-
-/**
- * Minutes the balance buys at the rates in `rates_per_minute_usd`. An estimate
- * at today's rates, not a promise.
- *
- * `null` means the matching rate is not set, so no honest estimate exists. `0`
- * means the balance buys nothing, which is also the answer when it is negative.
- */
-export interface AccountMinutesRemaining {
-  basic_model: number | null;
-  premium_model: number | null;
-}
-
-export interface AccountRates {
-  basic_model: number;
-  premium_model: number;
-  /** Present only on a negotiated telephony rate; otherwise billed at the live carrier rate. */
-  outbound_telephony?: number;
 }
 
 export interface AccountPlan {
   id: number | null;
   name: string | null;
   billing_interval: "Monthly" | "Yearly" | "One Time" | null;
+  /**
+   * When true, calls are metered to the payment method rather than drawn from
+   * the wallet, so a zero or negative `balance.amount` does not stop them.
+   */
   is_usage_based: boolean;
   subscription_status: string | null;
   /** ISO 8601 UTC. Set only while the subscription is active. */
@@ -84,8 +54,22 @@ export interface AccountBalance {
   success: boolean;
   organization: { id: number; name: string };
   balance: AccountBalanceAmount;
-  estimated_minutes_remaining: AccountMinutesRemaining;
-  rates_per_minute_usd: AccountRates;
+  /**
+   * Minutes the balance buys at `rates_per_minute_usd`. An estimate at today's
+   * rate, not a promise.
+   *
+   * `null` means no rate is set, so no honest estimate exists. `0` means the
+   * balance buys nothing, which is also the answer when it is negative.
+   */
+  estimated_minutes_remaining: number | null;
+  /** The voice rate per minute in USD. One rate, not a per-model set. */
+  rates_per_minute_usd: number;
+  /**
+   * Present only on a negotiated telephony rate. Absent means telephony is
+   * billed at the live carrier rate for the destination, which varies by
+   * country and is not one number.
+   */
+  outbound_telephony_per_minute_usd?: number;
   plan: AccountPlan;
   concurrency: AccountConcurrency;
   auto_recharge: AccountAutoRecharge;
@@ -99,9 +83,9 @@ export class Account {
    * remaining balance, the minutes it buys, the active plan, concurrency
    * headroom, and auto-recharge settings.
    *
-   * Branch on `balance.can_place_calls` rather than comparing
-   * `balance.amount` against zero: an organization on usage-based billing
-   * can still place calls at a zero balance.
+   * A balance at or below zero does not always mean calls will stop. Check
+   * `plan.is_usage_based` first: such an organization keeps placing calls and
+   * is metered to its payment method instead.
    *
    * The API key's user needs Billing access in the organization.
    */

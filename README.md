@@ -49,17 +49,18 @@ Every method returns a promise that resolves to the parsed JSON response, typed 
 
 ```ts
 const wallet = await client.account.balance();
+console.log(wallet.balance.amount, wallet.balance.currency);
+console.log(wallet.estimated_minutes_remaining, "minutes left");
 
-if (!wallet.balance.can_place_calls) {
+if (!wallet.plan.is_usage_based && wallet.balance.amount <= 0) {
   throw new Error("Out of credit. Top up before dialing.");
 }
-console.log(wallet.balance.amount, wallet.balance.currency);
-console.log(wallet.estimated_minutes_remaining.basic_model, "basic-model minutes left");
 ```
 
-Branch on `can_place_calls` rather than comparing the balance against zero:
-an organization on usage-based billing can still place calls at a zero
-balance. The API key's user needs Billing access in the organization.
+Check `plan.is_usage_based` before treating a zero balance as a stop
+condition: such an organization keeps placing calls and is metered to its
+payment method instead. The API key's user needs Billing access in the
+organization.
 
 ## Error handling
 
