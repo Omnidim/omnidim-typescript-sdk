@@ -52,4 +52,43 @@ export class Reseller {
   creditLogs(query?: QueryOf<"getResellerCreditLogs">) {
     return this.http.request<ResultOf<"getResellerCreditLogs">>("GET", "/reseller/credits/logs", { query });
   }
+
+  /**
+   * Verification status for a client, one entry per carrier.
+   *
+   * Not one per region: verification is per carrier, so a client verified on
+   * one carrier of a region still has to verify on the other before it can
+   * buy there. Match on `carrier`, and pass that same name to the steps and
+   * to the purchase.
+   */
+  kycStatus(query: QueryOf<"getResellerKycStatus">) {
+    return this.http.request<ResultOf<"getResellerKycStatus">>("GET", "/reseller/kyc/status", { query });
+  }
+
+  /**
+   * The verification steps a carrier runs, in order, with the fields each one
+   * needs and how it is performed.
+   *
+   * Read this rather than hard-coding a sequence: carriers in the same region
+   * do not share a step list.
+   */
+  kycRequirements(query: QueryOf<"getResellerKycRequirements">) {
+    return this.http.request<ResultOf<"getResellerKycRequirements">>(
+      "GET",
+      "/reseller/kyc/requirements",
+      { query },
+    );
+  }
+
+  /**
+   * Run one verification step. Follow `next_step` from each response until
+   * there is none left, and branch on `method` rather than on the step's name.
+   */
+  submitKycStep(step: string, body: BodyOf<"submitResellerKycStep">) {
+    return this.http.request<ResultOf<"submitResellerKycStep">>(
+      "POST",
+      `/reseller/kyc/steps/${encodeURIComponent(step)}`,
+      { body },
+    );
+  }
 }

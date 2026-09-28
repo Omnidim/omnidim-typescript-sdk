@@ -5,8 +5,35 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      # One PR per week, not one per package. Packages that have to move
+      # together fail by construction when split: vitest and its coverage
+      # plugin sat as two separate red PRs for weeks for exactly that reason.
+      # Majors are grouped too, but kept apart from the routine bumps so one
+      # major cannot hold the rest back.
+      npm-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      npm-major:
+        patterns: ["*"]
+        update-types: [major]
+    ignore:
+      # openapi-typescript declares `peer typescript@"^5.x"`, so TypeScript 7
+      # cannot be installed here at all: `npm ci` fails on the peer conflict
+      # before any code is compiled. Revisit when openapi-typescript accepts 7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      github-actions:
+        patterns: ["*"]

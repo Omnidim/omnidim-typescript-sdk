@@ -1,10 +1,15 @@
 name: regen-types
 
-# Watches the upstream OpenAPI spec. When it changes, regenerates the
-# committed types and opens a PR. Keeps src/generated/types.ts in sync
-# with the API without a human transcribing anything.
+# Regenerates src/generated/types.ts from the published OpenAPI spec and opens
+# a PR when it changes.
+#
+# The spec repo dispatches on merge, so that is the normal path. The cron is a
+# backstop: GitHub disables a scheduled workflow after 60 days without repo
+# activity, so it cannot be the only trigger.
 
 on:
+  repository_dispatch:
+    types: [spec-changed]
   workflow_dispatch:
   schedule:
     - cron: "0 5 * * *"
@@ -15,18 +20,36 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
       - run: npm ci
       - run: npm run regen
-      - run: npm run typecheck
+      # No typecheck step. The PR this opens is authored by the app, so ci.yml
+      # runs on it across every supported Node version. Checking here as well
+      # would only mean that a spec change which breaks the types arrives as no
+      # PR at all instead of as a PR with red checks, which is the outcome that
+      # hides the problem.
+      # Opened as the app, not with GITHUB_TOKEN: GitHub does not start a
+      # workflow from an event the repository's own token created, so a
+      # GITHUB_TOKEN PR would arrive with no checks on it.
+      - name: Mint an installation token
+        id: token
+        uses: actions/create-github-app-token@v3
+        with:
+          # Inlined: an app id is public and useless without the key, and a
+          # missing variable fails as "appId option is required".
+          app-id: "4881703"
+          private-key: ${{ secrets.SPEC_BOT_PRIVATE_KEY }}
       - name: Open PR if the spec changed
+        id: pr
         uses: peter-evans/create-pull-request@v8
         with:
+          token: ${{ steps.token.outputs.token }}
           commit-message: "chore: regenerate types from updated OpenAPI spec"
           branch: chore/regen-types
           delete-branch: true
@@ -35,5 +58,55 @@ jobs:
             The upstream OpenAPI spec changed. This PR regenerates
             `src/generated/types.ts` and updates the spec hash in `.spec.yml`.
 
-            Review the type diff, bump the version and CHANGELOG if the
-            public surface changed, then merge.
+            Review the type diff, and bump the version and CHANGELOG if the
+            public surface changed.
+
+            This PR sets itself to auto-merge. It lands when the required
+            checks pass and not otherwise: a new operation with no method
+            fails `tests/spec-coverage.test.ts`, and a type that stops
+            compiling fails the typecheck. Publishing is still a `v*` tag by
+            hand, so nothing reaches npm without a person.
+
+      # A types-only refresh changes nothing a person has to decide on. The
+      # cases that would (a new operation with no method, a type that no
+      # longer compiles) are already required checks, and auto-merge will not
+      # override a red one. Branch protection is what makes this safe; this
+      # step only says "when it is green, stop waiting for me".
+      # Two complementary cases, and only one of them can be served by --auto.
+      # While checks are still pending the PR is "blocked" or "unstable" and
+      # enablePullRequestAutoMerge arms it. Once they have already finished the
+      # PR is "clean", the mutation has nothing left to wait for, and it fails
+      # with "Pull request is in clean status". A fast dispatch hits the second
+      # case, so the arm-then-merge fallback is what makes both land.
+      - name: Auto-merge the refresh once its checks pass
+        if: steps.pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          PR: ${{ steps.pr.outputs.pull-request-number }}
+        run: |
+          gh pr merge "$PR" --auto --squash --delete-branch && exit 0
+          echo "Could not arm auto-merge; the PR is likely already green. Merging it."
+          gh pr merge "$PR" --squash --delete-branch
+
+      # A regen that dies before opening a PR leaves nothing behind, and a red
+      # scheduled run in a tab nobody has open is how the spec drifted in the
+      # first place. One issue, reused until it is closed.
+      - name: Open an issue if the regen never produced a PR
+        if: failure()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'spec-drift',
+            });
+            if (existing.data.length) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: 'Spec regen failed: types are still on the old spec',
+              labels: ['spec-drift'],
+              body: `\`regen-types\` failed on ${context.sha}. Either no PR was `
+                + `opened, or one was opened and could not be set to auto-merge.\n\n`
+                + `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`
+                + `/actions/runs/${context.runId}`,
+            });

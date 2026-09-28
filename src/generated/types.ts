@@ -95,7 +95,7 @@ export interface paths {
         };
         /**
          * Get agent
-         * @description Get details of a specific agent by ID. The response also includes a `version_history_enabled` boolean showing whether [version history](/docs/api-reference/agent-versions) is turned on for the agent's organization.
+         * @description Get details of a specific agent by ID. The response also includes a `version_history_enabled` boolean showing whether [version history](/docs/api-reference/agents/listAgentVersions) is turned on for the agent's organization.
          */
         get: operations["getAgent"];
         /**
@@ -314,19 +314,15 @@ export interface paths {
         put?: never;
         /**
          * Create bulk call
-         * @description Create a new bulk-call campaign. Supports immediate, scheduled,
-         *     and auto-retry modes.
+         * @description Create a new bulk-call campaign. Only name, phone_number_id and a
+         *     contact_list are needed to dial a list now; every other field adds
+         *     one behavior on top (drafts, rotation, filtering, scheduling,
+         *     retries, dynamic feeding).
          *
-         *     There are two kinds of campaign:
-         *
-         *     - **Static** (default): you supply the full `contact_list` up
-         *       front and the campaign dials through it.
-         *     - **Dynamic**: set `is_dynamic` to `true` and the campaign accepts
-         *       contacts in real time via the Add contact to dynamic campaign
-         *       webhook. `contact_list` is optional here, so you can start the
-         *       campaign empty and feed it from a CRM, form, or automation. A
-         *       dynamic campaign stays alive waiting for contacts instead of
-         *       completing when its queue drains.
+         *     The guide below the field reference walks the whole journey: the
+         *     first campaign and its response, each behavior with a working
+         *     request, every refusal message with its fix, and the endpoints that
+         *     operate a campaign once it runs.
          */
         post: operations["createBulkCall"];
         delete?: never;
@@ -384,6 +380,246 @@ export interface paths {
          * @description Cancel a bulk-call campaign.
          */
         delete: operations["cancelBulkCall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{bulk_call_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bulk call results
+         * @description Per-contact results for a campaign: what happened on each call, the
+         *     variables you sent with that contact, and a pointer to the recording.
+         *
+         *     ## Paging
+         *
+         *     There is one rule. Call it with no `cursor`, then keep passing back the
+         *     `next_cursor` you were handed until it comes back `null`.
+         *
+         *     ```
+         *     cursor = None
+         *     while True:
+         *         page = GET /lines?pagesize=150&cursor={cursor}
+         *         handle(page["records"])
+         *         cursor = page["next_cursor"]
+         *         if not cursor: break
+         *     ```
+         *
+         *     Each call returns a page of rows, oldest first: `pagesize` goes up to
+         *     150 and defaults to 30. Cursors are opaque, so pass back the string you
+         *     were given and never build one. No contact is skipped or returned
+         *     twice, even while the campaign is still dialing.
+         *
+         *     ## Transcripts are not in the row
+         *
+         *     Each row carries `call.recording_id`, not the conversation. Transcripts
+         *     reach 212 KB, so carrying them here would make one page tens of
+         *     megabytes. Fetch the one you want from
+         *     `GET /calls/logs/{recording_id}`.
+         */
+        get: operations["listBulkCallLines"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{bulk_call_id}/numbers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List rotation pool
+         * @description The campaign's number pool, and which number is dialing right now.
+         *
+         *     `calls_this_cycle` is what `fixed_count` rotation compares against, so
+         *     it is the field to watch for the next rotation. `calls_dispatched` is
+         *     the number's lifetime total across every cycle.
+         */
+        get: operations["listBulkCallNumbers"];
+        put?: never;
+        /**
+         * Add number to rotation pool
+         * @description Add one of your numbers to the campaign's rotation pool. Works while the
+         *     campaign is running, which is how you bring in a fresh number when the
+         *     pool is running out of healthy ones.
+         *
+         *     The number must belong to you and must not already be in the pool. A
+         *     number with no agent attached gets this campaign's agent attached
+         *     automatically; a number attached to a **different** agent is refused.
+         */
+        post: operations["addBulkCallNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{bulk_call_id}/numbers/{assignment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Pause or resume a pool number
+         * @description Stop or resume dialing from one number in the pool.
+         *
+         *     Pausing is what you want when a number starts going bad mid-campaign:
+         *     dialing moves to the next number in sequence and the paused number keeps
+         *     its history and counters. The last active number of a running campaign
+         *     cannot be paused, since the campaign would have nothing to dial from.
+         *
+         *     Send the state you want rather than a toggle, so retrying the same
+         *     request is harmless.
+         *
+         *     `assignment_id` is the number's id **within this campaign's pool**, from
+         *     List rotation pool. It is not the `phone_number_id`.
+         */
+        put: operations["setBulkCallNumberActive"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{campaign_id}/add_contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add contacts in bulk
+         * @description Add up to 1000 contacts to a campaign in one request.
+         *
+         *     This is the batch form of Add contact to dynamic campaign. Prefer it
+         *     whenever you have more than a handful: one request of 500 contacts is
+         *     far cheaper than 500 requests, on your side and ours.
+         *
+         *     Repeated numbers are kept, not merged. If the same number appears twice
+         *     with different variables, it is called twice, because two rows for one
+         *     number usually means two real reasons to call.
+         *
+         *     Rows that fail validation are reported in `rejected` and the rest are
+         *     still added, so a single bad number does not lose the batch. If the
+         *     campaign has `call_conditions`, rows that do not match are added with
+         *     status `Skipped`.
+         */
+        post: operations["addBulkCallContacts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{bulk_call_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a draft campaign
+         * @description Start a campaign that was created with `save_as_draft: true`.
+         *
+         *     Drafts let you build a campaign over several requests: create it, add
+         *     contacts in batches, set the number pool, set concurrency, then start
+         *     when everything is in place. A campaign that is already running,
+         *     scheduled, or finished cannot be started.
+         */
+        post: operations["startBulkCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{bulk_call_id}/concurrency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change concurrency
+         * @description Change how many calls the campaign places at once, including while it is
+         *     running. Raise it to finish sooner, lower it if your team cannot keep up
+         *     with transfers or your numbers are being answered less.
+         *
+         *     The ceiling is your account's concurrency limit.
+         */
+        put: operations["setBulkCallConcurrency"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{bulk_call_id}/manual_retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry contacts that did not connect
+         * @description Re-queue contacts that did not connect, without creating a new campaign.
+         *
+         *     Use it after a campaign finishes with more no-answers than you expected,
+         *     or when the reason was on your side (a bad window, a number that was
+         *     having a bad day). Retried contacts keep their original variables.
+         */
+        post: operations["retryBulkCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/bulk_call/{bulk_call_id}/daily-time-control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set calling hours
+         * @description Restrict a campaign to a daily calling window, in the campaign's
+         *     timezone. Outside the window the campaign holds rather than finishing,
+         *     and resumes the next day.
+         */
+        put: operations["setBulkCallDailyTimeControl"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -538,11 +774,84 @@ export interface paths {
         };
         /**
          * List phone numbers
-         * @description Retrieve all phone numbers associated with your account.
+         * @description Retrieve the phone numbers on your account, whether you bought them
+         *     from the OmniDimension number shop or imported your own.
          */
         get: operations["listPhoneNumbers"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/phone_number/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search available phone numbers
+         * @description Search the OmniDimension number shop for phone numbers available to buy
+         *     in a region. Price and validity are flat per region, so every result
+         *     shows the same `monthly_rental_usd` and `validity_days`, and that is the
+         *     exact amount a purchase will charge.
+         *
+         *     A region can have more than one carrier, each stocking different
+         *     number series. Pass the `carrier` you want; the response names the
+         *     carrier its results came from, and that is the carrier a purchase has
+         *     to pass.
+         */
+        get: operations["searchPhoneNumbers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/phone_number/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Purchase a phone number
+         * @description Buy a phone number from the OmniDimension number shop. The monthly
+         *     rental comes out of your wallet and the number is added to your
+         *     account, ready to attach to an agent.
+         */
+        post: operations["purchasePhoneNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/phone_number/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release a phone number
+         * @description Give up a phone number and stop its rental, so it is not charged at the
+         *     next renewal. Only a number currently allocated to the account can be
+         *     released.
+         */
+        post: operations["releasePhoneNumber"];
         delete?: never;
         options?: never;
         head?: never;
@@ -984,11 +1293,18 @@ export interface paths {
         put?: never;
         /**
          * Set child concurrency limit
-         * @description Set the maximum number of simultaneous calls a child
-         *     organization can run. Slots come from the reseller's shared
-         *     pool. Increasing the limit deducts the delta from your pool
-         *     and fails if you don't have enough slots. Decreasing the
-         *     limit returns the delta to your pool immediately.
+         * @description Set the maximum number of simultaneous calls a client can run.
+         *     `new_limit` is the absolute figure you want, not a change to the
+         *     current one.
+         *
+         *     Assigning is free: any figure is accepted, nothing is deducted from
+         *     you, and this call never fails for lack of capacity.
+         *
+         *     It does not create capacity, though. Your own concurrent call limit is
+         *     the ceiling for your whole account family at dial time, so what you set
+         *     here is a per-client cap, and your own limit is the capacity those caps
+         *     compete for. Assign a client more than you hold and the extra simply
+         *     cannot be dialed.
          */
         post: operations["setChildConcurrency"];
         delete?: never;
@@ -1031,11 +1347,15 @@ export interface paths {
         put?: never;
         /**
          * Transfer credits to a child
-         * @description Transfer minutes from the reseller balance to a child
-         *     organization. Credits are deducted from your balance
-         *     immediately on success. The target organization must be a
-         *     direct child of your reseller. Use the calculate endpoint
-         *     first to preview the cost.
+         * @description Transfer minutes from your balance to a client, at the rate you set.
+         *
+         *     Two different amounts move: your balance is debited at your own rate,
+         *     and the client is credited at `cost_per_min`. The gap between them is
+         *     your margin, so a `cost_per_min` below your own rate is refused as a
+         *     loss rather than silently costing you money on every call.
+         *
+         *     The target organization must be a direct child of your reseller. Use
+         *     the calculate endpoint first to preview both amounts.
          */
         post: operations["transferCreditsToChild"];
         delete?: never;
@@ -1055,11 +1375,12 @@ export interface paths {
         put?: never;
         /**
          * Revert credits
-         * @description Take back unused minutes from a child organization to the
-         *     reseller balance. The refund is calculated at the child's
-         *     current rate, so you don't pass one. This matches exactly
-         *     what was originally charged. Use the calculate endpoint
-         *     first to preview the refund.
+         * @description Take unused minutes back from a client. The exact mirror of a
+         *     transfer, so you do not pass a rate.
+         *
+         *     The client is deducted at their own current rate, which is what they
+         *     were charged, and you are refunded at your rate, which is what it cost
+         *     you. Use the calculate endpoint first to preview both amounts.
          */
         post: operations["revertCreditsFromChild"];
         delete?: never;
@@ -1090,6 +1411,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reseller/kyc/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get KYC status
+         * @description Get the identity verification status of a client for every carrier it
+         *     can verify on. Use `next_step` to know which step to call next, so
+         *     you drive the whole flow off one poll instead of hardcoding the
+         *     sequence.
+         *
+         *     Verification is per carrier, not per region: a client verified on one
+         *     carrier of a region still has to verify on the other before it can
+         *     buy there. A region with one carrier returns exactly one entry.
+         */
+        get: operations["getResellerKycStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/kyc/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get KYC requirements for a region
+         * @description Get the ordered list of verification steps for a carrier and the
+         *     fields each step needs, so your integration can build a verification
+         *     form without hardcoding the sequence.
+         *
+         *     Carriers in the same region do not share a step list. One verifies
+         *     contact details with an OTP pair and ends in a preview-then-accept;
+         *     another has no OTP step at all and verifies Aadhaar by sending the
+         *     client to DigiLocker in a browser. Read this endpoint per carrier,
+         *     branch on each step's `method`, and one integration drives both.
+         */
+        get: operations["getResellerKycRequirements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/kyc/steps/{step}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a KYC verification step
+         * @description Run one step of a client's identity verification. One endpoint handles
+         *     every step: the `step` path parameter names the step, and the body
+         *     carries `user_id`, `region`, `carrier`, and whatever that step needs.
+         *     The example below is the `register` step on `carrier-1`.
+         *
+         *     Which steps exist, which fields they need, and how each one is
+         *     performed are all per carrier. Read them from the requirements
+         *     operation for the carrier you are on, follow `next_step`, and branch
+         *     on `method`.
+         */
+        post: operations["submitResellerKycStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1111,6 +1515,47 @@ export interface components {
             error?: string;
             /** @description Human-readable explanation. */
             error_description?: string;
+        };
+        /**
+         * @description One carrier in a region: a network you can buy numbers from, with its
+         *     own stock and its own identity verification.
+         */
+        ShopCarrier: {
+            /**
+             * @description How you address this carrier. Stable across a rename, so it is safe to store.
+             * @example carrier-1
+             */
+            carrier?: string;
+            /**
+             * @description Display name for the carrier.
+             * @example Carrier 1
+             */
+            label?: string;
+            /**
+             * @description What this carrier stocks, so you can tell them apart.
+             * @example Landline numbers, 80 series.
+             */
+            description?: string;
+            /** @description Whether a client must complete this carrier's verification before buying on it. */
+            kyc_required?: boolean;
+            /**
+             * @description `true` while this carrier is not taking orders. It is still
+             *     named, so a stored name keeps resolving; buy on the other one
+             *     meanwhile.
+             */
+            unavailable?: boolean;
+            /** @description Short reason, when the carrier is unavailable. `null` otherwise. */
+            unavailable_note?: string | null;
+        };
+        CarrierRequiredError: components["schemas"]["SessionError"] & {
+            /** @enum {string} */
+            region?: "IN" | "US";
+            /**
+             * @description The carriers to choose from, each with what it stocks, so the
+             *     refusal carries its own fix and is where you discover the
+             *     names.
+             */
+            carriers?: components["schemas"]["ShopCarrier"][];
         };
         /**
          * @description Reseller-managed dashboard menu access flags. Each property is
@@ -1173,6 +1618,11 @@ export interface components {
             /** @example gpt-4o-mini */
             llm_service?: string;
             llm_temperature?: number;
+            /**
+             * @description IANA timezone set on this agent. `false` when unset, in which case the account timezone applies.
+             * @example America/New_York
+             */
+            timezone?: string;
             llm_straming_enabled?: boolean;
             /** @example deepgram_stream */
             asr_service?: string;
@@ -1212,6 +1662,7 @@ export interface components {
             is_first_ideal_message_dynamic?: boolean;
             is_second_ideal_message_dynamic?: boolean;
             is_transfer_enabled?: boolean;
+            /** @description Allow custom API integrations to transfer live calls. When enabled and a custom API response includes "__omni_transfer_number", the call is transferred to that number immediately. Optional "__omni_transfer_message" sets what the caller hears during the handover. */
             is_custom_api_transfer_enabled?: boolean;
             transfer_options?: {
                 number?: string;
@@ -1373,7 +1824,6 @@ export interface components {
             recording_file_name?: string | null;
             failed_reason?: string | boolean;
             concurrent_call_limit?: number;
-            email_report_recipients?: string | boolean;
             total_calls?: number;
             completed_calls?: number;
             total_calls_made?: number;
@@ -1382,6 +1832,85 @@ export interface components {
             total_not_reachable_calls?: number;
             total_call_transfer_count?: number;
             create_date?: string;
+        };
+        /** @description One contact's result inside a bulk-call campaign. */
+        BulkCallLine: {
+            /** @description Id of this contact row in the campaign. */
+            id?: number;
+            to_number?: string;
+            /**
+             * @description The number this contact was called from. With a rotation pool this
+             *     varies between contacts.
+             */
+            from_number?: string;
+            call_status?: string;
+            interaction_status?: string;
+            failed_reason?: string | null;
+            /** @description `YYYY-MM-DD HH:MM:SS`, UTC. */
+            dispatched_at?: string | null;
+            /** @description The variables submitted with this contact. */
+            custom_variables?: {
+                [key: string]: unknown;
+            };
+            metadata?: {
+                [key: string]: unknown;
+            };
+            retry_attempt?: number;
+            retry_scheduled?: boolean;
+            retry_scheduled_datetime?: string | null;
+            reschedule_requested?: boolean;
+            reschedule_datetime?: string | null;
+            reschedule_status?: string;
+            /**
+             * @description Null until the contact has actually been called, so a queued or
+             *     skipped row has no `call`.
+             */
+            call?: {
+                /**
+                 * @description Fetch the transcript with `GET /calls/logs/{recording_id}`. The
+                 *     transcript is not included here on purpose: they reach 212 KB,
+                 *     which would make a full page tens of megabytes.
+                 */
+                recording_id?: number;
+                time_of_call?: string;
+                duration_seconds?: number;
+                duration_minutes?: number;
+                recording_url?: string;
+                call_status?: string;
+                sentiment_score?: string;
+                /** @description What the agent extracted during this call. */
+                extracted_variables?: {
+                    [key: string]: unknown;
+                };
+                is_voicemail?: boolean;
+                answering_machine_detected?: boolean;
+            } | null;
+        };
+        /** @description One number in a campaign's rotation pool. */
+        BulkCallPoolNumber: {
+            /**
+             * @description This number's id within the pool. Use it to pause or resume the
+             *     number. It is not the `phone_number_id`.
+             */
+            assignment_id?: number;
+            phone_number_id?: number;
+            phone_number?: string;
+            /** @description Rotation order. Lowest dials first. */
+            sequence?: number;
+            /** @description A paused number stays in the pool and is skipped. */
+            is_active?: boolean;
+            /** @description Exactly one number in a pool is dialing at a time. */
+            is_dialing_now?: boolean;
+            /** @description Lifetime calls from this number in this campaign. */
+            calls_dispatched?: number;
+            /**
+             * @description Calls since this number last became active. `fixed_count` rotation
+             *     compares this against `calls_per_number`, so this is the one to
+             *     watch for the next rotation.
+             */
+            calls_this_cycle?: number;
+            /** @description Null until enough calls have been placed to score it. */
+            health_score?: number | null;
         };
         /** @description A bulk-call campaign with configuration, execution stats, and the active number pool. */
         BulkCallDetail: {
@@ -1449,12 +1978,6 @@ export interface components {
             daily_start_time_formatted?: string;
             /** @description IANA timezone for the daily auto-start. */
             daily_start_timezone?: string;
-            /** @description Whether to email a report when the campaign completes. */
-            email_on_complete?: boolean;
-            /** @description Whether to email a report when a daily hard-stop fires. */
-            email_on_hard_stop?: boolean;
-            /** @description Comma-separated recipient list, or `false` when empty. */
-            email_report_recipients?: string | boolean;
             /** @description Custom variables exposed to the agent for each contact. */
             variable_config?: {
                 /** @description Variable ID. */
@@ -1605,12 +2128,9 @@ export interface components {
             sip_host?: string | boolean;
             sip_port?: string | boolean;
             sip_username?: string | boolean;
-            sip_password?: string | boolean;
             sip_trunk_name?: string | boolean;
             sip_id?: string | boolean;
             exotel_phone_number?: string | boolean;
-            exotel_api_key?: string | boolean;
-            exotel_api_token?: string | boolean;
             exotel_subdomain?: string | boolean;
             exotel_account_sid?: string | boolean;
             exotel_app_id?: string | boolean;
@@ -1619,7 +2139,6 @@ export interface components {
             wa_wbaid?: string | boolean;
             wa_app_id?: string | boolean;
             wa_business_id?: string | boolean;
-            wa_access_token?: string | boolean;
         };
         Provider: {
             id?: number;
@@ -1769,6 +2288,11 @@ export interface components {
              * @enum {string}
              */
             call_type?: "Incoming" | "Outgoing";
+            /**
+             * @description IANA timezone for this agent, for example `Asia/Kolkata`. Sets the local date and time the agent works with during calls. If not set, the account timezone is used as fallback. Pass an empty string to clear it.
+             * @example America/New_York
+             */
+            timezone?: string;
             /** @description Configuration for the speech-to-text transcriber. */
             transcriber?: {
                 /**
@@ -1843,16 +2367,16 @@ export interface components {
                  */
                 temperature?: number;
             };
-            /** @description Configuration for the text-to-speech voice. */
+            /** @description Configuration for the text-to-speech voice. `provider` and `voice_id` identify the voice together, so send both to change it. `provider` on its own is not accepted, and a `voice_id` on its own leaves the voice as it was. The other fields here apply independently. */
             voice?: {
                 /**
-                 * @description The voice provider to use. The current catalog is returned by the TTS providers list.
+                 * @description The voice provider to use. The current catalog is returned by the TTS providers list. Send `voice_id` alongside it.
                  * @example eleven_labs
                  * @enum {string}
                  */
                 provider?: "eleven_labs" | "google" | "cartesia" | "sarvam";
                 /**
-                 * @description The provider's voice identifier, returned in the `name` field of the voices list (not the numeric `id`).
+                 * @description The provider's voice identifier, returned in the `name` field of the voices list (not the numeric `id`). Takes effect when `provider` is sent alongside it.
                  * @example JBFqnCBsd6RMkjVDRZzb
                  */
                 voice_id?: string;
@@ -1934,7 +2458,7 @@ export interface components {
             /** @description Conditional call transfer to a human agent or another number. */
             transfer?: {
                 enabled?: boolean;
-                /** @description Where to transfer the call and under what condition. The first matching condition wins. */
+                /** @description Where to transfer the call and under what condition. The first matching condition wins. In an agent update, sending this list replaces all saved options. Omit it to keep them unchanged, or send an empty array to clear them. */
                 transfer_options?: {
                     /**
                      * @description Primary phone number to transfer to. Include country code with leading `+`.
@@ -2050,6 +2574,8 @@ export interface operations {
                     agent_id: number;
                     /**
                      * @description The session type. Only `voice` is supported.
+                     * @default voice
+                     * @example voice
                      * @enum {string}
                      */
                     type: "voice";
@@ -2061,6 +2587,19 @@ export interface operations {
                      *     }
                      */
                     custom_variables?: {
+                        [key: string]: unknown;
+                    };
+                    /**
+                     * @description Key-value pairs stored on the session for your own
+                     *     tracking (e.g. CRM or lead IDs). Not shared with the
+                     *     agent; echoed back as `metadata` in the post-call
+                     *     webhook so you can correlate results with your records.
+                     * @example {
+                     *       "crm_lead_id": "lead_9876",
+                     *       "source": "website_form"
+                     *     }
+                     */
+                    metadata?: {
                         [key: string]: unknown;
                     };
                 };
@@ -2815,9 +3354,15 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Display name for the version. */
+                    /**
+                     * @description Display name for the version.
+                     * @example v2 pricing script
+                     */
                     name: string;
-                    /** @description Optional note describing the version. */
+                    /**
+                     * @description Optional note describing the version.
+                     * @example Shorter opener, new objection handling.
+                     */
                     note?: string;
                 };
             };
@@ -3007,9 +3552,15 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /** @description New display name for the version. */
+                    /**
+                     * @description New display name for the version.
+                     * @example v2 pricing script
+                     */
                     name?: string;
-                    /** @description New note for the version. */
+                    /**
+                     * @description New note for the version.
+                     * @example Shorter opener, new objection handling.
+                     */
                     note?: string;
                 };
             };
@@ -3349,6 +3900,19 @@ export interface operations {
                     call_context?: {
                         [key: string]: unknown;
                     };
+                    /**
+                     * @description Key-value pairs stored on the call for your own tracking
+                     *     (e.g. CRM or lead IDs). Not shared with the agent; echoed
+                     *     back as `metadata` in the post-call webhook so you can
+                     *     correlate results with your records.
+                     * @example {
+                     *       "crm_lead_id": "lead_9876",
+                     *       "source": "website_form"
+                     *     }
+                     */
+                    metadata?: {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3428,7 +3992,7 @@ export interface operations {
                      *           "recording_url": false,
                      *           "internal_recording_url": false,
                      *           "recording_available_at": "",
-                     *           "call_conversation": " <br/> user:  <br/> LLM: Hello, I am Kevin from OmniDimension support. How may I help you? <br/> <br/> user: i awnt ti book a meetig <br/> LLM: Sure, I can help with that. Could you please provide me with your name and email address? <br/> <br/> user: aok demo@example.com <br/> LLM: Let's confirm your email address: demo@example.com Is that correct? <br/> <br/> user: y <br/> LLM: Great, you can book a meeting using the link below. <br/>",
+                     *           "call_conversation": " <br/> user:  <br/> LLM: Hello, I am Alok from OmniDimension support. How may I help you? <br/> <br/> user: i awnt ti book a meetig <br/> LLM: Sure, I can help with that. Could you please provide me with your name and email address? <br/> <br/> user: aok demo@example.com <br/> LLM: Let's confirm your email address: demo@example.com Is that correct? <br/> <br/> user: y <br/> LLM: Great, you can book a meeting using the link below. <br/>",
                      *           "call_status": "completed",
                      *           "channel_type": "Widget-Chat",
                      *           "sentiment_score": "Positive",
@@ -3491,7 +4055,7 @@ export interface operations {
                      *               "id": 88247,
                      *               "interaction_sequence": 1,
                      *               "user_query": "",
-                     *               "bot_response": "Hello, I am Kevin from OmniDimension support. How may I help you?",
+                     *               "bot_response": "Hello, I am Alok from OmniDimension support. How may I help you?",
                      *               "customer_phone_number": false,
                      *               "time_of_call": "05/04/2026 14:43:00",
                      *               "llm2_time": 2.349710792,
@@ -3607,7 +4171,7 @@ export interface operations {
                      *                 "name": "Webhook to https://webhook.site/94b3db04-2a3f-480f-86f5-6bcc84b4cc5b on 2026-05-04 14:46:15",
                      *                 "webhook_url": "https://webhook.site/94b3db04-2a3f-480f-86f5-6bcc84b4cc5b",
                      *                 "webhook_method": "POST",
-                     *                 "payload": "{\"call_id\": 50958, \"call_sid\": \"secret_key_fb6cac5ad0ba353d30768b2f6d92dab3_74f67317-cdd6-4b56-9954-440933284998\", \"bot_id\": 6340, \"bot_name\": \"Demo User\", \"phone_number\": \"Chat\", \"call_direction\": \"outbound\", \"to_number\": \"Assistant\", \"call_request_id\": false, \"from_number\": \"Chat\", \"call_date\": \"2026-05-04 14:46:15\", \"start_time\": \"2026-05-04 14:46:15\", \"end_time\": \"2026-05-04 14:46:15\", \"call_duration\": 0, \"user_email\": \"demo@example.com\", \"call_status\": \"completed\", \"hangup_source\": false, \"recording_url\": false, \"recording_available_at\": null, \"low_interaction\": true, \"call_report\": {\"summary\": \"The user requested to book a meeting, providing their email address. The agent confirmed the email and provided a link for booking the meeting successfully.\", \"sentiment\": \"Positive\", \"extracted_variables\": {\"user_name\": \"Not provided\", \"phone_number\": \"Not provided\", \"main_purpose\": \"Booking a meeting\", \"use_case\": \"Not provided\", \"monthly_call_volume\": \"Not provided\", \"industry\": \"Not provided\", \"preferred_language\": \"Not provided\"}, \"full_conversation\": \" \\n user:  \\n LLM: Hello, I am Kevin from OmniDimension support. How may I help you? \\n \\n user: i awnt ti book a meetig \\n LLM: Sure, I can help with that. Could you please provide me with your name and email address? \\n \\n user: aok demo@example.com \\n LLM: Let's confirm your email address: demo@example.com Is that correct? \\n \\n user: y \\n LLM: Great, you can book a meeting using the link below. \\n\", \"interactions\": [{\"sequence\": 1, \"user_query\": \"\", \"bot_response\": \"Hello, I am Kevin from OmniDimension support. How may I help you?\", \"time\": \"2026-05-04 14:43:00\"}, {\"sequence\": 2, \"user_query\": \"i awnt ti book a meetig\", \"bot_response\": \"Sure, I can help with that. Could you please provide me with your name and email address?\", \"time\": \"2026-05-04 14:43:08\"}, {\"sequence\": 3, \"user_query\": \"aok demo@example.com\", \"bot_response\": \"Let's confirm your email address: demo@example.com Is that correct?\", \"time\": \"2026-05-04 14:43:13\"}, {\"sequence\": 4, \"user_query\": \"y\", \"bot_response\": \"Great, you can book a meeting using the link below.\", \"time\": \"2026-05-04 14:43:18\"}]}}",
+                     *                 "payload": "{\"call_id\": 50958, \"call_sid\": \"secret_key_fb6cac5ad0ba353d30768b2f6d92dab3_74f67317-cdd6-4b56-9954-440933284998\", \"bot_id\": 6340, \"bot_name\": \"Demo User\", \"phone_number\": \"Chat\", \"call_direction\": \"outbound\", \"to_number\": \"Assistant\", \"call_request_id\": false, \"from_number\": \"Chat\", \"call_date\": \"2026-05-04 14:46:15\", \"start_time\": \"2026-05-04 14:46:15\", \"end_time\": \"2026-05-04 14:46:15\", \"call_duration\": 0, \"user_email\": \"demo@example.com\", \"call_status\": \"completed\", \"hangup_source\": false, \"recording_url\": false, \"recording_available_at\": null, \"low_interaction\": true, \"call_report\": {\"summary\": \"The user requested to book a meeting, providing their email address. The agent confirmed the email and provided a link for booking the meeting successfully.\", \"sentiment\": \"Positive\", \"extracted_variables\": {\"user_name\": \"Not provided\", \"phone_number\": \"Not provided\", \"main_purpose\": \"Booking a meeting\", \"use_case\": \"Not provided\", \"monthly_call_volume\": \"Not provided\", \"industry\": \"Not provided\", \"preferred_language\": \"Not provided\"}, \"full_conversation\": \" \\n user:  \\n LLM: Hello, I am Alok from OmniDimension support. How may I help you? \\n \\n user: i awnt ti book a meetig \\n LLM: Sure, I can help with that. Could you please provide me with your name and email address? \\n \\n user: aok demo@example.com \\n LLM: Let's confirm your email address: demo@example.com Is that correct? \\n \\n user: y \\n LLM: Great, you can book a meeting using the link below. \\n\", \"interactions\": [{\"sequence\": 1, \"user_query\": \"\", \"bot_response\": \"Hello, I am Alok from OmniDimension support. How may I help you?\", \"time\": \"2026-05-04 14:43:00\"}, {\"sequence\": 2, \"user_query\": \"i awnt ti book a meetig\", \"bot_response\": \"Sure, I can help with that. Could you please provide me with your name and email address?\", \"time\": \"2026-05-04 14:43:08\"}, {\"sequence\": 3, \"user_query\": \"aok demo@example.com\", \"bot_response\": \"Let's confirm your email address: demo@example.com Is that correct?\", \"time\": \"2026-05-04 14:43:13\"}, {\"sequence\": 4, \"user_query\": \"y\", \"bot_response\": \"Great, you can book a meeting using the link below.\", \"time\": \"2026-05-04 14:43:18\"}]}}",
                      *                 "status": "sent",
                      *                 "response_code": 200,
                      *                 "response_body": "This URL has no default content configured. <a href=\"https://webhook.site/#!/edit/94b3db04-2a3f-480f-86f5-6bcc84b4cc5b\">Change response in Webhook.site</a>.",
@@ -3671,7 +4235,7 @@ export interface operations {
                      *           "recording_url": false,
                      *           "internal_recording_url": false,
                      *           "recording_available_at": "",
-                     *           "call_conversation": " <br/> user:  <br/> LLM: Hello, I am Kevin from OmniDimension support. How may I help you? <br/> <br/> user: i awnt ti book a meetig <br/> LLM: Sure, I can help with that. Could you please provide me with your name and email address? <br/> <br/> user: aok demo@example.com <br/> LLM: Let's confirm your email address: demo@example.com Is that correct? <br/> <br/> user: y <br/> LLM: Great, you can book a meeting using the link below. <br/>",
+                     *           "call_conversation": " <br/> user:  <br/> LLM: Hello, I am Alok from OmniDimension support. How may I help you? <br/> <br/> user: i awnt ti book a meetig <br/> LLM: Sure, I can help with that. Could you please provide me with your name and email address? <br/> <br/> user: aok demo@example.com <br/> LLM: Let's confirm your email address: demo@example.com Is that correct? <br/> <br/> user: y <br/> LLM: Great, you can book a meeting using the link below. <br/>",
                      *           "call_status": "completed",
                      *           "channel_type": "Widget-Chat",
                      *           "sentiment_score": "Positive",
@@ -3734,7 +4298,7 @@ export interface operations {
                      *               "id": 88247,
                      *               "interaction_sequence": 1,
                      *               "user_query": "",
-                     *               "bot_response": "Hello, I am Kevin from OmniDimension support. How may I help you?",
+                     *               "bot_response": "Hello, I am Alok from OmniDimension support. How may I help you?",
                      *               "customer_phone_number": false,
                      *               "time_of_call": "05/04/2026 14:43:00",
                      *               "llm2_time": 2.349710792,
@@ -3850,7 +4414,7 @@ export interface operations {
                      *                 "name": "Webhook to https://webhook.site/94b3db04-2a3f-480f-86f5-6bcc84b4cc5b on 2026-05-04 14:46:15",
                      *                 "webhook_url": "https://webhook.site/94b3db04-2a3f-480f-86f5-6bcc84b4cc5b",
                      *                 "webhook_method": "POST",
-                     *                 "payload": "{\"call_id\": 50958, \"call_sid\": \"secret_key_fb6cac5ad0ba353d30768b2f6d92dab3_74f67317-cdd6-4b56-9954-440933284998\", \"bot_id\": 6340, \"bot_name\": \"Demo User\", \"phone_number\": \"Chat\", \"call_direction\": \"outbound\", \"to_number\": \"Assistant\", \"call_request_id\": false, \"from_number\": \"Chat\", \"call_date\": \"2026-05-04 14:46:15\", \"start_time\": \"2026-05-04 14:46:15\", \"end_time\": \"2026-05-04 14:46:15\", \"call_duration\": 0, \"user_email\": \"demo@example.com\", \"call_status\": \"completed\", \"hangup_source\": false, \"recording_url\": false, \"recording_available_at\": null, \"low_interaction\": true, \"call_report\": {\"summary\": \"The user requested to book a meeting, providing their email address. The agent confirmed the email and provided a link for booking the meeting successfully.\", \"sentiment\": \"Positive\", \"extracted_variables\": {\"user_name\": \"Not provided\", \"phone_number\": \"Not provided\", \"main_purpose\": \"Booking a meeting\", \"use_case\": \"Not provided\", \"monthly_call_volume\": \"Not provided\", \"industry\": \"Not provided\", \"preferred_language\": \"Not provided\"}, \"full_conversation\": \" \\n user:  \\n LLM: Hello, I am Kevin from OmniDimension support. How may I help you? \\n \\n user: i awnt ti book a meetig \\n LLM: Sure, I can help with that. Could you please provide me with your name and email address? \\n \\n user: aok demo@example.com \\n LLM: Let's confirm your email address: demo@example.com Is that correct? \\n \\n user: y \\n LLM: Great, you can book a meeting using the link below. \\n\", \"interactions\": [{\"sequence\": 1, \"user_query\": \"\", \"bot_response\": \"Hello, I am Kevin from OmniDimension support. How may I help you?\", \"time\": \"2026-05-04 14:43:00\"}, {\"sequence\": 2, \"user_query\": \"i awnt ti book a meetig\", \"bot_response\": \"Sure, I can help with that. Could you please provide me with your name and email address?\", \"time\": \"2026-05-04 14:43:08\"}, {\"sequence\": 3, \"user_query\": \"aok demo@example.com\", \"bot_response\": \"Let's confirm your email address: demo@example.com Is that correct?\", \"time\": \"2026-05-04 14:43:13\"}, {\"sequence\": 4, \"user_query\": \"y\", \"bot_response\": \"Great, you can book a meeting using the link below.\", \"time\": \"2026-05-04 14:43:18\"}]}}",
+                     *                 "payload": "{\"call_id\": 50958, \"call_sid\": \"secret_key_fb6cac5ad0ba353d30768b2f6d92dab3_74f67317-cdd6-4b56-9954-440933284998\", \"bot_id\": 6340, \"bot_name\": \"Demo User\", \"phone_number\": \"Chat\", \"call_direction\": \"outbound\", \"to_number\": \"Assistant\", \"call_request_id\": false, \"from_number\": \"Chat\", \"call_date\": \"2026-05-04 14:46:15\", \"start_time\": \"2026-05-04 14:46:15\", \"end_time\": \"2026-05-04 14:46:15\", \"call_duration\": 0, \"user_email\": \"demo@example.com\", \"call_status\": \"completed\", \"hangup_source\": false, \"recording_url\": false, \"recording_available_at\": null, \"low_interaction\": true, \"call_report\": {\"summary\": \"The user requested to book a meeting, providing their email address. The agent confirmed the email and provided a link for booking the meeting successfully.\", \"sentiment\": \"Positive\", \"extracted_variables\": {\"user_name\": \"Not provided\", \"phone_number\": \"Not provided\", \"main_purpose\": \"Booking a meeting\", \"use_case\": \"Not provided\", \"monthly_call_volume\": \"Not provided\", \"industry\": \"Not provided\", \"preferred_language\": \"Not provided\"}, \"full_conversation\": \" \\n user:  \\n LLM: Hello, I am Alok from OmniDimension support. How may I help you? \\n \\n user: i awnt ti book a meetig \\n LLM: Sure, I can help with that. Could you please provide me with your name and email address? \\n \\n user: aok demo@example.com \\n LLM: Let's confirm your email address: demo@example.com Is that correct? \\n \\n user: y \\n LLM: Great, you can book a meeting using the link below. \\n\", \"interactions\": [{\"sequence\": 1, \"user_query\": \"\", \"bot_response\": \"Hello, I am Alok from OmniDimension support. How may I help you?\", \"time\": \"2026-05-04 14:43:00\"}, {\"sequence\": 2, \"user_query\": \"i awnt ti book a meetig\", \"bot_response\": \"Sure, I can help with that. Could you please provide me with your name and email address?\", \"time\": \"2026-05-04 14:43:08\"}, {\"sequence\": 3, \"user_query\": \"aok demo@example.com\", \"bot_response\": \"Let's confirm your email address: demo@example.com Is that correct?\", \"time\": \"2026-05-04 14:43:13\"}, {\"sequence\": 4, \"user_query\": \"y\", \"bot_response\": \"Great, you can book a meeting using the link below.\", \"time\": \"2026-05-04 14:43:18\"}]}}",
                      *                 "status": "sent",
                      *                 "response_code": 200,
                      *                 "response_body": "This URL has no default content configured. <a href=\"https://webhook.site/#!/edit/94b3db04-2a3f-480f-86f5-6bcc84b4cc5b\">Change response in Webhook.site</a>.",
@@ -3922,7 +4486,6 @@ export interface operations {
                      *           "scheduled_datetime": null,
                      *           "create_date": "04/22/2026 22:10:22",
                      *           "concurrent_call_limit": 1,
-                     *           "email_report_recipients": "",
                      *           "total_calls": 1,
                      *           "completed_calls": 1,
                      *           "total_calls_made": 1,
@@ -3953,32 +4516,161 @@ export interface operations {
         };
         requestBody: {
             content: {
+                /**
+                 * @example {
+                 *       "name": "Customer follow-ups",
+                 *       "phone_number_id": "177",
+                 *       "bot_id": 512,
+                 *       "contact_list": [
+                 *         {
+                 *           "phone_number": "+15551234567",
+                 *           "customer_name": "John Doe",
+                 *           "plan": "pro"
+                 *         },
+                 *         {
+                 *           "phone_number": "+15559876543",
+                 *           "customer_name": "Jane Smith",
+                 *           "plan": "trial"
+                 *         }
+                 *       ],
+                 *       "call_conditions": [
+                 *         {
+                 *           "column": "plan",
+                 *           "operator": "equals",
+                 *           "value": "pro"
+                 *         }
+                 *       ],
+                 *       "rotation": {
+                 *         "numbers": [
+                 *           {
+                 *             "phone_number_id": 177,
+                 *             "sequence": 10
+                 *           },
+                 *           {
+                 *             "phone_number_id": 178,
+                 *             "sequence": 20
+                 *           }
+                 *         ],
+                 *         "strategy": "fixed_count",
+                 *         "calls_per_number": 50
+                 *       },
+                 *       "is_scheduled": true,
+                 *       "scheduled_datetime": "2026-12-25 10:00:00",
+                 *       "timezone": "America/New_York",
+                 *       "concurrent_call_limit": 3,
+                 *       "retry_config": {
+                 *         "auto_retry": true,
+                 *         "auto_retry_schedule": "next_day",
+                 *         "retry_limit": 2
+                 *       },
+                 *       "enabled_reschedule_call": true
+                 *     }
+                 */
                 "application/json": {
                     /**
                      * @description Name of the bulk call campaign.
                      * @example Customer Follow-up Campaign
                      */
                     name: string;
-                    /** @description Your phone number id to use for making calls. */
+                    /**
+                     * @description The number this campaign calls from. With a `rotation`, the
+                     *     rotation numbers dial instead and this one is the standby.
+                     * @example 177
+                     */
                     phone_number_id: string;
                     /**
-                     * @description Set to `true` to create a dynamic campaign that accepts
-                     *     contacts in real time via the Add contact to dynamic
-                     *     campaign webhook. When `true`, `contact_list` is optional
-                     *     and may be omitted to start the campaign empty.
+                     * @description Agent to run the campaign. Defaults to the agent attached
+                     *     to `phone_number_id`; required when the number has none.
+                     */
+                    bot_id?: number;
+                    /**
+                     * @description Store the campaign without dialing; start it later with the
+                     *     start endpoint. See Drafts in the guide below.
+                     * @default false
+                     */
+                    save_as_draft?: boolean;
+                    /**
+                     * @description Dial only the contacts that match every condition; the rest
+                     *     are kept as `Skipped`. See Filtering in the guide below.
+                     */
+                    call_conditions?: {
+                        /**
+                         * @description Key on the contact row to test.
+                         * @example plan
+                         */
+                        column: string;
+                        /**
+                         * @description `contains` is case-insensitive. `greater_than` and
+                         *     `less_than` compare numerically, and a row whose value
+                         *     is not a number fails the condition rather than
+                         *     erroring.
+                         * @default equals
+                         * @example equals
+                         * @enum {string}
+                         */
+                        operator: "equals" | "not_equals" | "contains" | "greater_than" | "less_than";
+                        /** @example pro */
+                        value: string;
+                    }[];
+                    /**
+                     * @description Rotate the campaign across several of your numbers, so no
+                     *     single number burns out. See Rotation in the guide below.
+                     */
+                    rotation?: {
+                        /**
+                         * @description The numbers to rotate across; each must be yours and
+                         *     listed once.
+                         */
+                        numbers: {
+                            /**
+                             * @description One of your numbers, from List phone numbers.
+                             * @example 177
+                             */
+                            phone_number_id: number;
+                            /**
+                             * @description Rotation order. Lowest dials first.
+                             * @default 10
+                             */
+                            sequence?: number;
+                        }[];
+                        /**
+                         * @description When to move to the next number: every
+                         *     `calls_per_number` calls, on low health score, both, or
+                         *     never.
+                         * @default fixed_count
+                         * @example fixed_count
+                         * @enum {string}
+                         */
+                        strategy?: "fixed_count" | "cpr_threshold" | "both" | "none";
+                        /**
+                         * @description Calls before moving on. Used by `fixed_count` and `both`.
+                         * @default 50
+                         * @example 50
+                         */
+                        calls_per_number?: number;
+                        /**
+                         * @description Health score below which a number is rotated away from.
+                         *     Used by `cpr_threshold` and `both`.
+                         * @default 30
+                         */
+                        health_threshold?: number;
+                        /**
+                         * @description When every number is unhealthy: `pause` the campaign,
+                         *     or `continue_best` with the healthiest one.
+                         * @default pause
+                         * @enum {string}
+                         */
+                        fallback?: "pause" | "continue_best";
+                    };
+                    /**
+                     * @description A dynamic campaign stays alive accepting contacts via the
+                     *     add-contact webhooks, and `contact_list` becomes optional.
                      * @default false
                      */
                     is_dynamic?: boolean;
                     /**
-                     * @description Array of contact objects. Each row needs `phone_number`.
-                     *     Any other key you add on the row (e.g. `customer_name`,
-                     *     `account_id`, `priority`) is passed to the agent as a
-                     *     context variable for that specific call, so the agent
-                     *     can reference it during the conversation.
-                     *
-                     *     Required for static campaigns. Optional when `is_dynamic`
-                     *     is `true` (you can omit it and add contacts later via the
-                     *     webhook).
+                     * @description Who to call. Each row needs `phone_number`; any other key
+                     *     reaches the agent as context for that one call.
                      * @example [
                      *       {
                      *         "phone_number": "+15551234567",
@@ -4048,8 +4740,9 @@ export interface operations {
                          */
                         retry_schedule_hours?: number;
                         /**
-                         * @description Maximum number of retry attempts (0–5).
-                         * @default 0
+                         * @description Retry attempts, 1 to 10. To disable retries omit it and
+                         *     leave `auto_retry` false; never send `0`.
+                         * @default 1
                          */
                         retry_limit?: number;
                     };
@@ -4236,9 +4929,6 @@ export interface operations {
                      *         "daily_start_time": 0,
                      *         "daily_start_time_formatted": "00:00",
                      *         "daily_start_timezone": "America/Los_Angeles",
-                     *         "email_on_complete": false,
-                     *         "email_on_hard_stop": false,
-                     *         "email_report_recipients": "",
                      *         "variable_config": [
                      *           {
                      *             "id": 45,
@@ -4334,6 +5024,7 @@ export interface operations {
                 "application/json": {
                     /**
                      * @description What to do with the campaign.
+                     * @example pause
                      * @enum {string}
                      */
                     action: "pause" | "resume" | "reschedule";
@@ -4408,6 +5099,557 @@ export interface operations {
                         status?: string;
                         message?: string;
                         current_status?: string;
+                    };
+                };
+            };
+        };
+    };
+    listBulkCallLines: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The `next_cursor` from your previous response. Omit it on the first
+                 *     request. Opaque: pass it back unchanged.
+                 */
+                cursor?: string;
+                /** @description Rows per page. Above 150 the request is refused. */
+                pagesize?: number;
+                /** @description Return only contacts in this state. */
+                call_status?: "Pending" | "In Progress" | "completed" | "voicemail_detected" | "no-answer" | "busy" | "Failed" | "Skipped" | "retry_scheduled" | "cancelled";
+                /** @description Return only contacts with this interaction outcome. */
+                interaction_status?: string;
+                /**
+                 * @description An exact phone number, matched against the contact's number and the
+                 *     number that called it. Not a substring search.
+                 */
+                search?: string;
+                /**
+                 * @description Add `total_records` to the response. It costs a count over the whole
+                 *     filtered campaign, so it is off unless you ask. Ask for it once to
+                 *     fill a header, not on every page of a walk.
+                 */
+                include_total?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of results. `next_cursor` is `null` on the last page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "bulk_call_id": 314,
+                     *       "records": [
+                     *         {
+                     *           "id": 156,
+                     *           "to_number": "+15551234567",
+                     *           "from_number": "+15559876543",
+                     *           "call_status": "completed",
+                     *           "interaction_status": "",
+                     *           "failed_reason": null,
+                     *           "dispatched_at": "2026-08-26 14:46:02",
+                     *           "custom_variables": {
+                     *             "contact_name": "Ravi Kumar",
+                     *             "company_name": "Acme Corp"
+                     *           },
+                     *           "metadata": {},
+                     *           "retry_attempt": 1,
+                     *           "retry_scheduled": false,
+                     *           "retry_scheduled_datetime": null,
+                     *           "reschedule_requested": false,
+                     *           "reschedule_datetime": null,
+                     *           "reschedule_status": "pending",
+                     *           "call": {
+                     *             "recording_id": 50585,
+                     *             "time_of_call": "2026-08-26 14:46:21",
+                     *             "duration_seconds": 9,
+                     *             "duration_minutes": 0,
+                     *             "recording_url": "https://backend.omnidim.io/api/v1/recording/50585?token=9d35be29",
+                     *             "call_status": "completed",
+                     *             "sentiment_score": "",
+                     *             "extracted_variables": {},
+                     *             "is_voicemail": false,
+                     *             "answering_machine_detected": false
+                     *           }
+                     *         }
+                     *       ],
+                     *       "pagesize": 150,
+                     *       "has_more": true,
+                     *       "next_cursor": "MTU2"
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        bulk_call_id?: number;
+                        records?: components["schemas"]["BulkCallLine"][];
+                        pagesize?: number;
+                        has_more?: boolean;
+                        /** @description Pass back as `cursor`. `null` means you are done. */
+                        next_cursor?: string | null;
+                        /** @description Only present when `include_total` is true. */
+                        total_records?: number;
+                    };
+                };
+            };
+        };
+    };
+    listBulkCallNumbers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pool and its rotation settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "bulk_call_id": 314,
+                     *       "rotation_strategy": "fixed_count",
+                     *       "calls_per_number": 50,
+                     *       "rotation_health_threshold": 30,
+                     *       "rotation_fallback": "pause",
+                     *       "numbers": [
+                     *         {
+                     *           "assignment_id": 508,
+                     *           "phone_number_id": 74,
+                     *           "phone_number": "+15551234567",
+                     *           "sequence": 10,
+                     *           "is_active": true,
+                     *           "is_dialing_now": true,
+                     *           "calls_dispatched": 124,
+                     *           "calls_this_cycle": 24,
+                     *           "health_score": 82.5
+                     *         },
+                     *         {
+                     *           "assignment_id": 509,
+                     *           "phone_number_id": 123,
+                     *           "phone_number": "+15559876543",
+                     *           "sequence": 20,
+                     *           "is_active": true,
+                     *           "is_dialing_now": false,
+                     *           "calls_dispatched": 100,
+                     *           "calls_this_cycle": 50,
+                     *           "health_score": null
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        bulk_call_id?: number;
+                        rotation_strategy?: string;
+                        calls_per_number?: number;
+                        rotation_health_threshold?: number;
+                        rotation_fallback?: string;
+                        numbers?: components["schemas"]["BulkCallPoolNumber"][];
+                    };
+                };
+            };
+        };
+    };
+    addBulkCallNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description One of your numbers, from List phone numbers.
+                     * @example 178
+                     */
+                    phone_number_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Number added to the pool. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "Number added to pool"
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        message?: string;
+                    };
+                };
+            };
+        };
+    };
+    setBulkCallNumberActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+                /** @description The `assignment_id` from List rotation pool. */
+                assignment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `false` pauses the number, `true` resumes it.
+                     * @example false
+                     */
+                    is_active: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description New state of the number. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "is_active": false
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        is_active?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    addBulkCallContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Each row needs `to_number`. Note this differs from the
+                     *     `contact_list` on Create bulk call, which uses
+                     *     `phone_number` and takes loose keys: here the variables go
+                     *     in an explicit `custom_variables` object.
+                     */
+                    contacts: {
+                        /**
+                         * @description Number to call, in international format.
+                         * @example +15551234567
+                         */
+                        to_number: string;
+                        /**
+                         * @description Passed to the agent as context for this call, so it
+                         *     can use them in the conversation.
+                         * @example {
+                         *       "contact_name": "Ravi"
+                         *     }
+                         */
+                        custom_variables?: {
+                            [key: string]: unknown;
+                        };
+                        /**
+                         * @description Stored with the contact and returned on its row in
+                         *     Bulk call results. Not shown to the agent.
+                         */
+                        metadata?: {
+                            [key: string]: unknown;
+                        };
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description What was added and what was not. `added` and `rejected` together
+             *     account for every row you sent.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "1 of 2 contacts added",
+                     *       "campaign_id": 314,
+                     *       "campaign_status": "in_progress",
+                     *       "added": [
+                     *         {
+                     *           "line_id": 8801,
+                     *           "to_number": "+15551234567"
+                     *         }
+                     *       ],
+                     *       "added_count": 1,
+                     *       "rejected": [
+                     *         {
+                     *           "index": 1,
+                     *           "reason": "to_number is not a valid phone number"
+                     *         }
+                     *       ],
+                     *       "rejected_count": 1
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        added?: {
+                            line_id?: number;
+                            to_number?: string;
+                        }[];
+                        /**
+                         * @description One entry per row that was not added. `index` is the
+                         *     row's position in the array you sent.
+                         */
+                        rejected?: {
+                            index?: number;
+                            reason?: string;
+                        }[];
+                        added_count?: number;
+                        rejected_count?: number;
+                        message?: string;
+                        campaign_id?: number;
+                        campaign_status?: string;
+                    };
+                };
+            };
+        };
+    };
+    startBulkCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campaign started. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "Campaign started",
+                     *       "current_status": "in_progress"
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        message?: string;
+                        current_status?: string;
+                    };
+                };
+            };
+        };
+    };
+    setBulkCallConcurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Calls to place at once.
+                     * @example 5
+                     */
+                    concurrent_call_limit: number;
+                };
+            };
+        };
+        responses: {
+            /** @description New concurrency. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "Concurrency updated",
+                     *       "concurrent_call_limit": 5
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        message?: string;
+                        concurrent_call_limit?: number;
+                    };
+                };
+            };
+        };
+    };
+    retryBulkCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Which contacts to re-queue. `all` takes everything that did
+                     *     not connect.
+                     * @default all
+                     */
+                    retry_strategy?: string;
+                    /** @description Skip contacts already retried this many times. */
+                    max_retries?: number;
+                    /**
+                     * @description Re-queue only contacts that failed for these reasons, for
+                     *     example `no-answer` and `busy`.
+                     */
+                    failure_reasons?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description How many contacts were re-queued. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "42 contacts queued for retry",
+                     *       "current_status": "in_progress"
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        message?: string;
+                        current_status?: string;
+                    };
+                };
+            };
+        };
+    };
+    setBulkCallDailyTimeControl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Stop dialing at `daily_stop_time` each day.
+                     * @example true
+                     */
+                    enable_daily_hard_stop: boolean;
+                    /**
+                     * @description Hour of day to stop, 0 to 23. Fractions are allowed, so
+                     *     `17.5` is 17:30. Required when the hard stop is on.
+                     * @example 18
+                     */
+                    daily_stop_time?: number;
+                    /**
+                     * @description Timezone for the stop time.
+                     * @example Asia/Kolkata
+                     */
+                    daily_stop_timezone?: string;
+                    /**
+                     * @description Resume dialing at `daily_start_time` each day.
+                     * @example true
+                     */
+                    enable_daily_auto_start: boolean;
+                    /**
+                     * @description Hour of day to resume, 0 to 23. Required when auto start
+                     *     is on.
+                     * @example 9
+                     */
+                    daily_start_time?: number;
+                    /**
+                     * @description Timezone for the start time.
+                     * @example Asia/Kolkata
+                     */
+                    daily_start_timezone?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated calling window. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "Daily time control updated"
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        message?: string;
                     };
                 };
             };
@@ -4760,6 +6002,8 @@ export interface operations {
                 pageno?: number;
                 /** @description Items per page (max 150). */
                 pagesize?: number;
+                /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                user_id?: number;
             };
             header?: never;
             path?: never;
@@ -4789,8 +6033,6 @@ export interface operations {
                      *           "location": "US",
                      *           "number_provider": "sip",
                      *           "call_sid": false,
-                     *           "exotel_api_key": false,
-                     *           "exotel_api_token": false,
                      *           "exotel_subdomain": false,
                      *           "exotel_account_sid": false,
                      *           "exotel_phone_number": false,
@@ -4801,11 +6043,9 @@ export interface operations {
                      *           "wa_wbaid": false,
                      *           "wa_app_id": false,
                      *           "wa_business_id": false,
-                     *           "wa_access_token": false,
                      *           "sip_host": "<redacted>",
                      *           "sip_port": "<redacted>",
                      *           "sip_username": "<redacted>",
-                     *           "sip_password": "<redacted>",
                      *           "sip_trunk_name": "inbound-trunk",
                      *           "sip_id": "<redacted>",
                      *           "number_source": "imported",
@@ -4822,6 +6062,546 @@ export interface operations {
                     "application/json": {
                         success?: boolean;
                         phone_numbers?: components["schemas"]["PhoneNumber"][];
+                    };
+                };
+            };
+        };
+    };
+    searchPhoneNumbers: {
+        parameters: {
+            query: {
+                /**
+                 * @description Region to search in. `IN` and `US` both serve numbers. Which
+                 *     regions answer is configuration, so a region with no carrier
+                 *     enabled returns `404 not_available` rather than an empty list.
+                 * @example IN
+                 */
+                region: "IN" | "US";
+                /**
+                 * @description Which carrier's stock to search: carriers in a region do not sell
+                 *     the same numbers. Always required, even where a region holds one,
+                 *     and omitting it returns `409 carrier_required` naming that
+                 *     region's carriers and what each one stocks.
+                 * @example carrier-1
+                 */
+                carrier: string;
+                /**
+                 * @description Digits or prefix to match within the number.
+                 * @example 555
+                 */
+                pattern?: string;
+                /** @description Page of results to return. */
+                page?: number;
+                /** @description Results per page. */
+                limit?: number;
+                /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                user_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Numbers available in this region. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "region": "IN",
+                     *       "carrier": "carrier-1",
+                     *       "carrier_label": "Carrier 1",
+                     *       "numbers": [
+                     *         {
+                     *           "phone_number": "+918000000001",
+                     *           "monthly_rental_usd": 5.06,
+                     *           "validity_days": 30,
+                     *           "region": "IN",
+                     *           "kyc_required": true
+                     *         }
+                     *       ],
+                     *       "total": 1,
+                     *       "page": 1,
+                     *       "limit": 20,
+                     *       "total_pages": 1
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        /** @enum {string} */
+                        region?: "IN" | "US";
+                        /** @description The carrier these results came from. Pass it to the purchase operation to buy one of them. */
+                        carrier?: string;
+                        /** @description Display name of that carrier. */
+                        carrier_label?: string;
+                        numbers?: {
+                            phone_number?: string;
+                            /** @description Amount, in USD, that a purchase of this number will charge per month. */
+                            monthly_rental_usd?: number;
+                            /** @description Days the number stays active before it has to be renewed. */
+                            validity_days?: number;
+                            /** @enum {string} */
+                            region?: "IN" | "US";
+                            /** @description Whether identity verification is required before buying this number. */
+                            kyc_required?: boolean;
+                        }[];
+                        total?: number;
+                        page?: number;
+                        limit?: number;
+                        total_pages?: number;
+                    };
+                };
+            };
+            /** @description `page` or `limit` is not a valid integer, or is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "page must be >= 1 and limit between 1 and 150."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or numbers are not available for this region (`not_available`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description This region has more than one carrier and the request named
+             *     none. The body lists the carriers to choose from.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "carrier_required",
+                     *       "error_description": "Region IN has more than one carrier and no default. Pass carrier=<name> with one of the carriers listed here.",
+                     *       "region": "IN",
+                     *       "carriers": [
+                     *         {
+                     *           "carrier": "carrier-1",
+                     *           "label": "Carrier 1",
+                     *           "description": "Landline numbers, 80 series.",
+                     *           "kyc_required": true,
+                     *           "unavailable": false,
+                     *           "unavailable_note": null
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CarrierRequiredError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    purchasePhoneNumber: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Your own unique key for this purchase, for example a
+                 *     fresh UUID. Strongly recommended: it is what makes a
+                 *     retry safe.
+                 * @example 9f2c1d40-7a53-4b8e-9b7a-1c2d3e4f5a6b
+                 */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "region": "IN",
+                 *       "carrier": "carrier-1",
+                 *       "phone_number": "+918000000001"
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * @description Region the number belongs to.
+                     * @enum {string}
+                     */
+                    region: "IN" | "US";
+                    /**
+                     * @description The number to buy, as returned by the search operation.
+                     * @example +15551234567
+                     */
+                    phone_number: string;
+                    /**
+                     * @description The carrier to buy from: pass the `carrier` the search
+                     *     response named, so you buy from the inventory you searched.
+                     *     Always required, and omitting it returns
+                     *     `409 carrier_required` naming that region's carriers.
+                     * @example carrier-1
+                     */
+                    carrier: string;
+                    /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                    user_id?: number;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description The number was purchased, or the same `Idempotency-Key`
+             *     was replayed and the original order is returned.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        /** @description Present only when this key was already used. The order was not charged again. */
+                        replayed?: boolean;
+                        order_id?: number;
+                        phone_number?: string;
+                        /** @description Amount charged, in USD. */
+                        amount?: number;
+                        /** @description The owning account's balance after the charge. Not present on a replay. */
+                        new_balance?: number;
+                        /**
+                         * @description Always `completed` on a successful purchase.
+                         * @enum {string}
+                         */
+                        status?: "completed";
+                    };
+                };
+            };
+            /** @description A required field is missing, or `phone_number` is not valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Invalid phone number format."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The client does not have enough balance for this purchase. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "insufficient_balance",
+                     *       "error_description": "Insufficient balance."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description Phone number access is switched off for the account buying
+             *     (`feature_disabled`), a `user_id` was sent by a key that is not a
+             *     reseller admin, or the named client's account is currently
+             *     unavailable (`forbidden`).
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "feature_disabled",
+                     *       "error_description": "Phone number access is disabled for this user."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or numbers are not available for this region (`not_available`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The purchase was refused before anything was charged: identity
+             *     verification is not complete (`kyc_incomplete`), an earlier
+             *     purchase is still running (`in_progress`), the number was taken by
+             *     someone else (`number_unavailable`), or the region has more than
+             *     one carrier and the request named none (`carrier_required`).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The purchase could not be completed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "purchase_failed",
+                     *       "error_description": "The purchase could not be completed. Please try again or contact support."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    releasePhoneNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "phone_number": "+15551234567"
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * @description The number to release.
+                     * @example +15551234567
+                     */
+                    phone_number: string;
+                    /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                    user_id?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The number was released. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "phone_number": "+15551234567",
+                     *       "status": "released"
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        phone_number?: string;
+                        /** @enum {string} */
+                        status?: "released";
+                    };
+                };
+            };
+            /** @description The request body is missing a required field. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: phone_number."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or the account holds no such number (`number_not_found`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "number_not_found",
+                     *       "error_description": "No such number on this user."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The number could not be released. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "release_failed",
+                     *       "error_description": "The number could not be released. Please try again or contact support."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
                     };
                 };
             };
@@ -5048,8 +6828,10 @@ export interface operations {
                      * @description SIP authentication password.
                      */
                     sip_password?: string;
-                    /** @description Optional prefix to prepend before the destination number when dialing (e.g. to strip the country code). */
+                    /** @description Digits added in front of every number dialed through this trunk. See `sip_strip_country_code` for how it combines with the country code. */
                     sip_dial_prefix?: string;
+                    /** @description When true, the country code is removed from every number dialed through this trunk. When omitted and `sip_dial_prefix` is set, the country code is removed, so send `false` to keep it. */
+                    sip_strip_country_code?: boolean;
                     /** @description When true, strips the leading `+` from the dialed number. */
                     sip_strip_plus?: boolean;
                 };
@@ -6964,9 +8746,15 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Name of the simulation for identification. */
+                    /**
+                     * @description Name of the simulation for identification.
+                     * @example Pricing objection run
+                     */
                     name?: string;
-                    /** @description ID of the agent to test. */
+                    /**
+                     * @description ID of the agent to test.
+                     * @example 158910
+                     */
                     agent_id?: number;
                     /** @description Number of calls to make per scenario (default 1, max 3). */
                     number_of_call_to_make?: number;
@@ -7074,10 +8862,17 @@ export interface operations {
                     scenarios?: {
                         /** @description Include this to update an existing scenario; omit it to add a new one. */
                         id?: number;
+                        /** @example Customer asks about pricing */
                         name: string;
-                        /** @description Updated instructions for the test scenario. */
+                        /**
+                         * @description Updated instructions for the test scenario.
+                         * @example Caller pushes back on the monthly price.
+                         */
                         description: string;
-                        /** @description Updated expected outcome from the agent. */
+                        /**
+                         * @description Updated expected outcome from the agent.
+                         * @example Agent explains the tiers without discounting.
+                         */
                         expected_result: string;
                         /** @description Updated voice configurations for the test calls. */
                         selected_voices?: {
@@ -7500,7 +9295,11 @@ export interface operations {
                         message?: string;
                         /** @description The child organization's new concurrent call limit. */
                         child_limit?: number;
-                        /** @description Slots remaining in the reseller's shared pool. */
+                        /**
+                         * @description Your own concurrent call limit, which is the shared
+                         *     dial-time ceiling for your whole family. Assigning to
+                         *     clients does not draw it down.
+                         */
                         reseller_available?: number;
                     };
                 };
@@ -7516,6 +9315,12 @@ export interface operations {
         };
         requestBody: {
             content: {
+                /**
+                 * @example {
+                 *       "minutes": 100,
+                 *       "cost_per_min": 0.2
+                 *     }
+                 */
                 "application/json": {
                     /** @description Number of minutes to calculate for. */
                     minutes: number;
@@ -7734,6 +9539,825 @@ export interface operations {
                             page_size?: number;
                             total_pages?: number;
                         };
+                    };
+                };
+            };
+        };
+    };
+    getResellerKycStatus: {
+        parameters: {
+            query: {
+                /**
+                 * @description ID of the child user to check.
+                 * @example 1234
+                 */
+                user_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description KYC status per region. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "user_id": 1234,
+                     *       "regions": [
+                     *         {
+                     *           "region": "IN",
+                     *           "carrier": "carrier-1",
+                     *           "carrier_label": "Carrier 1",
+                     *           "kyc_required": true,
+                     *           "can_purchase": false,
+                     *           "status": "pan_verified",
+                     *           "next_step": "aadhaar-otp",
+                     *           "review_status": null
+                     *         },
+                     *         {
+                     *           "region": "IN",
+                     *           "carrier": "carrier-2-new",
+                     *           "carrier_label": "Carrier 2 (new)",
+                     *           "kyc_required": true,
+                     *           "can_purchase": false,
+                     *           "status": "not_started",
+                     *           "next_step": "register",
+                     *           "review_status": null
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        user_id?: number;
+                        /** @description One entry per carrier, each with that carrier's verification state. */
+                        regions?: {
+                            /** @enum {string} */
+                            region?: "IN" | "US";
+                            /**
+                             * @description The carrier this entry is about. Pass it to the verification calls and to a purchase.
+                             * @example carrier-1
+                             */
+                            carrier?: string;
+                            /**
+                             * @description Display name of that carrier.
+                             * @example Carrier 1
+                             */
+                            carrier_label?: string;
+                            /** @description Whether this client must complete verification before buying a number in this region. */
+                            kyc_required?: boolean;
+                            /** @description Whether this client can buy a number on this carrier right now. Always agrees with what a purchase attempt would allow. */
+                            can_purchase?: boolean;
+                            /**
+                             * @description Where this client has reached in verification.
+                             *     `not_started` before anything is submitted,
+                             *     `completed` once they are verified. Drive your
+                             *     integration off `next_step`, not this value.
+                             */
+                            status?: string;
+                            /**
+                             * @description The step to call next, or `null` when there is
+                             *     nothing left for you to do.
+                             *
+                             *     Not a fixed list. Which steps exist depends on
+                             *     the carrier, and carriers do not run the same
+                             *     checks. Read the step list from
+                             *     `GET /reseller/kyc/requirements` for that carrier
+                             *     and follow this field; never hard-code the names.
+                             *
+                             *     `null` with `can_purchase: false` means the
+                             *     carrier is still reviewing the submission. See
+                             *     `review_status`.
+                             */
+                            next_step?: string | null;
+                            /**
+                             * @description Set when the carrier is holding a finished
+                             *     submission for its own review, which is why
+                             *     `can_purchase` can still be false with no step
+                             *     left to call. `null` otherwise.
+                             */
+                            review_status?: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Child user not found under this reseller account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    getResellerKycRequirements: {
+        parameters: {
+            query: {
+                /**
+                 * @description Region to get verification requirements for.
+                 * @example IN
+                 */
+                region: "IN" | "US";
+                /**
+                 * @description Which carrier's steps to return: carriers in a region do not share
+                 *     a step list. Always required, even where a region holds one, and
+                 *     omitting it returns `409 carrier_required` naming that region's
+                 *     carriers.
+                 * @example carrier-1
+                 */
+                carrier: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verification requirements for the region. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "region": "IN",
+                     *       "steps": [
+                     *         {
+                     *           "step": "register",
+                     *           "required": [
+                     *             "email",
+                     *             "name",
+                     *             "phone"
+                     *           ],
+                     *           "cooldown": false,
+                     *           "choices": {},
+                     *           "method": "submit"
+                     *         },
+                     *         {
+                     *           "step": "verify-otp",
+                     *           "required": [
+                     *             "email_otp",
+                     *             "mobile_otp"
+                     *           ],
+                     *           "cooldown": false,
+                     *           "method": "submit"
+                     *         },
+                     *         {
+                     *           "step": "resend-otp",
+                     *           "required": [],
+                     *           "cooldown": false,
+                     *           "method": "submit"
+                     *         },
+                     *         {
+                     *           "step": "verify-pan",
+                     *           "required": [
+                     *             "business_type",
+                     *             "pan"
+                     *           ],
+                     *           "cooldown": false,
+                     *           "method": "submit"
+                     *         },
+                     *         {
+                     *           "step": "aadhaar-otp",
+                     *           "required": [
+                     *             "aadhaar"
+                     *           ],
+                     *           "cooldown": true,
+                     *           "method": "otp"
+                     *         },
+                     *         {
+                     *           "step": "aadhaar-verify",
+                     *           "required": [
+                     *             "otp"
+                     *           ],
+                     *           "cooldown": true,
+                     *           "method": "otp"
+                     *         },
+                     *         {
+                     *           "step": "verify-gst",
+                     *           "required": [
+                     *             "gst"
+                     *           ],
+                     *           "cooldown": false,
+                     *           "method": "submit"
+                     *         },
+                     *         {
+                     *           "step": "skip-gst",
+                     *           "required": [],
+                     *           "cooldown": false,
+                     *           "method": "submit"
+                     *         },
+                     *         {
+                     *           "step": "preview",
+                     *           "required": [],
+                     *           "cooldown": false,
+                     *           "method": "submit"
+                     *         },
+                     *         {
+                     *           "step": "accept",
+                     *           "required": [],
+                     *           "cooldown": false,
+                     *           "method": "submit"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        /** @enum {string} */
+                        region?: "IN" | "US";
+                        steps?: {
+                            /**
+                             * @description The step name to pass in the path. Not a fixed
+                             *     list: carriers do not run the same checks, so
+                             *     read the names from this response rather than
+                             *     hard-coding them.
+                             */
+                            step?: string;
+                            /** @description Body fields this step requires, beyond `user_id`, `region`, and `carrier`. */
+                            required?: string[];
+                            /** @description Whether this step is rate-limited. When true, wait about 30 seconds between attempts. */
+                            cooldown?: boolean;
+                            /**
+                             * @description Fixed vocabularies, per field, for the fields that
+                             *     have one. Build your control from this rather than
+                             *     hard-coding the values: sending anything outside a
+                             *     published list is refused with `400
+                             *     invalid_request` naming what is allowed. `{}` when
+                             *     the step has no such field.
+                             */
+                            choices?: {
+                                [key: string]: string[];
+                            };
+                            /**
+                             * @description How to perform this step.
+                             *
+                             *     `submit` posts the `required` fields. `otp` posts
+                             *     a code the customer received. `redirect` returns a
+                             *     `redirect_url` for the customer to open in their
+                             *     own browser, after which you poll `poll_step`.
+                             *
+                             *     Branch on this, not on the region or the step
+                             *     name, and one integration drives every carrier.
+                             * @enum {string}
+                             */
+                            method?: "submit" | "otp" | "redirect";
+                        }[];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller's account cannot use the reseller API. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description No verification flow is configured for this region
+             *     (`not_available`), or the request named a carrier the region
+             *     does not have (`unknown_carrier`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description This region has more than one carrier and the request named
+             *     none. The body lists the carriers to choose from.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "carrier_required",
+                     *       "error_description": "Region IN has more than one carrier and no default. Pass carrier=<name> with one of the carriers listed here.",
+                     *       "region": "IN",
+                     *       "carriers": [
+                     *         {
+                     *           "carrier": "carrier-1",
+                     *           "label": "Carrier 1",
+                     *           "description": "Landline numbers, 80 series.",
+                     *           "kyc_required": true,
+                     *           "unavailable": false,
+                     *           "unavailable_note": null
+                     *         },
+                     *         {
+                     *           "carrier": "carrier-2-new",
+                     *           "label": "Carrier 2 (new)",
+                     *           "description": "Mobile numbers, 94 and 79 series.",
+                     *           "kyc_required": true,
+                     *           "unavailable": false,
+                     *           "unavailable_note": null
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CarrierRequiredError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    submitResellerKycStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The verification step to run. Not a fixed list: carriers do not run
+                 *     the same checks, so take the names from
+                 *     `GET /reseller/kyc/requirements` for the carrier you are on.
+                 */
+                step: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "user_id": 1234,
+                 *       "region": "IN",
+                 *       "carrier": "carrier-1",
+                 *       "name": "Demo User",
+                 *       "email": "demo@example.com",
+                 *       "phone": "+919876543210"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description ID of the client completing verification. */
+                    user_id: number;
+                    /**
+                     * @description Region this verification is for.
+                     * @enum {string}
+                     */
+                    region: "IN" | "US";
+                    /**
+                     * @description The carrier to verify on: verification is per carrier, so
+                     *     this decides which flow the client walks and which record
+                     *     it writes. Always required, and omitting it returns
+                     *     `409 carrier_required` naming that region's carriers.
+                     * @example carrier-1
+                     */
+                    carrier: string;
+                    /**
+                     * @description Customer's full name. Required for `register`.
+                     * @example Demo User
+                     */
+                    name?: string;
+                    /**
+                     * Format: email
+                     * @description Customer's email address. Required for `register`.
+                     * @example demo@example.com
+                     */
+                    email?: string;
+                    /**
+                     * @description Customer's phone number including country code. Required for `register`.
+                     * @example +919876543210
+                     */
+                    phone?: string;
+                    /** @description OTP the client received by mobile. Required for `verify-otp`. */
+                    mobile_otp?: string;
+                    /** @description OTP the client received by email. Required for `verify-otp`. */
+                    email_otp?: string;
+                    /** @description Customer's PAN. Required for `verify-pan`. */
+                    pan?: string;
+                    /**
+                     * @description The customer's business type. Required on the PAN step of
+                     *     the India carriers and on the business-details step of the
+                     *     US carrier, and the accepted values differ between them.
+                     *     Read them from `choices` on the requirements response
+                     *     rather than assuming a list.
+                     */
+                    business_type?: string;
+                    /**
+                     * @description Customer's Aadhaar number. Required for `aadhaar-otp`.
+                     *     Rate limited to one attempt roughly every 30 seconds.
+                     */
+                    aadhaar?: string;
+                    /**
+                     * @description OTP the client received for Aadhaar verification.
+                     *     Required for `aadhaar-verify`. Rate limited to one
+                     *     attempt roughly every 30 seconds.
+                     */
+                    otp?: string;
+                    /** @description Customer's GST number. Required for `verify-gst`. */
+                    gst?: string;
+                    /**
+                     * @description Required for `register` on carriers that register at
+                     *     district level, and for the US carrier's business address
+                     *     step (where it is the two-letter state code).
+                     * @example Gujarat
+                     */
+                    state?: string;
+                    /**
+                     * @description Customer's district. Required for `register` on carriers
+                     *     that register at district level, and validated against
+                     *     the state, so a district that does not belong to it is
+                     *     rejected with nothing written.
+                     * @example Surat
+                     */
+                    district?: string;
+                    /**
+                     * @description Customer's postal code. Required for `register` on carriers that register at district level.
+                     * @example 395003
+                     */
+                    pincode?: string;
+                    /**
+                     * @description Name exactly as it appears on the PAN. Required for
+                     *     `verify-pan` on carriers that check the name against the
+                     *     PAN record.
+                     * @example Demo User
+                     */
+                    pan_holder_name?: string;
+                    /**
+                     * @description Optional on `register`, defaults to `individual`. **Fixed
+                     *     at registration and not changeable afterwards**, and only a
+                     *     business account can verify GST, so send it deliberately.
+                     *     Accepted values come from `choices` on the requirements
+                     *     response; anything else is refused with `400
+                     *     invalid_request` rather than quietly registered as an
+                     *     individual.
+                     */
+                    account_type?: string;
+                    /**
+                     * @description Trading name. Required when `account_type` is `business`
+                     *     on the India carriers, and required on the US carrier's
+                     *     business-details step.
+                     */
+                    business_name?: string;
+                    /**
+                     * @description How the business relates to its end customers. Required on
+                     *     the US carrier's business-details step; values come from
+                     *     `choices`.
+                     */
+                    business_identity?: string;
+                    /**
+                     * @description The industry the business operates in. Required on the US
+                     *     carrier's business-details step; values come from
+                     *     `choices`.
+                     */
+                    business_industry?: string;
+                    /**
+                     * @description The business's tax registration number. Required on the US carrier's business-details step.
+                     * @example 12-3456789
+                     */
+                    ein?: string;
+                    /**
+                     * @description The business's public website. Required on the US carrier's business-details step.
+                     * @example https://demo.example
+                     */
+                    website_url?: string;
+                    /**
+                     * @description Where the business operates. Optional on the US carrier's
+                     *     business-details step, defaults to USA and Canada; values
+                     *     come from `choices`.
+                     */
+                    regions_of_operation?: string;
+                    /**
+                     * @description Street address. Required on the US carrier's business-address step.
+                     * @example 1 Demo Street
+                     */
+                    street?: string;
+                    /**
+                     * @description City. Required on the US carrier's business-address step.
+                     * @example Springfield
+                     */
+                    city?: string;
+                    /**
+                     * @description Postal code. Required on the US carrier's business-address step.
+                     * @example 62701
+                     */
+                    postal_code?: string;
+                    /**
+                     * @description Two-letter country code. Optional on the US carrier's business-address step, defaults to US.
+                     * @example US
+                     */
+                    country?: string;
+                    /**
+                     * @description The authorized representative's first name. Required on the US carrier's representative step.
+                     * @example Demo
+                     */
+                    first_name?: string;
+                    /**
+                     * @description The authorized representative's last name. Required on the US carrier's representative step.
+                     * @example User
+                     */
+                    last_name?: string;
+                    /**
+                     * @description The representative's job title, as free text. Required on the US carrier's representative step.
+                     * @example Head of Operations
+                     */
+                    business_title?: string;
+                    /**
+                     * @description The representative's role, from a fixed list. Required on
+                     *     the US carrier's representative step; values come from
+                     *     `choices`.
+                     */
+                    job_position?: string;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description Step completed. `preview` is only present in the response
+             *     to the `preview` step, and only carries the fields listed
+             *     below; any field the verification provider does not have
+             *     yet is omitted.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        /**
+                         * @description Where this client has reached in verification.
+                         *     `not_started` before anything is submitted,
+                         *     `completed` once they are verified. Drive your
+                         *     integration off `next_step`, not this value.
+                         */
+                        status?: string;
+                        /**
+                         * @description The step to run next. Chain to it without re-reading
+                         *     status. `null` once there is nothing left for you to do.
+                         *
+                         *     Not a fixed list: which steps exist depends on the
+                         *     carrier. Follow this field and the step list from
+                         *     `/reseller/kyc/requirements`.
+                         */
+                        next_step?: string | null;
+                        /**
+                         * @description Echoes how the step that just ran is performed. Present
+                         *     on every step response.
+                         * @enum {string}
+                         */
+                        method?: "submit" | "otp" | "redirect";
+                        /**
+                         * @description Only on a `redirect` step. Send your customer to this
+                         *     link in their own browser, then poll `poll_step`.
+                         *
+                         *     **Single use.** It expires within minutes and must not
+                         *     be stored or reused. Call the step again for a new one:
+                         *     repeating it is safe and always returns a fresh link.
+                         */
+                        redirect_url?: string | null;
+                        /**
+                         * @description Only on a `redirect` step, and always `false`. Stated
+                         *     as a field so a client library can enforce it.
+                         */
+                        reusable?: boolean | null;
+                        /**
+                         * @description Only on a `redirect` step. The step to call, repeatedly,
+                         *     to find out whether the customer finished.
+                         */
+                        poll_step?: string | null;
+                        /** @description Human-readable confirmation for the step that just ran. */
+                        message?: string;
+                        /** @description Present only in the response to the `preview` step. */
+                        preview?: {
+                            client?: {
+                                name?: string;
+                                /** Format: email */
+                                email?: string;
+                                mobile?: string;
+                                country_code?: string;
+                            };
+                            pan?: {
+                                pan?: string;
+                                business_type?: string;
+                            };
+                            aadhar?: {
+                                name?: string;
+                                address?: string;
+                            };
+                            gst?: {
+                                gst_num?: string;
+                                gstin?: string;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description The request body is missing a field the step requires. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: pan, business_type."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The child user was not found (`not_found`), or verification
+             *     is not available for this region or step (`not_available`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The step was called before its prerequisite step was completed
+             *     (`step_order`), or the region has more than one carrier and the
+             *     request named none (`carrier_required`).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The verification provider rejected the submitted details. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "verification_failed",
+                     *       "error_description": "OTP verification failed. Please try again."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description An Aadhaar step was retried before the cooldown elapsed. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "too_fast",
+                     *       "error_description": "Please wait a moment before retrying this step."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
                     };
                 };
             };
