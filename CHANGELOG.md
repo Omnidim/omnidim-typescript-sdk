@@ -44,9 +44,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - `client.account.balance()` for the organization's wallet: remaining balance, estimated minutes,
-  active plan, concurrency headroom, and auto-recharge settings. Branch on
-  `balance.can_place_calls` rather than on the amount, since usage-based organizations can
-  still place calls at zero.
+  active plan, concurrency headroom, and auto-recharge settings. Check `plan.is_usage_based`
+  before treating a zero balance as a stop condition, since such an organization keeps placing
+  calls and is metered to its payment method.
 - Agent version-history methods on `client.agents`: `listVersions`, `saveVersion`, `diffVersion` (with `against` = previous / current / a version number), `restoreVersion`, `renameVersion`, `deleteVersion`.
 - `PATCH` support in the HTTP client (used by `renameVersion`).
 

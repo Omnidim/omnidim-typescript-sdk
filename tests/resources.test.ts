@@ -115,7 +115,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(69);
+    expect(cases).toHaveLength(70);
   });
 
   for (const [name, call, method, path] of cases) {
