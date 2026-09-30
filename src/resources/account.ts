@@ -35,13 +35,14 @@ export interface AccountPlan {
   renews_at: string | null;
 }
 
-/** `shared_*` is populated only for organizations inside a reseller family. */
 export interface AccountConcurrency {
   limit: number;
   in_use: number;
+  /**
+   * Real headroom. Where a further ceiling applies to the account it is
+   * already folded in, so this never needs combining with anything else.
+   */
   available: number;
-  shared_limit: number | null;
-  shared_in_use: number | null;
 }
 
 export interface AccountAutoRecharge {
@@ -62,7 +63,12 @@ export interface AccountBalance {
    * balance buys nothing, which is also the answer when it is negative.
    */
   estimated_minutes_remaining: number | null;
-  /** The voice rate per minute in USD. One rate, not a per-model set. */
+  /**
+   * The highest voice rate per minute the account's calls can bill at, in USD.
+   * A call bills at the premium rate whenever the agent uses a premium model,
+   * which varies per agent, so the higher rate is reported and
+   * `estimated_minutes_remaining` never overstates.
+   */
   rates_per_minute_usd: number;
   /**
    * Present only on a negotiated telephony rate. Absent means telephony is
