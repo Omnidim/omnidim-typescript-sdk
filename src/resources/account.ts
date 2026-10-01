@@ -18,7 +18,7 @@ export interface AccountBalanceAmount {
   /** Remaining balance in USD. Negative when the account is drawn past zero. */
   amount: number;
   /** Always `USD`. The balance and every platform rate are held in USD. */
-  currency: string;
+  currency: "USD";
 }
 
 export interface AccountPlan {
@@ -47,7 +47,12 @@ export interface AccountConcurrency {
 
 export interface AccountAutoRecharge {
   enabled: boolean;
+  /** A recharge triggers when the balance drops below this, in USD. */
   threshold_usd: number;
+  /**
+   * Headroom above the threshold, in USD. A recharge restores the balance to
+   * `threshold_usd + amount_usd`, so each charge varies; it is not a fixed top-up.
+   */
   amount_usd: number;
 }
 
@@ -59,15 +64,19 @@ export interface AccountBalance {
    * Minutes the balance buys at `rates_per_minute_usd`. An estimate at today's
    * rate, not a promise.
    *
+   * Voice-AI only. Phone calls also pay telephony out of the same balance, so
+   * for phone calls the real figure is lower.
+   *
    * `null` means no rate is set, so no honest estimate exists. `0` means the
    * balance buys nothing, which is also the answer when it is negative.
    */
   estimated_minutes_remaining: number | null;
   /**
-   * The highest voice rate per minute the account's calls can bill at, in USD.
-   * A call bills at the premium rate whenever the agent uses a premium model,
-   * which varies per agent, so the higher rate is reported and
-   * `estimated_minutes_remaining` never overstates.
+   * A single rate, not a basic/premium pair: the highest voice-AI rate per
+   * minute the account's calls can bill at, in USD. A call bills at the
+   * premium rate whenever the agent uses a premium model, which varies per
+   * agent, so the higher rate is reported and `estimated_minutes_remaining`
+   * never overstates voice-AI minutes. Telephony is not included.
    */
   rates_per_minute_usd: number;
   /**
