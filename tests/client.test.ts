@@ -135,6 +135,48 @@ describe("requests", () => {
   });
 });
 
+describe("kyc document upload", () => {
+  const PDF = new TextEncoder().encode("%PDF-1.7\nxxxxxxxxxx");
+
+  it("sends multipart and leaves Content-Type to fetch, so the boundary is set", async () => {
+    const { fetch, calls } = fakeFetch({ success: true, next_step: "verify-aadhaar" });
+    const result = await client(fetch).reseller.uploadKycDocument(
+      "upload-pan",
+      { user_id: 7, region: "IN", carrier: "carrier-2-new" },
+      new Blob([PDF], { type: "application/pdf" }),
+      "pan.pdf",
+    );
+    const { init } = calls[0];
+    const headers = init.headers as Record<string, string>;
+    expect(headers["Content-Type"]).toBeUndefined();
+    expect(init.body).toBeInstanceOf(FormData);
+    const form = init.body as FormData;
+    expect(form.get("user_id")).toBe("7");
+    expect(form.get("region")).toBe("IN");
+    expect(form.get("carrier")).toBe("carrier-2-new");
+    const file = form.get("document") as File;
+    expect(file.name).toBe("pan.pdf");
+    expect(new Uint8Array(await file.arrayBuffer())).toEqual(PDF);
+    expect(result).toEqual({ success: true, next_step: "verify-aadhaar" });
+  });
+
+  it("accepts raw bytes and omits carrier when not given", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await client(fetch).reseller.uploadKycDocument("upload-gst", { user_id: 7, region: "IN" }, PDF, "gst.pdf");
+    const form = calls[0].init.body as FormData;
+    expect(form.has("carrier")).toBe(false);
+    expect((form.get("document") as File).name).toBe("gst.pdf");
+  });
+
+  it("still sends JSON for every other step", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await client(fetch).reseller.submitKycStep("verify-pan", { user_id: 7, region: "IN" } as never);
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({ user_id: 7, region: "IN" });
+  });
+});
+
 describe("errors", () => {
   it("throws OmniDimensionError with the parsed error message", async () => {
     const { fetch } = fakeFetch(

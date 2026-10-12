@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-12
+
+### Added
+
+- `client.reseller.uploadKycDocument(step, fields, document, filename)` sends the document for a verification step whose `method` is `upload`, such as the PAN card after PAN verification. Takes a `Blob`, `File`, `Uint8Array` or `ArrayBuffer`. Without it a carrier that needs documents could not be verified from TypeScript.
+- Any request body that is a `FormData` now goes as `multipart/form-data`, with the boundary header left to `fetch`.
+- `submitKycStep` documents `return_url` on a `redirect` step, which brings your client back to your own app after verifying.
+
 ## [0.6.0] - 2026-09-09
 
 ### Added

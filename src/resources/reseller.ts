@@ -83,6 +83,8 @@ export class Reseller {
   /**
    * Run one verification step. Follow `next_step` from each response until
    * there is none left, and branch on `method` rather than on the step's name.
+   * On a `redirect` step, pass `return_url` to bring your client back to a page
+   * in your own app. An `upload` step takes a file: use `uploadKycDocument`.
    */
   submitKycStep(step: string, body: BodyOf<"submitResellerKycStep">) {
     return this.http.request<ResultOf<"submitResellerKycStep">>(
@@ -91,4 +93,38 @@ export class Reseller {
       { body },
     );
   }
+
+  /**
+   * Upload the document for a step whose `method` is `upload`, such as the PAN
+   * card after PAN verification. `next_step` names the upload step when one is
+   * due, and `kycRequirements` lists the accepted formats and size limit.
+   *
+   * @param document The file, as a Blob or File, or its raw bytes.
+   * @param filename Sent with the file, including its extension.
+   */
+  uploadKycDocument(
+    step: string,
+    fields: KycDocumentFields,
+    document: Blob | Uint8Array | ArrayBuffer,
+    filename: string,
+  ) {
+    const form = new FormData();
+    form.append("user_id", String(fields.user_id));
+    form.append("region", fields.region);
+    if (fields.carrier !== undefined) form.append("carrier", fields.carrier);
+    const file = document instanceof Blob ? document : new Blob([document as BlobPart]);
+    form.append("document", file, filename);
+    return this.http.request<ResultOf<"submitResellerKycStep">>(
+      "POST",
+      `/reseller/kyc/steps/${encodeURIComponent(step)}`,
+      { body: form },
+    );
+  }
+}
+
+/** The fields sent beside a KYC document upload. */
+export interface KycDocumentFields {
+  user_id: number;
+  region: string;
+  carrier?: string;
 }

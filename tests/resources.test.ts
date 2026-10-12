@@ -105,6 +105,13 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
     "POST",
     "/reseller/kyc/steps/aadhaar-otp",
   ],
+  [
+    "reseller.uploadKycDocument",
+    (c) =>
+      c.reseller.uploadKycDocument("upload-pan", { user_id: ID, region: "IN" }, new Blob(["x"]), "pan.pdf"),
+    "POST",
+    "/reseller/kyc/steps/upload-pan",
+  ],
   ["integrations.list", (c) => c.integrations.list(), "GET", "/integrations"],
   ["integrations.listForAgent", (c) => c.integrations.listForAgent(ID), "GET", "/agents/7/integrations"],
   ["integrations.createCustomApi", (c) => c.integrations.createCustomApi(B), "POST", "/integrations/custom-api"],
@@ -115,7 +122,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(70);
+    expect(cases).toHaveLength(71);
   });
 
   for (const [name, call, method, path] of cases) {
