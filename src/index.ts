@@ -28,6 +28,7 @@ export type {
   IntegrationListResponse,
   IntegrationMutationResponse,
 } from "./resources/integrations.js";
+export type { KycDocumentFields } from "./resources/reseller.js";
 
 /**
  * The OmniDimension API client.

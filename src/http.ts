@@ -85,7 +85,10 @@ export class HttpClient {
     };
 
     const hasBody = options.body !== undefined && method !== "GET";
-    if (hasBody) headers["Content-Type"] = "application/json";
+    // A FormData body goes as multipart. fetch writes its Content-Type with the
+    // boundary, so setting one here would break the body.
+    const isForm = options.body instanceof FormData;
+    if (hasBody && !isForm) headers["Content-Type"] = "application/json";
 
     const controller = new AbortController();
     const onAbort = () => controller.abort();
@@ -100,7 +103,7 @@ export class HttpClient {
       response = await this.fetchImpl(url, {
         method,
         headers,
-        body: hasBody ? JSON.stringify(options.body) : undefined,
+        body: !hasBody ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
         signal: controller.signal,
       });
     } catch (err) {
