@@ -1454,7 +1454,7 @@ export interface paths {
          *     Carriers in the same region do not share a step list. One verifies
          *     contact details with an OTP pair and ends in a preview-then-accept;
          *     another has no OTP step at all and verifies Aadhaar by sending the
-         *     client to DigiLocker in a browser. Read this endpoint per carrier,
+         *     client to a verification page in a browser. Read this endpoint per carrier,
          *     branch on each step's `method`, and one integration drives both.
          */
         get: operations["getResellerKycRequirements"];
@@ -1488,6 +1488,45 @@ export interface paths {
          *     on `method`.
          */
         post: operations["submitResellerKycStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get account balance
+         * @description Read your organization's wallet: the remaining balance, the minutes
+         *     it buys at your rates, your plan, your concurrency headroom, and
+         *     whether auto-recharge will refill it.
+         *
+         *     Use it before a campaign, or on a schedule, so you find out you are
+         *     low on credit from this endpoint rather than from a call failing
+         *     with `402 payment_required`.
+         *
+         *     The response always describes the organization the API key belongs
+         *     to. There is no parameter for reading another account; resellers
+         *     read a client's figures through the Reseller endpoints.
+         *
+         *     A balance at or below zero does not always mean calls will stop. An
+         *     organization on usage-based billing (`plan.is_usage_based`) keeps
+         *     placing calls and is metered to its payment method instead, so check
+         *     that flag before treating a zero balance as a stop condition.
+         *
+         *     The API key's user needs Billing access in your organization. If
+         *     you get a `403`, an administrator can grant it when Billing is
+         *     enabled for your organization; when it is not, contact support.
+         */
+        get: operations["getAccountBalance"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2234,6 +2273,75 @@ export interface components {
              */
             prompt: string;
         };
+        /** @description Side effects that fire once the call ends. Configure email, webhook, or both. */
+        PostCallActions: {
+            email?: {
+                enabled?: boolean;
+                /**
+                 * @description Email addresses that should receive the notification.
+                 * @example [
+                 *       "support@example.com"
+                 *     ]
+                 */
+                recipients?: string[];
+                /** @description Which sections to include in the email body. */
+                include?: ("summary" | "extracted_variables" | "fullConversation" | "sentiment")[];
+                /** @description Variables the model should pull out of the conversation for the email. */
+                extracted_variables?: components["schemas"]["ExtractedVariable"][];
+                /**
+                 * @description Call outcomes that should fire this action. Omit to
+                 *     use the default (`completed`, `voicemail_detected`).
+                 *     Pass an explicit list to also include failed calls,
+                 *     no-answers, busy signals, etc.
+                 * @example [
+                 *       "completed",
+                 *       "voicemail_detected"
+                 *     ]
+                 */
+                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
+            };
+            webhook?: {
+                enabled?: boolean;
+                /**
+                 * Format: uri
+                 * @description Endpoint that receives a POST with the call payload.
+                 * @example https://your-webhook-endpoint.com/omnidim-callback
+                 */
+                url?: string;
+                /** @description Which sections to include in the webhook body. */
+                include?: ("summary" | "extracted_variables" | "fullConversation" | "sentiment")[];
+                /** @description Variables the model should pull out of the conversation for the webhook. */
+                extracted_variables?: components["schemas"]["ExtractedVariable"][];
+                /**
+                 * @description Call outcomes that should fire this webhook. Omit to
+                 *     use the default (`completed`, `voicemail_detected`).
+                 * @example [
+                 *       "completed",
+                 *       "failed"
+                 *     ]
+                 */
+                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
+            };
+        };
+        /** @description A post-call action sent with a call that was dropped, and why. */
+        PostCallActionIgnored: {
+            /**
+             * @description The channel the item belonged to (`email`, `webhook`, or the unsupported name you sent). `null` when the whole key was ignored.
+             * @example webhook
+             */
+            channel?: string | null;
+            /**
+             * @description Why the item was dropped. `invalid_directive` means
+             *     `__post_call_actions` was not an object with `email` and/or
+             *     `webhook` (a string, list, number, null or empty object); its
+             *     `channel` is `null` and the agent's own post-call actions run.
+             * @example invalid_url
+             * @enum {string}
+             */
+            code?: "invalid_url" | "disabled" | "no_recipients" | "unsupported_channel" | "duplicate_variable" | "unsupported_route" | "invalid_directive";
+            /** @example Webhook URL must point to an address reachable from the internet. Local and private network addresses cannot receive your call data. If you are testing locally, use a tunnel URL instead. */
+            message?: string;
+        };
         /** @description Agent configuration. */
         AgentConfigInput: {
             /**
@@ -2405,56 +2513,7 @@ export interface components {
                  */
                 provider?: "DuckDuckGo";
             };
-            /** @description Side effects that fire once the call ends. Configure email, webhook, or both. */
-            post_call_actions?: {
-                email?: {
-                    enabled?: boolean;
-                    /**
-                     * @description Email addresses that should receive the notification.
-                     * @example [
-                     *       "support@example.com"
-                     *     ]
-                     */
-                    recipients?: string[];
-                    /** @description Which sections to include in the email body. */
-                    include?: ("summary" | "extracted_variables" | "fullConversation" | "sentiment")[];
-                    /** @description Variables the model should pull out of the conversation for the email. */
-                    extracted_variables?: components["schemas"]["ExtractedVariable"][];
-                    /**
-                     * @description Call outcomes that should fire this action. Omit to
-                     *     use the default (`completed`, `voicemail_detected`).
-                     *     Pass an explicit list to also include failed calls,
-                     *     no-answers, busy signals, etc.
-                     * @example [
-                     *       "completed",
-                     *       "voicemail_detected"
-                     *     ]
-                     */
-                    trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
-                };
-                webhook?: {
-                    enabled?: boolean;
-                    /**
-                     * Format: uri
-                     * @description Endpoint that receives a POST with the call payload.
-                     * @example https://your-webhook-endpoint.com/omnidim-callback
-                     */
-                    url?: string;
-                    /** @description Which sections to include in the webhook body. */
-                    include?: ("summary" | "extracted_variables" | "fullConversation" | "sentiment")[];
-                    /** @description Variables the model should pull out of the conversation for the webhook. */
-                    extracted_variables?: components["schemas"]["ExtractedVariable"][];
-                    /**
-                     * @description Call outcomes that should fire this webhook. Omit to
-                     *     use the default (`completed`, `voicemail_detected`).
-                     * @example [
-                     *       "completed",
-                     *       "failed"
-                     *     ]
-                     */
-                    trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
-                };
-            };
+            post_call_actions?: components["schemas"]["PostCallActions"];
             /** @description Conditional call transfer to a human agent or another number. */
             transfer?: {
                 enabled?: boolean;
@@ -2548,6 +2607,132 @@ export interface components {
              */
             languages?: string[];
         };
+        /**
+         * @description Your organization's wallet: what is left, what it buys, and the
+         *     limits around it. Every money figure marked USD is USD, because
+         *     that is the currency the balance and all platform rates are held
+         *     in.
+         */
+        AccountBalance: {
+            /** @description Always `true` on a `200`. */
+            success?: boolean;
+            organization?: {
+                /** @example 14 */
+                id?: number;
+                /** @example Demo Organization */
+                name?: string;
+            };
+            balance?: {
+                /**
+                 * @description Remaining balance in USD. Can be negative when an account has
+                 *     been drawn past zero.
+                 * @example 42.5137
+                 */
+                amount?: number;
+                /**
+                 * @description Always `USD`. The balance and every platform rate are held in USD.
+                 * @example USD
+                 */
+                currency?: string;
+            };
+            /**
+             * @description How many minutes of conversation the balance buys **at
+             *     `rates_per_minute_usd`**. An estimate at today's rate; rates can
+             *     change.
+             *
+             *     It counts the voice-AI rate only. The rate used is the highest
+             *     your calls can bill at, so for web calls the real figure is this
+             *     or better. Phone calls also pay telephony out of the same balance,
+             *     so for phone calls the real figure is lower.
+             *
+             *     `null` means no rate is set for your organization, so no honest
+             *     estimate exists. Treat it as unknown rather than as zero or
+             *     unlimited. `0` means the balance buys nothing, which is also the
+             *     answer when the balance is negative.
+             * @example 212.6
+             */
+            estimated_minutes_remaining?: number | null;
+            /**
+             * @description A single rate, not a basic/premium pair: the highest voice-AI rate
+             *     per minute your calls can bill at, in USD. A call bills at your
+             *     premium rate whenever the agent uses a premium model for its
+             *     language, speech-to-text or text-to-speech, which varies per
+             *     agent. Reporting the higher of the two means
+             *     `estimated_minutes_remaining` never overstates your voice-AI
+             *     minutes. Telephony is not included.
+             * @example 0.2
+             */
+            rates_per_minute_usd?: number;
+            /**
+             * @description Present only when your account has a negotiated telephony rate.
+             *     When it is absent, telephony is billed at the live carrier rate for
+             *     the destination, which varies by country and is not one number.
+             * @example 0.0053
+             */
+            outbound_telephony_per_minute_usd?: number;
+            plan?: {
+                /** @example 3 */
+                id?: number | null;
+                /** @example Growth */
+                name?: string | null;
+                /**
+                 * @example Monthly
+                 * @enum {string|null}
+                 */
+                billing_interval?: "Monthly" | "Yearly" | "One Time" | null;
+                /**
+                 * @description When true, calls are metered to your payment method rather than drawn from the wallet.
+                 * @example false
+                 */
+                is_usage_based?: boolean;
+                /**
+                 * @description Gateway subscription state, or `null` when the organization has no subscription.
+                 * @example active
+                 */
+                subscription_status?: string | null;
+                /**
+                 * Format: date-time
+                 * @description Start of the next billing period, ISO 8601 UTC. Present only
+                 *     while the subscription is `active`; `null` on a canceled or
+                 *     past-due subscription, where the period end is not a renewal.
+                 * @example 2026-10-15T09:31:00Z
+                 */
+                renews_at?: string | null;
+            };
+            /**
+             * @description Simultaneous calls. `available` is your real headroom: where a
+             *     further ceiling applies to your account, it is already accounted
+             *     for, so you never need to combine this with anything else.
+             */
+            concurrency?: {
+                /** @example 10 */
+                limit?: number;
+                /** @example 2 */
+                in_use?: number;
+                /**
+                 * @description Never negative.
+                 * @example 8
+                 */
+                available?: number;
+            };
+            /** @description Whether a low balance will top itself up. Never includes the saved instrument. */
+            auto_recharge?: {
+                /** @example true */
+                enabled?: boolean;
+                /**
+                 * @description A recharge triggers when the balance drops below this, in USD.
+                 * @example 5
+                 */
+                threshold_usd?: number;
+                /**
+                 * @description Headroom above the threshold, in USD. A recharge restores the
+                 *     balance to `threshold_usd + amount_usd`, so each charge is that
+                 *     target minus the balance at the time, not a fixed amount.
+                 * @example 20
+                 */
+                amount_usd?: number;
+            };
+        };
     };
     responses: never;
     parameters: never;
@@ -2582,11 +2767,31 @@ export interface operations {
                     /**
                      * @description Per-session variables that personalize the conversation.
                      *     Set server-side, so visitors cannot tamper with them.
+                     *     Two reserved keys are read as instructions for this session
+                     *     and never reach the agent: `__languages` and
+                     *     `__post_call_actions`.
                      * @example {
                      *       "name": "Demo User"
                      *     }
                      */
                     custom_variables?: {
+                        /**
+                         * @description Languages this session runs in, replacing the agent's
+                         *     configured list. The first entry is the language the
+                         *     visitor is greeted in. Send an array, or a pipe-separated
+                         *     string such as `Hindi|English`.
+                         * @example Hindi|Gujarati|English
+                         */
+                        __languages?: string[] | string;
+                        /**
+                         * @description Post-call actions for this session only, in the same shape
+                         *     as `post_call_actions` on agent create. Email and webhook
+                         *     only. They replace the agent's own post-call actions for
+                         *     this session. Items that cannot be used are skipped and
+                         *     listed in `post_call_actions_ignored`.
+                         */
+                        __post_call_actions?: components["schemas"]["PostCallActions"];
+                    } & {
                         [key: string]: unknown;
                     };
                     /**
@@ -2634,6 +2839,16 @@ export interface operations {
                          * @example wss://live.omnidim.io/chat/start_voice_chat?request_token=sess_51gF2qw8LxNz0vY4mT7Ka3RjD9pBcE6HuWiQnZsX0oM
                          */
                         ws_url?: string;
+                        /**
+                         * @description Channels from `__post_call_actions` that will run for this session. Present only when `__post_call_actions` was sent.
+                         * @example [
+                         *       "email",
+                         *       "webhook"
+                         *     ]
+                         */
+                        post_call_actions_applied?: ("email" | "webhook")[];
+                        /** @description Items from `__post_call_actions` that were skipped. Present only when `__post_call_actions` was sent. When nothing was applied, the agent's own post-call actions run. */
+                        post_call_actions_ignored?: components["schemas"]["PostCallActionIgnored"][];
                     };
                 };
             };
@@ -2851,7 +3066,18 @@ export interface operations {
     createAgent: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /**
+                 * @description Your own unique key for this agent, for example a fresh UUID.
+                 *     Send the same key when you retry. If the first request already
+                 *     created the agent, you get that agent back instead of a second
+                 *     one, so a request that timed out is safe to repeat. The same key
+                 *     with a different request body is refused. Keys are kept for 24
+                 *     hours.
+                 * @example 9f2c1d40-7a53-4b8e-9b7a-1c2d3e4f5a6b
+                 */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2861,7 +3087,11 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created agent. */
+            /**
+             * @description Created agent. When the same `Idempotency-Key` is sent again
+             *     with the same request body, this is the agent the first request
+             *     created.
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2882,6 +3112,24 @@ export interface operations {
                         /** @description Build state of the agent. Always `Completed` for newly created agents. */
                         status?: string;
                     };
+                };
+            };
+            /**
+             * @description The `Idempotency-Key` was already used with a different request
+             *     body. Use a new key for a new agent.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This Idempotency-Key was already used with a different request. Use a new key for a new request."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
                 };
             };
         };
@@ -3913,6 +4161,27 @@ export interface operations {
                     metadata?: {
                         [key: string]: unknown;
                     };
+                    /**
+                     * @description Languages this call runs in, replacing the agent's configured
+                     *     list for this call only. The first entry is the language the
+                     *     call opens in. Send an array, or a pipe-separated string such
+                     *     as `Hindi|English`. Names the platform does not recognize are
+                     *     skipped and listed in `languages_ignored`.
+                     * @example [
+                     *       "Tamil",
+                     *       "English"
+                     *     ]
+                     */
+                    __languages?: string[] | string;
+                    /**
+                     * @description Post-call actions for this call only, in the same shape as
+                     *     `post_call_actions` on agent create. Email and webhook only.
+                     *     They replace the agent's own post-call actions for this call;
+                     *     the agent is not changed. Items that cannot be used are
+                     *     skipped and listed in `post_call_actions_ignored`, and the
+                     *     call still goes out. Can also be sent inside `call_context`.
+                     */
+                    __post_call_actions?: components["schemas"]["PostCallActions"];
                 };
             };
         };
@@ -3945,6 +4214,29 @@ export interface operations {
                         requestId?: number;
                         /** @description Number of keys the platform extracted from `call_context`. */
                         custom_variables_count?: number;
+                        /**
+                         * @description Languages this call runs in. Empty when no `__languages` was sent or none were recognized, in which case the agent's own languages are used.
+                         * @example [
+                         *       "Tamil",
+                         *       "English"
+                         *     ]
+                         */
+                        languages_applied?: string[];
+                        /**
+                         * @description Names from `__languages` that were not recognized and were skipped.
+                         * @example []
+                         */
+                        languages_ignored?: string[];
+                        /**
+                         * @description Channels from `__post_call_actions` that will run for this call. Present only when `__post_call_actions` was sent.
+                         * @example [
+                         *       "email",
+                         *       "webhook"
+                         *     ]
+                         */
+                        post_call_actions_applied?: ("email" | "webhook")[];
+                        /** @description Items from `__post_call_actions` that were skipped. Present only when `__post_call_actions` was sent. When nothing was applied, the agent's own post-call actions run. */
+                        post_call_actions_ignored?: components["schemas"]["PostCallActionIgnored"][];
                     };
                 };
             };
@@ -4780,6 +5072,13 @@ export interface operations {
                         is_scheduled?: boolean;
                         is_dynamic?: boolean;
                         current_status?: string;
+                        /**
+                         * @description Present only when a contact carried `__post_call_actions`.
+                         *     Bulk campaigns do not honor it: the key is removed from
+                         *     those contacts and one item with code `unsupported_route`
+                         *     is returned.
+                         */
+                        post_call_actions_ignored?: components["schemas"]["PostCallActionIgnored"][];
                     };
                 };
             };
@@ -4862,6 +5161,13 @@ export interface operations {
                         line_id?: number | null;
                         campaign_status?: string;
                         to_number?: string;
+                        /**
+                         * @description Present only when a contact carried `__post_call_actions`.
+                         *     Bulk campaigns do not honor it: the key is removed from
+                         *     those contacts and one item with code `unsupported_route`
+                         *     is returned.
+                         */
+                        post_call_actions_ignored?: components["schemas"]["PostCallActionIgnored"][];
                     };
                 };
             };
@@ -5451,6 +5757,13 @@ export interface operations {
                         message?: string;
                         campaign_id?: number;
                         campaign_status?: string;
+                        /**
+                         * @description Present only when a contact carried `__post_call_actions`.
+                         *     Bulk campaigns do not honor it: the key is removed from
+                         *     those contacts and one item with code `unsupported_route`
+                         *     is returned.
+                         */
+                        post_call_actions_ignored?: components["schemas"]["PostCallActionIgnored"][];
                     };
                 };
             };
@@ -9850,18 +10163,71 @@ export interface operations {
                                 [key: string]: string[];
                             };
                             /**
+                             * @description Fields required only for some answers, as
+                             *     `{field: {other_field: value}}`. For example
+                             *     `{"business_name": {"account_type": "business"}}`.
+                             *     `{}` when the step has none.
+                             */
+                            required_if?: {
+                                [key: string]: {
+                                    [key: string]: string;
+                                };
+                            };
+                            /**
+                             * @description Fields this step accepts but never requires, such
+                             *     as `return_url` on a `redirect` step.
+                             */
+                            optional?: string[];
+                            /**
+                             * @description The shape a field must match, as a regular
+                             *     expression checked against the upper-cased value,
+                             *     such as the PAN or GSTIN format. A value that does
+                             *     not match is refused with `400 invalid_request`
+                             *     before anything is verified. `{}` when the step
+                             *     has none.
+                             */
+                            patterns?: {
+                                [key: string]: string;
+                            };
+                            /**
                              * @description How to perform this step.
                              *
                              *     `submit` posts the `required` fields. `otp` posts
                              *     a code the customer received. `redirect` returns a
                              *     `redirect_url` for the customer to open in their
                              *     own browser, after which you poll `poll_step`.
+                             *     `upload` sends a document file as
+                             *     `multipart/form-data`, described in `document`.
                              *
                              *     Branch on this, not on the region or the step
                              *     name, and one integration drives every carrier.
                              * @enum {string}
                              */
-                            method?: "submit" | "otp" | "redirect";
+                            method?: "submit" | "otp" | "redirect" | "upload";
+                            /**
+                             * @description Only on an `upload` step. Send the file in the
+                             *     form field named by `field`, with `user_id`,
+                             *     `region` and `carrier` as form fields beside it.
+                             *     The step decides which document it is.
+                             */
+                            document?: {
+                                /** @example document */
+                                field?: string;
+                                /**
+                                 * @description Accepted file types. The file's contents must
+                                 *     match its extension, so a renamed file is
+                                 *     refused.
+                                 * @example [
+                                 *       "jpg",
+                                 *       "jpeg",
+                                 *       "png",
+                                 *       "pdf"
+                                 *     ]
+                                 */
+                                formats?: string[];
+                                /** @example 10485760 */
+                                max_bytes?: number;
+                            };
                         }[];
                     };
                 };
@@ -10156,6 +10522,32 @@ export interface operations {
                      *     `choices`.
                      */
                     job_position?: string;
+                    /**
+                     * Format: uri
+                     * @description Optional on a `redirect` step. The page in your own app
+                     *     where your client's browser comes back after verifying.
+                     *     Must be `https` with a host, no `#fragment` and no
+                     *     credentials, up to 2,000 characters. Anything else is
+                     *     refused with `400 invalid_request`. Result parameters such
+                     *     as `status` are added to it. Leave it out and your client
+                     *     returns to their own dashboard.
+                     * @example https://app.example.com/kyc/done
+                     */
+                    return_url?: string;
+                };
+                "multipart/form-data": {
+                    /** @description ID of the client completing verification. */
+                    user_id: number;
+                    /** @enum {string} */
+                    region: "IN" | "US";
+                    /** @example carrier-2-new */
+                    carrier: string;
+                    /**
+                     * Format: binary
+                     * @description The document file: JPG, PNG or PDF, up to 10 MB. Its
+                     *     contents must match its extension.
+                     */
+                    document: string;
                 };
             };
         };
@@ -10194,7 +10586,7 @@ export interface operations {
                          *     on every step response.
                          * @enum {string}
                          */
-                        method?: "submit" | "otp" | "redirect";
+                        method?: "submit" | "otp" | "redirect" | "upload";
                         /**
                          * @description Only on a `redirect` step. Send your customer to this
                          *     link in their own browser, then poll `poll_step`.
@@ -10302,7 +10694,9 @@ export interface operations {
             /**
              * @description The step was called before its prerequisite step was completed
              *     (`step_order`), or the region has more than one carrier and the
-             *     request named none (`carrier_required`).
+             *     request named none (`carrier_required`). A `step_order` refusal
+             *     can carry `next_step`, the step that unblocks it. Run that step,
+             *     then retry. This refusal does not count toward a step's cooldown.
              */
             409: {
                 headers: {
@@ -10359,6 +10753,111 @@ export interface operations {
                         /** @description Reference to quote to support. */
                         ref?: string;
                     };
+                };
+            };
+            /**
+             * @description The verification service is unavailable. Nothing is wrong with the
+             *     client's details: retry the same step after a few minutes.
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "service_unavailable",
+                     *       "error_description": "The verification service is unavailable right now. Please try again in a few minutes."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getAccountBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account's wallet and the limits around it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "organization": {
+                     *         "id": 14,
+                     *         "name": "Demo Organization"
+                     *       },
+                     *       "balance": {
+                     *         "amount": 42.5137,
+                     *         "currency": "USD"
+                     *       },
+                     *       "estimated_minutes_remaining": 212.6,
+                     *       "rates_per_minute_usd": 0.2,
+                     *       "plan": {
+                     *         "id": 3,
+                     *         "name": "Growth",
+                     *         "billing_interval": "Monthly",
+                     *         "is_usage_based": false,
+                     *         "subscription_status": "active",
+                     *         "renews_at": "2026-10-15T09:31:00Z"
+                     *       },
+                     *       "concurrency": {
+                     *         "limit": 10,
+                     *         "in_use": 2,
+                     *         "available": 8
+                     *       },
+                     *       "auto_recharge": {
+                     *         "enabled": true,
+                     *         "threshold_usd": 5,
+                     *         "amount_usd": 20
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AccountBalance"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The API key's user does not have Billing access. If Billing is
+             *     enabled for your organization, an administrator can grant it; if it
+             *     is not, contact support.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have access to Billing. If Billing is enabled for your organization, an administrator can grant it."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
                 };
             };
         };
