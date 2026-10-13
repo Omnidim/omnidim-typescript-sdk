@@ -23,6 +23,44 @@ export class Reseller {
     return this.http.request<ResultOf<"setUserAccessControl">>("POST", "/reseller/users/access-control", { body });
   }
 
+  /**
+   * Block or restore a client, reversibly. Nothing is deleted.
+   *
+   * Send `blocked` and exactly one of `user_id` or `organization_id`.
+   * `detach_numbers` only applies to an organization block.
+   */
+  setClientAccess(body: BodyOf<"setClientAccess">) {
+    return this.http.request<ResultOf<"setClientAccess">>("POST", "/reseller/users/access", { body });
+  }
+
+  /** Read your brand and custom email server settings. */
+  getIdentity() {
+    return this.http.request<ResultOf<"getResellerIdentity">>("GET", "/reseller/identity");
+  }
+
+  /** Set the brand your client organizations see. The first save creates it. */
+  saveIdentity(body: BodyOf<"saveResellerIdentity">) {
+    return this.http.request<ResultOf<"saveResellerIdentity">>("POST", "/reseller/identity/save", { body });
+  }
+
+  /**
+   * Send your clients' emails through your own email server. The login is
+   * checked before it is saved. Save your brand first.
+   */
+  saveIdentitySmtp(body: BodyOf<"saveResellerIdentitySmtp">) {
+    return this.http.request<ResultOf<"saveResellerIdentitySmtp">>("POST", "/reseller/identity/smtp/save", { body });
+  }
+
+  /** Check a login to an email server. Nothing is saved. */
+  testIdentitySmtp(body: BodyOf<"testResellerIdentitySmtp">) {
+    return this.http.request<ResultOf<"testResellerIdentitySmtp">>("POST", "/reseller/identity/smtp/test", { body });
+  }
+
+  /** Send your clients' emails back to the default sender. The saved server is kept. */
+  disableIdentitySmtp() {
+    return this.http.request<ResultOf<"disableResellerIdentitySmtp">>("POST", "/reseller/identity/smtp/disable");
+  }
+
   /** Set a user's expiry. */
   setUserExpiry(body: BodyOf<"setUserExpiry">) {
     return this.http.request<ResultOf<"setUserExpiry">>("POST", "/reseller/users/expiry", { body });
