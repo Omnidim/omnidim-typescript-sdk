@@ -95,7 +95,7 @@ export interface paths {
         };
         /**
          * Get agent
-         * @description Get details of a specific agent by ID. The response also includes a `version_history_enabled` boolean showing whether [version history](/docs/api-reference/agents/listAgentVersions) is turned on for the agent's organization.
+         * @description Get details of a specific agent by ID. The response also includes a `can_publish` boolean showing whether [version history](/docs/api-reference/agents/listAgentVersions) is turned on for the agent's organization.
          */
         get: operations["getAgent"];
         /**
@@ -377,7 +377,7 @@ export interface paths {
         post?: never;
         /**
          * Cancel bulk call
-         * @description Cancel a bulk-call campaign.
+         * @description Cancel a scheduled bulk-call campaign. A campaign that is already running, or is still a draft, is refused.
          */
         delete: operations["cancelBulkCall"];
         options?: never;
@@ -519,9 +519,10 @@ export interface paths {
          *     number usually means two real reasons to call.
          *
          *     Rows that fail validation are reported in `rejected` and the rest are
-         *     still added, so a single bad number does not lose the batch. If the
-         *     campaign has `call_conditions`, rows that do not match are added with
-         *     status `Skipped`.
+         *     still added, so a single bad number does not lose the batch. A row that
+         *     is missing a column the campaign's `call_conditions` need is reported in
+         *     `rejected`; the condition values themselves are not evaluated on this
+         *     route.
          */
         post: operations["addBulkCallContacts"];
         delete?: never;
@@ -988,7 +989,8 @@ export interface paths {
         /**
          * List voices
          * @description Retrieve voices with filtering and pagination support. ElevenLabs
-         *     supports advanced filtering by name, language, accent, and gender.
+         *     and Cartesia support advanced filtering by name, language, accent,
+         *     and gender.
          *     Other providers support basic pagination only.
          */
         get: operations["listVoices"];
@@ -1533,6 +1535,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List cloned voices
+         * @description Your cloned voices, oldest first, one cursor page at a time. Call it with
+         *     no `cursor`, then pass back the `next_cursor` you were handed until it is
+         *     `null`.
+         *
+         *     Once a voice is `ready`, its `voice_id` is the provider voice id to put
+         *     in an agent's `voice.voice_id` with `voice.provider: cartesia`.
+         */
+        get: operations["listClonedVoices"];
+        put?: never;
+        /**
+         * Create a cloned voice
+         * @description Clone a voice from an audio sample. The sample must be Base64 encoded and
+         *     1 KB to 25 MB. MP3, WAV and WebM are accepted; a non-audio body is
+         *     refused.
+         *
+         *     Creation is asynchronous. This call returns `202` at once with
+         *     `status: processing`. Poll `GET /voices/{voice_id}` until `status` is
+         *     `ready` or `failed`, then use the `voice_id` in an agent's `voice` config with
+         *     `voice.provider: cartesia`.
+         *
+         *     You must send `consent: true`: you confirm you have the right to clone
+         *     this voice. The attestation is recorded against the clone.
+         *
+         *     Limits apply per user: 5 clones an hour, 20 a day, and 200 stored
+         *     (processing plus ready). A request over a limit is refused with `429`.
+         */
+        post: operations["createClonedVoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/voices/{voice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a cloned voice
+         * @description One cloned voice, including its creation `status`.
+         */
+        get: operations["getClonedVoice"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a cloned voice
+         * @description Delete a cloned voice and remove it from the provider. A voice that is
+         *     still `processing` cannot be deleted.
+         */
+        delete: operations["deleteClonedVoice"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a cloned voice
+         * @description Change the name, description or gender of a cloned voice.
+         */
+        patch: operations["updateClonedVoice"];
+        trace?: never;
+    };
+    "/voices/{voice_id}/sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Play a cloned voice sample
+         * @description Stream the generated mp3 sample of a cloned voice. Only the owner can
+         *     fetch it. `404` (`sample_not_ready`) when no sample exists yet. The
+         *     request needs your API key in the `Authorization` header.
+         */
+        get: operations["getClonedVoiceSample"];
+        put?: never;
+        /**
+         * Regenerate a cloned voice sample
+         * @description Regenerate the sample audio for a `ready` voice.
+         */
+        post: operations["regenerateClonedVoiceSample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1554,6 +1653,55 @@ export interface components {
             error?: string;
             /** @description Human-readable explanation. */
             error_description?: string;
+            /**
+             * @description Stable, specific reason. Present on the newer endpoints (Voice
+             *     cloning, WhatsApp); older endpoints return only `error`.
+             */
+            code?: string;
+            /**
+             * @description Correlates this response with the server log. Present alongside
+             *     `code`. Also sent as the `X-Request-Id` header.
+             */
+            request_id?: string;
+        };
+        /**
+         * @description A voice cloned from an audio sample. Created asynchronously: `status` is
+         *     `processing` until the provider finishes, then `ready` or `failed`.
+         *     `voice_id` is the provider id an agent uses, and is `null` until ready.
+         */
+        ClonedVoice: {
+            /** @example 412 */
+            id?: number;
+            /** @example Front desk */
+            name?: string;
+            description?: string | null;
+            /** @example en */
+            language?: string;
+            /** @enum {string} */
+            gender?: "male" | "female";
+            /** @enum {string} */
+            status?: "processing" | "ready" | "failed";
+            /**
+             * @description The provider voice id. Put it in an agent's `voice.voice_id` with
+             *     `voice.provider: cartesia`. `null` until `status` is `ready`.
+             * @example 8a1c2f5e-3b7d-4c9a-9f21-2e6b0d4a7c88
+             */
+            voice_id?: string | null;
+            /**
+             * @description An mp3 preview of the cloned voice, when one exists. Fetching it
+             *     needs your API key in the `Authorization: Bearer` header, so a
+             *     browser `<audio>` tag cannot play it directly.
+             */
+            sample_url?: string | null;
+            /**
+             * @description Present only when `status` is `failed`. Deliberately generic: no
+             *     provider name and no internal detail.
+             */
+            error?: string | null;
+            /** @description ISO 8601 time in UTC, with no offset. */
+            created_at?: string | null;
+            /** @description ISO 8601 time in UTC, with no offset. */
+            ready_at?: string | null;
         };
         /**
          * @description One carrier in a region: a network you can buy numbers from, with its
@@ -1732,9 +1880,60 @@ export interface components {
             /** @description Connected integration records (HubSpot, Salesforce, Slack, etc.). */
             integrations?: Record<string, never>[];
             flow_data?: Record<string, never> | boolean;
+            bot_action_id?: number | boolean;
+            /** @description Whether publishing and version history are enabled for this agent's organization. */
+            can_publish?: boolean;
+        };
+        /** @description An agent as returned in the agent list. */
+        AgentSummary: {
+            id?: number;
+            name?: string;
+            bot_type?: string;
+            /** @enum {string} */
+            bot_call_type?: "Incoming" | "Outgoing";
+            user_id?: number;
+            user_name?: string;
             bot_action_name?: string | boolean;
-            /** @description Whether version history is turned on for this agent's organization. */
-            version_history_enabled?: boolean;
+            /** @description Display names of the languages the agent supports. */
+            language?: string[];
+            /** @description Display name of the agent's voice. */
+            voice?: string;
+            voice_provider?: string;
+            voice_external_id?: string;
+            voice_name?: string;
+            english_voice_accent?: string;
+            eleven_lab_voice_public_owner_id?: string | null;
+            llm_service?: string;
+            is_filler_enable?: boolean;
+            filler_after_sec?: number;
+            fillers?: string[];
+            llm_straming_enabled?: boolean;
+            allow_to_delete?: boolean;
+            status_of_building_flow?: string;
+            dynamic_variables?: Record<string, never>[];
+            flow_data?: Record<string, never> | boolean;
+            agent_creation_error?: string;
+            attach_file_ids?: number[];
+            attach_file_access_description?: string;
+            integration_ids?: number[];
+            integrations?: Record<string, never>[];
+            enable_web_search?: boolean;
+            web_search_engine?: string;
+            post_call_config_ids?: Record<string, never>[];
+            is_end_call_enabled?: boolean;
+            end_call_condition?: string;
+            end_call_message?: string;
+            end_call_message_type?: string;
+            end_call_message_prompt?: string;
+            voicemail_enabled?: boolean;
+            screening_detection_enabled?: boolean;
+            background_noice_name?: string | boolean;
+            background_audio_volume?: number;
+            background_noise_enabled?: boolean;
+            initial_ringing_sound_enabled?: boolean;
+            speech_speed?: number;
+            organization_branch_ids?: Record<string, never>[];
+            closed_organization_branch_ids?: Record<string, never>[];
         };
         /** @description A saved snapshot of an agent's configuration. */
         AgentVersion: {
@@ -1744,10 +1943,10 @@ export interface components {
             name?: string;
             note?: string;
             /**
-             * @description `manual`: a person saved it. `auto`: auto-saved after editing went quiet. `system`: a backup taken automatically before a restore.
+             * @description `manual`: a person saved it, or the agent was published. `system`: a backup taken automatically before a restore.
              * @enum {string}
              */
-            kind?: "manual" | "auto" | "system";
+            kind?: "manual" | "system";
             created_by?: {
                 id?: number;
                 name?: string;
@@ -1831,7 +2030,6 @@ export interface components {
             prompt_tokens?: number;
             completion_tokens?: number;
             total_tokens?: number;
-            aggregated_estimated_cost?: number;
             model_name?: string;
             asr_service?: string;
             tts_service?: string;
@@ -1987,7 +2185,7 @@ export interface components {
             failed_reason?: string | boolean;
             /** @description Whether failed calls are automatically retried. */
             auto_retry?: boolean;
-            /** @description When retries fire (e.g. `immediately`, `after_delay`). */
+            /** @description When retries fire: `immediately`, `next_day`, or `scheduled_time`. */
             auto_retry_schedule?: string;
             /** @description Days to wait before retrying when `auto_retry_schedule` uses a delay. */
             retry_schedule_days?: number;
@@ -2028,13 +2226,13 @@ export interface components {
                 /** @description Allowed values when `variable_type` is `enum`; `false` otherwise. */
                 enum_values?: string[] | boolean;
             }[];
-            /** @description How outbound numbers rotate across the pool (e.g. `none`, `round_robin`, `health_aware`). */
+            /** @description How outbound numbers rotate across the pool: `none`, `fixed_count`, `cpr_threshold`, or `both`. */
             rotation_strategy?: string;
             /** @description Calls placed on a single number before rotating. */
             calls_per_number?: number;
             /** @description Health-score threshold below which a number is skipped during rotation. */
             rotation_health_threshold?: number;
-            /** @description Fallback behavior when no healthy number is available (e.g. `pause`, `continue`). */
+            /** @description Fallback behavior when no healthy number is available: `pause` or `continue_best`. */
             rotation_fallback?: string;
             /** @description ID of the number assignment currently dispatching calls. Null when idle. */
             current_number_assignment_id?: number | null;
@@ -2153,8 +2351,12 @@ export interface components {
             purchase_date?: string;
             expiry_date?: string | boolean;
             location?: string;
-            /** @enum {string} */
-            number_provider?: "twilio" | "exotel" | "sip" | "cloud_whatsapp";
+            /**
+             * @description How this number is connected. Not a fixed list: the set grows as
+             *     providers are added, so treat the value as a label rather than
+             *     validating against specific values.
+             */
+            number_provider?: string;
             number_source?: string;
             is_manually_imported?: boolean;
             can_message?: boolean;
@@ -2186,7 +2388,7 @@ export interface components {
             provider_name?: string | boolean;
             is_premium?: boolean;
             /** @enum {string} */
-            service_type?: "LLM" | "STT" | "TTS" | "other";
+            service_type?: "LLM" | "STT" | "TTS";
             is_active?: boolean;
         };
         Voice: {
@@ -2298,7 +2500,7 @@ export interface components {
                  *       "voicemail_detected"
                  *     ]
                  */
-                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
+                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
             };
             webhook?: {
                 enabled?: boolean;
@@ -2320,7 +2522,7 @@ export interface components {
                  *       "failed"
                  *     ]
                  */
-                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
+                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
             };
         };
         /** @description A post-call action sent with a call that was dropped, and why. */
@@ -2410,11 +2612,12 @@ export interface components {
                  */
                 provider?: "deepgram_stream" | "cartesia" | "sarvam" | "azure_stream" | "soniox";
                 /**
-                 * @description The model to use for transcription (required when provider is `deepgram_stream`).
+                 * @description Transcription model for the selected provider. For
+                 *     `deepgram_stream` this is `nova-3` or `nova-2`; other
+                 *     providers take their own model identifiers.
                  * @example nova-3
-                 * @enum {string}
                  */
-                model?: "nova-3" | "nova-2";
+                model?: string;
                 /**
                  * @description Language code for the transcriber. Format and supported
                  *     values depend on the provider (e.g. `en-US` for Deepgram,
@@ -2489,14 +2692,6 @@ export interface components {
                  */
                 voice_id?: string;
                 /**
-                 * @description TTS model identifier. Only consumed when `provider` is
-                 *     `cartesia` (e.g. `sonic-3.5`). For ElevenLabs and other
-                 *     providers the model is implied by `voice_id` and this
-                 *     field is ignored.
-                 * @example sonic-3.5
-                 */
-                model?: string;
-                /**
                  * @description Playback speed multiplier for the agent's voice. 1.0 is normal speed.
                  * @default 1
                  */
@@ -2511,7 +2706,7 @@ export interface components {
                  * @example DuckDuckGo
                  * @enum {string}
                  */
-                provider?: "DuckDuckGo";
+                provider?: "DuckDuckGo" | "openAI";
             };
             post_call_actions?: components["schemas"]["PostCallActions"];
             /** @description Conditional call transfer to a human agent or another number. */
@@ -2735,7 +2930,10 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description Id of the cloned voice. */
+        ClonedVoiceId: number;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -3055,7 +3253,7 @@ export interface operations {
                      *     }
                      */
                     "application/json": {
-                        bots?: components["schemas"]["Agent"][];
+                        bots?: components["schemas"]["AgentSummary"][];
                         /** @description Total number of agents on the account. */
                         total_records?: number;
                     };
@@ -3320,7 +3518,7 @@ export interface operations {
                      *       "asr_cartesia_language": "en",
                      *       "asr_azure_language": "en-IN",
                      *       "asr_cartesia_model": "ink-whisper",
-                     *       "tts_cartesia_model_id": "ink-whisper",
+                     *       "tts_cartesia_language": "en",
                      *       "asr_sarvam_language": "unknown",
                      *       "asr_soniox_language": false,
                      *       "asr_sarvam_model": "saaras:v3",
@@ -3448,7 +3646,7 @@ export interface operations {
                 /** @description Filter versions whose name matches this substring (case-insensitive). */
                 search?: string;
                 /** @description Filter versions by kind. */
-                kind?: "manual" | "auto" | "system";
+                kind?: "manual" | "system";
             };
             header?: never;
             path: {
@@ -3525,12 +3723,11 @@ export interface operations {
                      *       "counts": {
                      *         "all": 5,
                      *         "manual": 2,
-                     *         "auto": 2,
                      *         "system": 1
                      *       },
                      *       "page": 1,
                      *       "page_size": 30,
-                     *       "version_history_enabled": true
+                     *       "can_publish": true
                      *     }
                      */
                     "application/json": {
@@ -3541,13 +3738,12 @@ export interface operations {
                         counts?: {
                             all?: number;
                             manual?: number;
-                            auto?: number;
                             system?: number;
                         };
                         page?: number;
                         page_size?: number;
-                        /** @description Whether version history is turned on for this agent's organization. */
-                        version_history_enabled?: boolean;
+                        /** @description Whether publishing and version history are enabled for this agent's organization. */
+                        can_publish?: boolean;
                     };
                 };
             };
@@ -4306,9 +4502,7 @@ export interface operations {
                      *           "total_tts_speaking_minutes": 0,
                      *           "total_tts_speaking_seconds": 0,
                      *           "llm_prompt": false,
-                     *           "aggregated_estimated_cost": 0.123,
                      *           "model_name": "gpt-4o",
-                     *           "model_type": "chat",
                      *           "asr_service": "deepgram_stream",
                      *           "tts_service": "eleven_labs",
                      *           "has_issue": false,
@@ -4549,9 +4743,7 @@ export interface operations {
                      *           "total_tts_speaking_minutes": 0,
                      *           "total_tts_speaking_seconds": 0,
                      *           "llm_prompt": false,
-                     *           "aggregated_estimated_cost": 0.123,
                      *           "model_name": "gpt-4o",
-                     *           "model_type": "chat",
                      *           "asr_service": "deepgram_stream",
                      *           "tts_service": "eleven_labs",
                      *           "has_issue": false,
@@ -5061,7 +5253,7 @@ export interface operations {
                      *       "id": 314,
                      *       "is_scheduled": false,
                      *       "is_dynamic": false,
-                     *       "current_status": "pending"
+                     *       "current_status": "in_progress"
                      *     }
                      */
                     "application/json": {
@@ -5397,7 +5589,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "status": "success",
-                     *       "message": "Bulk call cancelled successfully",
+                     *       "message": "Scheduled bulk call cancelled successfully",
                      *       "current_status": "cancelled"
                      *     }
                      */
@@ -5564,10 +5756,13 @@ export interface operations {
                     "application/json": {
                         status?: string;
                         bulk_call_id?: number;
-                        rotation_strategy?: string;
-                        calls_per_number?: number;
-                        rotation_health_threshold?: number;
-                        rotation_fallback?: string;
+                        /** @description The campaign's rotation settings. */
+                        rotation?: {
+                            strategy?: string;
+                            calls_per_number?: number;
+                            health_threshold?: number;
+                            fallback?: string;
+                        };
                         numbers?: components["schemas"]["BulkCallPoolNumber"][];
                     };
                 };
@@ -5790,7 +5985,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "status": "success",
-                     *       "message": "Campaign started",
+                     *       "message": "Bulk call started successfully",
                      *       "current_status": "in_progress"
                      *     }
                      */
@@ -5862,15 +6057,15 @@ export interface operations {
                 "application/json": {
                     /**
                      * @description Which contacts to re-queue. `all` takes everything that did
-                     *     not connect.
+                     *     not connect. `specific` re-queues only the statuses listed
+                     *     in `failure_reasons`.
                      * @default all
                      */
                     retry_strategy?: string;
-                    /** @description Skip contacts already retried this many times. */
-                    max_retries?: number;
                     /**
-                     * @description Re-queue only contacts that failed for these reasons, for
-                     *     example `no-answer` and `busy`.
+                     * @description Statuses to re-queue. Read only when `retry_strategy` is
+                     *     `specific`; for example `no-answer` and `busy`. Ignored when
+                     *     `retry_strategy` is `all`.
                      */
                     failure_reasons?: string[];
                 };
@@ -6392,12 +6587,12 @@ export interface operations {
                 region: "IN" | "US";
                 /**
                  * @description Which carrier's stock to search: carriers in a region do not sell
-                 *     the same numbers. Always required, even where a region holds one,
-                 *     and omitting it returns `409 carrier_required` naming that
-                 *     region's carriers and what each one stocks.
+                 *     the same numbers. Required where a region has more than one
+                 *     carrier; omitting it there returns `409 carrier_required` naming
+                 *     the region's carriers and what each one stocks.
                  * @example carrier-1
                  */
-                carrier: string;
+                carrier?: string;
                 /**
                  * @description Digits or prefix to match within the number.
                  * @example 555
@@ -6615,8 +6810,8 @@ export interface operations {
                     /**
                      * @description The carrier to buy from: pass the `carrier` the search
                      *     response named, so you buy from the inventory you searched.
-                     *     Always required, and omitting it returns
-                     *     `409 carrier_required` naming that region's carriers.
+                     *     Required where the region has more than one carrier;
+                     *     omitting it there returns `409 carrier_required`.
                      * @example carrier-1
                      */
                     carrier: string;
@@ -7224,14 +7419,14 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description TTS provider to list voices from. Omit to list across all providers. */
-                provider?: "eleven_labs" | "google" | "deepgram" | "cartesia" | "sarvam";
-                /** @description Substring match against voice name or description. ElevenLabs only. */
+                provider?: "eleven_labs" | "google" | "deepgram" | "cartesia" | "sarvam" | "rime" | "playht" | "hume" | "inworld" | "smallest";
+                /** @description Substring match against voice name or description. ElevenLabs and Cartesia. */
                 search?: string;
-                /** @description ISO language code (e.g. `en`, `hi`, `es`). ElevenLabs only. */
+                /** @description ISO language code (e.g. `en`, `hi`, `es`). ElevenLabs and Cartesia. */
                 language?: string;
-                /** @description Accent label (e.g. `american`, `british`). ElevenLabs only. */
+                /** @description Accent label (e.g. `american`, `british`). ElevenLabs and Cartesia. */
                 accent?: string;
-                /** @description Filter voices by gender. ElevenLabs only. */
+                /** @description Filter voices by gender. ElevenLabs and Cartesia. */
                 gender?: "male" | "female";
                 /** @description 1-indexed page number. */
                 page?: number;
@@ -9385,7 +9580,8 @@ export interface operations {
                                 is_active?: boolean;
                                 /** Format: date */
                                 expiry_date?: string | null;
-                                access_level?: boolean;
+                                /** @description Access role of this user: `owner` or `manager`. */
+                                access_level?: string;
                                 dashboard_menu_access?: components["schemas"]["ResellerDashboardMenuAccess"];
                             }[];
                         }[];
@@ -9840,7 +10036,7 @@ export interface operations {
                                     email?: string;
                                 };
                                 status?: string;
-                                /** @description One of `credit_transfer`, `credit_revert`, or `channel_allocation`. */
+                                /** @description One of `credit_transfer`, `credit_revert`, `channel_allocation`, or `channel_revert`. */
                                 transaction_type?: string;
                                 channels_count?: number;
                                 previous_channels?: number;
@@ -10031,12 +10227,12 @@ export interface operations {
                 region: "IN" | "US";
                 /**
                  * @description Which carrier's steps to return: carriers in a region do not share
-                 *     a step list. Always required, even where a region holds one, and
-                 *     omitting it returns `409 carrier_required` naming that region's
-                 *     carriers.
+                 *     a step list. Required where a region has more than one carrier;
+                 *     omitting it there returns `409 carrier_required` naming the
+                 *     region's carriers.
                  * @example carrier-1
                  */
-                carrier: string;
+                carrier?: string;
             };
             header?: never;
             path?: never;
@@ -10583,7 +10779,7 @@ export interface operations {
                         next_step?: string | null;
                         /**
                          * @description Echoes how the step that just ran is performed. Present
-                         *     on every step response.
+                         *     on redirect steps.
                          * @enum {string}
                          */
                         method?: "submit" | "otp" | "redirect" | "upload";
@@ -10855,6 +11051,732 @@ export interface operations {
                      * @example {
                      *       "error": "forbidden",
                      *       "error_description": "You do not have access to Billing. If Billing is enabled for your organization, an administrator can grant it."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    listClonedVoices: {
+        parameters: {
+            query?: {
+                /** @description Rows per page. Above 100 the request is refused. */
+                limit?: number;
+                /**
+                 * @description The `next_cursor` from your previous response. Omit it on the first
+                 *     request. Opaque: pass it back unchanged.
+                 */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of cloned voices, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "id": 412,
+                     *           "name": "Front desk",
+                     *           "description": null,
+                     *           "language": "en",
+                     *           "gender": "female",
+                     *           "status": "ready",
+                     *           "voice_id": "8a1c2f5e-3b7d-4c9a-9f21-2e6b0d4a7c88",
+                     *           "sample_url": "https://backend.omnidim.io/api/v1/voices/412/sample",
+                     *           "error": null,
+                     *           "created_at": "2026-10-12T15:18:07.424509",
+                     *           "ready_at": "2026-10-12T15:18:31.009881"
+                     *         }
+                     *       ],
+                     *       "has_more": false,
+                     *       "next_cursor": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: components["schemas"]["ClonedVoice"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            /** @description A bad `limit` (not 1 to 100) or an invalid `cursor`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "limit must be a whole number from 1 to 100.",
+                     *       "code": "invalid_limit",
+                     *       "request_id": "req_5d9a1f3e8b02"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key",
+                     *       "code": "invalid_api_key",
+                     *       "request_id": "req_6e2b9d4f1a38"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description Voice cloning is not enabled for this account. It must be included in
+             *     your plan, and your API key's user needs access to it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have permission to view Voice Cloning.",
+                     *       "code": "feature_not_enabled",
+                     *       "request_id": "req_9f2c1a4b7d3e"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    createClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional. Send a unique value per clone; a retry with the same key
+                 *     and body returns the first clone instead of creating a second. Every
+                 *     clone costs money at the provider, so this makes a retry safe. Up to
+                 *     255 printable characters.
+                 */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description A name for the cloned voice, 1 to 100 characters.
+                     * @example Front desk
+                     */
+                    name: string;
+                    /** @description Base64-encoded audio, 1 KB to 25 MB (MP3, WAV or WebM). */
+                    clip: string;
+                    /**
+                     * @description Optional original filename, for your reference.
+                     * @example sample.mp3
+                     */
+                    filename?: string;
+                    /** @description Optional description. */
+                    description?: string;
+                    /**
+                     * @description A short language code for the voice. Defaults to `en`.
+                     * @example en
+                     */
+                    language?: string;
+                    /**
+                     * @description The voice's gender. Defaults to `female`.
+                     * @default female
+                     * @enum {string}
+                     */
+                    gender?: "male" | "female";
+                    /**
+                     * @description Required and must be `true`: you confirm you have the right
+                     *     to clone this voice.
+                     * @example true
+                     */
+                    consent: boolean;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description The clone was accepted and is being created. Poll the status until it
+             *     is `ready` or `failed`.
+             */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "voice": {
+                     *         "id": 412,
+                     *         "name": "Front desk",
+                     *         "description": null,
+                     *         "language": "en",
+                     *         "gender": "female",
+                     *         "status": "processing",
+                     *         "voice_id": null,
+                     *         "sample_url": null,
+                     *         "error": null,
+                     *         "created_at": "2026-10-12T15:18:07.424509",
+                     *         "ready_at": null
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /**
+             * @description The body is invalid: missing `name`, `clip` or `consent`, a `clip`
+             *     that is not valid Base64, not audio, too small or too large, a bad
+             *     language code, or a bad gender. Also `invalid_idempotency_key` when
+             *     the `Idempotency-Key` header is longer than 255 characters or has
+             *     unprintable characters.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "clip does not look like an audio file. Upload MP3, WAV or WebM.",
+                     *       "code": "invalid_audio",
+                     *       "request_id": "req_4a1e8c2d9f60"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key",
+                     *       "code": "invalid_api_key",
+                     *       "request_id": "req_6e2b9d4f1a38"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description Voice cloning is not enabled for this account. It must be included in
+             *     your plan, and your API key's user needs write access to it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have permission to make changes to Voice Cloning.",
+                     *       "code": "permission_denied",
+                     *       "request_id": "req_7b3d5e1a0c94"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `Idempotency-Key` was already used with a different body.
+             *     `code` is `idempotency_key_reused`.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This Idempotency-Key was already used with a different request. Use a new key for a new request.",
+                     *       "code": "idempotency_key_reused",
+                     *       "request_id": "req_8d1f4a7c2e59"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description A per-user limit was hit. `code` is `rate_limited` (5 an hour or 20 a
+             *     day) or `stored_limit` (200 stored voices). A `Retry-After` header is
+             *     sent on `rate_limited`.
+             */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "too_many_requests",
+                     *       "error_description": "Too many voice clones were requested. Please wait and try again.",
+                     *       "code": "rate_limited",
+                     *       "request_id": "req_2c8f0d6b5a17"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The clone could not be started. Nothing was created; safe to retry. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Could not start the voice clone. Please try again.",
+                     *       "code": "clone_failed",
+                     *       "request_id": "req_1e6b4a9c2d78"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is temporarily unavailable. Try again shortly. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "service_unavailable",
+                     *       "error_description": "Voice cloning is temporarily unavailable.",
+                     *       "code": "provider_unavailable",
+                     *       "request_id": "req_3f7c0b5d8a21"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cloned voice. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key",
+                     *       "code": "invalid_api_key",
+                     *       "request_id": "req_6e2b9d4f1a38"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is not enabled for this account. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have permission to view Voice Cloning.",
+                     *       "code": "feature_not_enabled",
+                     *       "request_id": "req_9f2c1a4b7d3e"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Voice not found.",
+                     *       "code": "not_found",
+                     *       "request_id": "req_0b5e7a2d9c14"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    deleteClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The voice was deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "id": 412,
+                     *       "name": "Front desk"
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        id?: number;
+                        name?: string;
+                    };
+                };
+            };
+            /** @description Voice cloning is not enabled for this account, or the key's user cannot delete it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The voice is still being created. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This voice is still being created. Delete it once it is ready or failed.",
+                     *       "code": "voice_processing",
+                     *       "request_id": "req_7a3d9e0c5b16"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    updateClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description 1 to 100 characters. */
+                    name?: string;
+                    description?: string;
+                    /** @enum {string} */
+                    gender?: "male" | "female";
+                };
+            };
+        };
+        responses: {
+            /** @description The updated voice. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /**
+             * @description A field is invalid, or the body is not a JSON object (`code` is
+             *     `invalid_json`).
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Request body must be a JSON object",
+                     *       "code": "invalid_json",
+                     *       "request_id": "req_4c8a1e6b3f20"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is not enabled for this account, or the key's user cannot write it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getClonedVoiceSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sample audio. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mpeg": string;
+                };
+            };
+            /** @description Voice cloning is not enabled for this account. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, it belongs to another account, or no sample exists yet. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Sample audio is not available yet.",
+                     *       "code": "sample_not_ready",
+                     *       "request_id": "req_2e9b6d1a8f43"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The stored sample is unreadable. Regenerate it with `POST /voices/{voice_id}/sample`. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "The sample audio is unavailable. Try regenerating it.",
+                     *       "code": "sample_unavailable",
+                     *       "request_id": "req_5f0a3c7e2d81"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    regenerateClonedVoiceSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The voice, with a fresh sample. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /** @description Voice cloning is not enabled for this account, or the key's user cannot write it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The voice is not ready yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This voice is not ready yet.",
+                     *       "code": "voice_not_ready",
+                     *       "request_id": "req_3b6e8f1d4a07"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description You regenerated too many samples. The limit is 10 an hour per user.
+             *     Retry after the number of seconds in the `Retry-After` header (3600).
+             */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "too_many_requests",
+                     *       "error_description": "Too many sample regenerations. Please wait and try again.",
+                     *       "code": "rate_limited",
+                     *       "request_id": "req_9c2a5e7b0d36"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The sample could not be regenerated. Try again. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Could not regenerate the sample. Please try again.",
+                     *       "code": "sample_failed",
+                     *       "request_id": "req_1d4f8a3e6c92"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is temporarily unavailable. Try again shortly. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "service_unavailable",
+                     *       "error_description": "Voice cloning is temporarily unavailable.",
+                     *       "code": "provider_unavailable",
+                     *       "request_id": "req_3f7c0b5d8a21"
                      *     }
                      */
                     "application/json": components["schemas"]["SessionError"];
