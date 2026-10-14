@@ -83,6 +83,13 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["providers.listTTS", (c) => c.providers.listTTS(), "GET", "/providers/tts"],
   ["providers.listAll", (c) => c.providers.listAll(), "GET", "/providers/all"],
   ["providers.getVoice", (c) => c.providers.getVoice(ID), "GET", "/providers/voice/7"],
+  ["voices.listClonedVoices", (c) => c.voices.listClonedVoices(), "GET", "/voices"],
+  ["voices.createClonedVoice", (c) => c.voices.createClonedVoice(B), "POST", "/voices"],
+  ["voices.getClonedVoice", (c) => c.voices.getClonedVoice(ID), "GET", "/voices/7"],
+  ["voices.updateClonedVoice", (c) => c.voices.updateClonedVoice(ID, B), "PATCH", "/voices/7"],
+  ["voices.deleteClonedVoice", (c) => c.voices.deleteClonedVoice(ID), "DELETE", "/voices/7"],
+  ["voices.getClonedVoiceSample", (c) => c.voices.getClonedVoiceSample(ID), "GET", "/voices/7/sample"],
+  ["voices.regenerateClonedVoiceSample", (c) => c.voices.regenerateClonedVoiceSample(ID), "POST", "/voices/7/sample"],
   ["reseller.listOrganizations", (c) => c.reseller.listOrganizations(), "GET", "/reseller/organizations"],
   ["reseller.addUser", (c) => c.reseller.addUser(B), "POST", "/reseller/users/add"],
   ["reseller.setUserAccessControl", (c) => c.reseller.setUserAccessControl(B), "POST", "/reseller/users/access-control"],
@@ -118,6 +125,10 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["reseller.saveIdentitySmtp", (c) => c.reseller.saveIdentitySmtp(B), "POST", "/reseller/identity/smtp/save"],
   ["reseller.testIdentitySmtp", (c) => c.reseller.testIdentitySmtp(B), "POST", "/reseller/identity/smtp/test"],
   ["reseller.disableIdentitySmtp", (c) => c.reseller.disableIdentitySmtp(), "POST", "/reseller/identity/smtp/disable"],
+  ["reseller.previewClientRelease", (c) => c.reseller.previewClientRelease({ organization_id: ID }), "GET", "/reseller/clients/release-preview?organization_id=7"],
+  ["reseller.releaseClient", (c) => c.reseller.releaseClient(B), "POST", "/reseller/clients/release"],
+  ["reseller.issueChildApiKey", (c) => c.reseller.issueChildApiKey(B), "POST", "/reseller/users/api-keys"],
+  ["reseller.revokeChildApiKey", (c) => c.reseller.revokeChildApiKey(B), "POST", "/reseller/users/api-keys/revoke"],
   ["integrations.list", (c) => c.integrations.list(), "GET", "/integrations"],
   ["integrations.listForAgent", (c) => c.integrations.listForAgent(ID), "GET", "/agents/7/integrations"],
   ["integrations.createCustomApi", (c) => c.integrations.createCustomApi(B), "POST", "/integrations/custom-api"],
@@ -128,7 +139,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(77);
+    expect(cases).toHaveLength(88);
   });
 
   for (const [name, call, method, path] of cases) {

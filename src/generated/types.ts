@@ -68,7 +68,8 @@ export interface paths {
          * Create agent
          * @description Create a new agent with the provided configuration. The full
          *     config supports transcriber, model, voice, web search, transfer,
-         *     end-call conditions, post-call actions (email + webhook),
+         *     end-call conditions, post-call actions (email, webhook, Omni CRM,
+         *     Cloud WhatsApp, or a workflow),
          *     ambient background track, initial ringing sound, and multilingual support.
          *
          *     > **Voicemail detection is an access-gated feature** that we turn on per
@@ -870,7 +871,9 @@ export interface paths {
         put?: never;
         /**
          * Attach phone number to agent
-         * @description Attach an account-owned phone number to an existing agent.
+         * @description Attach a phone number to an existing agent. Without `user_id`, use any
+         *     number and agent your key can manage. With `user_id`, the number and the
+         *     agent must both belong to that client.
          */
         post: operations["attachPhoneNumber"];
         delete?: never;
@@ -890,7 +893,9 @@ export interface paths {
         put?: never;
         /**
          * Detach phone number
-         * @description Detach a phone number from its associated agent.
+         * @description Detach a phone number from its agent. Without `user_id`, use any number
+         *     your key can manage. With `user_id`, the number must belong to that
+         *     client.
          */
         post: operations["detachPhoneNumber"];
         delete?: never;
@@ -1515,6 +1520,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reseller/clients/release-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview releasing a client
+         * @description What releasing a client would do, changing nothing. Call it before
+         *     `POST /reseller/clients/release` to confirm the amounts and the
+         *     numbers that come back.
+         *
+         *     Returns the client's balance and the share of it that returns to
+         *     you, each of its numbers and whether it transfers back to you, its
+         *     users, and `has_live_subscription`. A release is refused while
+         *     `has_live_subscription` is true.
+         *
+         *     Who may call: a reseller key. Any other key gets `403`. A client that
+         *     is not one of your direct clients gets `404`, the same answer as one
+         *     that does not exist.
+         */
+        get: operations["previewClientRelease"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/clients/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release a client
+         * @description End your relationship with one direct client, for good. One-way:
+         *     unlike blocking, a release cannot be undone.
+         *
+         *     It reverts the balance you funded, detaches the client's numbers,
+         *     takes back the ones you bought, unlinks the organization, and retires
+         *     its logins so the same email can sign up fresh. The client
+         *     organization stays as history.
+         *
+         *     Preview it first with `GET /reseller/clients/release-preview`.
+         *
+         *     Who may call: a reseller key. Any other key gets `403`. A client that
+         *     is not one of your direct clients gets `404`.
+         *
+         *     Errors: `409 conflict` while the client has a live subscription, which
+         *     must be cancelled first. `500 server_error` if the balance moved while
+         *     releasing; nothing is changed, so try again.
+         */
+        post: operations["releaseClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reseller/users/expiry": {
         parameters: {
             query?: never;
@@ -1530,6 +1601,53 @@ export interface paths {
          *     belong to a child organization of your reseller.
          */
         post: operations["setUserExpiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/users/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a client API key
+         * @description Issue a named API key for a user in one of your client organizations.
+         *     The secret is in this response only, so store it now. No listing shows
+         *     it again. To rotate a key, issue a new one, switch the integration to
+         *     it, then revoke the old one.
+         */
+        post: operations["issueChildApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/users/api-keys/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a client API key
+         * @description Revoke one of a client user's API keys. The key stops working on the
+         *     next request. Pass the key's `api_key_id`, or `0` for the
+         *     default key every account gets at signup. Revoking a key that is
+         *     already revoked succeeds. `GET /reseller/organizations` lists each
+         *     user's active keys by `id` and `name`.
+         */
+        post: operations["revokeChildApiKey"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2789,7 +2907,10 @@ export interface components {
              */
             prompt: string;
         };
-        /** @description Side effects that fire once the call ends. Configure email, webhook, or both. */
+        /**
+         * @description Side effects that fire once the call ends. Configure email, webhook,
+         *     Omni CRM, Cloud WhatsApp, or a workflow.
+         */
         PostCallActions: {
             email?: {
                 enabled?: boolean;
@@ -2838,6 +2959,71 @@ export interface components {
                  */
                 trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
             };
+            omni_crm?: components["schemas"]["PostCallActionCommon"] & Record<string, never>;
+            cloud_whatsapp?: components["schemas"]["PostCallActionCommon"] & {
+                /**
+                 * @description The id of your organization's Cloud WhatsApp number the
+                 *     message is sent from.
+                 */
+                phone_number_id?: number;
+                /**
+                 * @description An approved template on that number. A template that is not
+                 *     approved, or that belongs to another number, is refused.
+                 */
+                template_id?: number;
+                /** @description Values for the template placeholders. */
+                template_variables?: {
+                    /**
+                     * @description The placeholder number, as a string.
+                     * @example 1
+                     */
+                    index?: string;
+                    /** @description The value to place at that index. */
+                    value?: string;
+                }[];
+                /** @description One or more templates to send, each with its variable mapping. */
+                templates?: components["schemas"]["CloudWhatsAppTemplate"][];
+            };
+            workflow?: components["schemas"]["PostCallActionCommon"] & {
+                /** @description The id of the workflow to run. */
+                workflow_id?: number;
+            };
+        };
+        /** @description Settings every post-call channel shares. */
+        PostCallActionCommon: {
+            enabled?: boolean;
+            /** @description Which sections to include in this action. */
+            include?: ("summary" | "extracted_variables" | "fullConversation" | "sentiment")[];
+            /** @description Variables the model should pull out of the conversation for this action. */
+            extracted_variables?: components["schemas"]["ExtractedVariable"][];
+            /**
+             * @description Call outcomes that fire this action. Omit to use the default
+             *     (`completed`, `voicemail_detected`).
+             */
+            trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
+        };
+        /** @description One Cloud WhatsApp template to send after the call. */
+        CloudWhatsAppTemplate: {
+            /** @description An approved template on the chosen number. */
+            template_id?: number;
+            /** @description Send this template on every call, not only when the variables are extracted. */
+            always_send?: boolean;
+            /** @description How to fill each template placeholder. */
+            variable_mappings?: {
+                /**
+                 * @description The placeholder number, as a string.
+                 * @example 1
+                 */
+                index?: string;
+                /** @description The extracted variable whose value fills this placeholder. */
+                extracted_var?: string;
+                /** @description A fixed value to fill this placeholder instead of a variable. */
+                static_value?: string;
+                /** @description How the value is chosen when both a variable and a static value are set. */
+                mode?: string;
+                /** @description The value to use when the variable is not extracted. */
+                fallback_value?: string;
+            }[];
         };
         /** @description A post-call action sent with a call that was dropped, and why. */
         PostCallActionIgnored: {
@@ -7678,6 +7864,11 @@ export interface operations {
                      * @example 158910
                      */
                     agent_id: number;
+                    /**
+                     * @description Reseller accounts only: the client to act on. Omit it to act on your own account.
+                     * @example 1234
+                     */
+                    user_id?: number;
                 };
             };
         };
@@ -7700,6 +7891,73 @@ export interface operations {
                     };
                 };
             };
+            /**
+             * @description The request body is missing a required field, or an id is not an
+             *     integer. Without `user_id`, the request is also refused when the
+             *     number belongs to another organization than the agent. Transfer the
+             *     number to the agent's organization first, then attach it. Two cases
+             *     are still allowed: the number belongs to the direct reseller of the
+             *     agent's organization, or the number is already attached to that
+             *     agent.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: phone_number_id."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Your key cannot change phone numbers, a `user_id` was sent by a key
+             *     that is not a reseller admin, or the named client's account is
+             *     currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients. A number or agent
+             *     you cannot use answers 200 with `success: false`.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
         };
     };
     detachPhoneNumber: {
@@ -7717,6 +7975,11 @@ export interface operations {
                      * @example 23
                      */
                     phone_number_id: number;
+                    /**
+                     * @description Reseller accounts only: the client to act on. Omit it to act on your own account.
+                     * @example 1234
+                     */
+                    user_id?: number;
                 };
             };
         };
@@ -7737,6 +8000,65 @@ export interface operations {
                         phone_number_id?: number;
                         message?: string;
                     };
+                };
+            };
+            /** @description The request body is missing a required field, or the id is not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: phone_number_id."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Your key cannot change phone numbers, a `user_id` was sent by a key
+             *     that is not a reseller admin, or the named client's account is
+             *     currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients. A number you
+             *     cannot use answers 200 with `success: false`.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
                 };
             };
         };
@@ -10129,6 +10451,11 @@ export interface operations {
                                 /** @description Access role of this user: `owner` or `manager`. */
                                 access_level?: string;
                                 dashboard_menu_access?: components["schemas"]["ResellerDashboardMenuAccess"];
+                                /** @description The user's active API keys, without secrets. `id` is `0` for the default key the account got at signup. */
+                                api_keys?: {
+                                    id?: number;
+                                    name?: string;
+                                }[];
                             }[];
                         }[];
                         total_organizations?: number;
@@ -10928,6 +11255,245 @@ export interface operations {
             };
         };
     };
+    previewClientRelease: {
+        parameters: {
+            query: {
+                /** @description The client organization to preview releasing. */
+                organization_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What a release would do. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "organization_id": 5678,
+                     *       "name": "Demo Client",
+                     *       "currency_symbol": "$",
+                     *       "balance": 12.5,
+                     *       "credit_revert": {
+                     *         "deducted": 12.5,
+                     *         "refunded": 10
+                     *       },
+                     *       "numbers": [
+                     *         {
+                     *           "id": 91,
+                     *           "phone_number": "+15551234567",
+                     *           "attached": true,
+                     *           "transfers_back": true
+                     *         }
+                     *       ],
+                     *       "users": [
+                     *         {
+                     *           "id": 1234,
+                     *           "email": "demo@example.com"
+                     *         }
+                     *       ],
+                     *       "is_white_label": false,
+                     *       "has_live_subscription": false
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        organization_id?: number;
+                        name?: string;
+                        currency_symbol?: string;
+                        /** @description The client's balance, in your currency. */
+                        balance?: number;
+                        credit_revert?: {
+                            deducted?: number;
+                            refunded?: number;
+                        };
+                        numbers?: {
+                            id?: number;
+                            phone_number?: string;
+                            attached?: boolean;
+                            transfers_back?: boolean;
+                        }[];
+                        users?: {
+                            id?: number;
+                            email?: string;
+                        }[];
+                        is_white_label?: boolean;
+                        /**
+                         * @description While true, a release is refused. The client must cancel
+                         *     its subscription first.
+                         */
+                        has_live_subscription?: boolean;
+                    };
+                };
+            };
+            /** @description `organization_id` is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields organization_id."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The key is not a reseller's, or not the owner or an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The organization is not one of your direct clients. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    releaseClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "organization_id": 5678
+                 *     }
+                 */
+                "application/json": {
+                    /** @description The client organization to release. */
+                    organization_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The client was released. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "organization_id": 5678,
+                     *       "reverted_credits": {
+                     *         "deducted": 12.5,
+                     *         "refunded": 10
+                     *       },
+                     *       "user_ids": [
+                     *         1234
+                     *       ],
+                     *       "detached_numbers": {
+                     *         "91": {
+                     *           "agent_id": 412,
+                     *           "sms_enabled": false
+                     *         }
+                     *       },
+                     *       "transferred_numbers": [
+                     *         91
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        organization_id?: number;
+                        /**
+                         * @description The balance returned to you, or `{}` when the client had
+                         *     nothing to return.
+                         */
+                        reverted_credits?: {
+                            deducted?: number;
+                            refunded?: number;
+                        };
+                        /** @description The client users whose logins were retired. */
+                        user_ids?: number[];
+                        /** @description Numbers detached from their agents, keyed by number id. */
+                        detached_numbers?: {
+                            [key: string]: {
+                                agent_id?: number;
+                                sms_enabled?: boolean;
+                            };
+                        };
+                        /** @description Numbers that transferred back to you. */
+                        transferred_numbers?: number[];
+                    };
+                };
+            };
+            /** @description `organization_id` is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The key is not a reseller's, or not the owner or an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The organization is not one of your direct clients. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The client has a live subscription and must cancel it first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This client has an active subscription. It must be cancelled before the client can be released."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The balance moved while releasing. Nothing changed, so try again. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
     setUserExpiry: {
         parameters: {
             query?: never;
@@ -10968,6 +11534,141 @@ export interface operations {
                         /** Format: date */
                         expiry_date?: string | null;
                     };
+                };
+            };
+        };
+    };
+    issueChildApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "user_id": 1234,
+                 *       "name": "n8n"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description ID of the client user who will own the key. */
+                    user_id: number;
+                    /** @description A name for the key. Must be unique among that user's keys. */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Key issued. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        user_id?: number;
+                        api_key_id?: number;
+                        name?: string;
+                        /** @description The secret. Shown only in this response. */
+                        api_key?: string;
+                    };
+                };
+            };
+            /** @description The name is missing, or the user already has a key with this name. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Your key is not a reseller owner or admin key, or the user's account is blocked. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The user is not in one of your client organizations. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    revokeChildApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "user_id": 1234,
+                 *       "api_key_id": 88
+                 *     }
+                 */
+                "application/json": {
+                    /** @description ID of the client user who owns the key. */
+                    user_id: number;
+                    /** @description The key's ID, or `0` for the default key the account got at signup. */
+                    api_key_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Key revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        revoked?: boolean;
+                        api_key_id?: number;
+                    };
+                };
+            };
+            /** @description `api_key_id` is not a whole number. Pass a key ID, or `0` for the default key. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Your key is not a reseller owner or admin key. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The user is not in one of your client organizations, or the key does not belong to that user. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
                 };
             };
         };
