@@ -109,6 +109,18 @@ describe("requests", () => {
     expect(withoutKey["Idempotency-Key"]).toBeUndefined();
   });
 
+  it("sends an Idempotency-Key header on createClonedVoice only when supplied", async () => {
+    const { fetch, calls } = fakeFetch({ success: true });
+    const body = { name: "Agent voice" } as never;
+    await client(fetch).voices.createClonedVoice(body, "9f2c1d40-7a53-4b8e-9b7a-1c2d3e4f5a6b");
+    const withKey = calls[0]!.init.headers as Record<string, string>;
+    expect(withKey["Idempotency-Key"]).toBe("9f2c1d40-7a53-4b8e-9b7a-1c2d3e4f5a6b");
+
+    await client(fetch).voices.createClonedVoice(body);
+    const withoutKey = calls[1]!.init.headers as Record<string, string>;
+    expect(withoutKey["Idempotency-Key"]).toBeUndefined();
+  });
+
   it("interpolates path parameters", async () => {
     const { fetch, calls } = fakeFetch({ id: 42 });
     await client(fetch).agents.get(42);

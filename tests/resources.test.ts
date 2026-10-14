@@ -83,6 +83,13 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["providers.listTTS", (c) => c.providers.listTTS(), "GET", "/providers/tts"],
   ["providers.listAll", (c) => c.providers.listAll(), "GET", "/providers/all"],
   ["providers.getVoice", (c) => c.providers.getVoice(ID), "GET", "/providers/voice/7"],
+  ["voices.listClonedVoices", (c) => c.voices.listClonedVoices(), "GET", "/voices"],
+  ["voices.createClonedVoice", (c) => c.voices.createClonedVoice(B), "POST", "/voices"],
+  ["voices.getClonedVoice", (c) => c.voices.getClonedVoice(ID), "GET", "/voices/7"],
+  ["voices.updateClonedVoice", (c) => c.voices.updateClonedVoice(ID, B), "PATCH", "/voices/7"],
+  ["voices.deleteClonedVoice", (c) => c.voices.deleteClonedVoice(ID), "DELETE", "/voices/7"],
+  ["voices.getClonedVoiceSample", (c) => c.voices.getClonedVoiceSample(ID), "GET", "/voices/7/sample"],
+  ["voices.regenerateClonedVoiceSample", (c) => c.voices.regenerateClonedVoiceSample(ID), "POST", "/voices/7/sample"],
   ["reseller.listOrganizations", (c) => c.reseller.listOrganizations(), "GET", "/reseller/organizations"],
   ["reseller.addUser", (c) => c.reseller.addUser(B), "POST", "/reseller/users/add"],
   ["reseller.setUserAccessControl", (c) => c.reseller.setUserAccessControl(B), "POST", "/reseller/users/access-control"],
@@ -112,6 +119,16 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
     "POST",
     "/reseller/kyc/steps/upload-pan",
   ],
+  ["reseller.setClientAccess", (c) => c.reseller.setClientAccess(B), "POST", "/reseller/users/access"],
+  ["reseller.getIdentity", (c) => c.reseller.getIdentity(), "GET", "/reseller/identity"],
+  ["reseller.saveIdentity", (c) => c.reseller.saveIdentity(B), "POST", "/reseller/identity/save"],
+  ["reseller.saveIdentitySmtp", (c) => c.reseller.saveIdentitySmtp(B), "POST", "/reseller/identity/smtp/save"],
+  ["reseller.testIdentitySmtp", (c) => c.reseller.testIdentitySmtp(B), "POST", "/reseller/identity/smtp/test"],
+  ["reseller.disableIdentitySmtp", (c) => c.reseller.disableIdentitySmtp(), "POST", "/reseller/identity/smtp/disable"],
+  ["reseller.previewClientRelease", (c) => c.reseller.previewClientRelease({ organization_id: ID }), "GET", "/reseller/clients/release-preview?organization_id=7"],
+  ["reseller.releaseClient", (c) => c.reseller.releaseClient(B), "POST", "/reseller/clients/release"],
+  ["reseller.issueChildApiKey", (c) => c.reseller.issueChildApiKey(B), "POST", "/reseller/users/api-keys"],
+  ["reseller.revokeChildApiKey", (c) => c.reseller.revokeChildApiKey(B), "POST", "/reseller/users/api-keys/revoke"],
   ["integrations.list", (c) => c.integrations.list(), "GET", "/integrations"],
   ["integrations.listForAgent", (c) => c.integrations.listForAgent(ID), "GET", "/agents/7/integrations"],
   ["integrations.createCustomApi", (c) => c.integrations.createCustomApi(B), "POST", "/integrations/custom-api"],
@@ -122,7 +139,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(71);
+    expect(cases).toHaveLength(88);
   });
 
   for (const [name, call, method, path] of cases) {
@@ -132,4 +149,51 @@ describe("resource routing", () => {
       expect(calls[0]).toEqual({ method, path });
     });
   }
+});
+
+describe("reseller identity and client access bodies", () => {
+  function capture() {
+    const sent: { init?: RequestInit }[] = [];
+    const fetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      sent.push({ init });
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    return { c: new OmniDimension({ apiKey: "test-api-key-1234", fetch }), sent };
+  }
+  const bodyOf = (sent: { init?: RequestInit }[]) => JSON.parse(sent[0]!.init!.body as string);
+
+  it("saveIdentity sends the brand fields it is given", async () => {
+    const { c, sent } = capture();
+    await c.reseller.saveIdentity({ platform_name: "Acme Voice", primary_color: "#1976d2" });
+    expect(bodyOf(sent)).toEqual({ platform_name: "Acme Voice", primary_color: "#1976d2" });
+  });
+
+  it("saveIdentitySmtp sends the server fields", async () => {
+    const { c, sent } = capture();
+    await c.reseller.saveIdentitySmtp({
+      host: "smtp.acme.example", port: 587, username: "u", password: "p",
+      encryption: "ssl", from_email: "hello@acme.example",
+    });
+    expect(Object.keys(bodyOf(sent)).sort()).toEqual(
+      ["encryption", "from_email", "host", "password", "port", "username"],
+    );
+  });
+
+  it("testIdentitySmtp sends no password when none is given", async () => {
+    const { c, sent } = capture();
+    await c.reseller.testIdentitySmtp({ host: "smtp.acme.example", port: 587, username: "u" });
+    expect(Object.keys(bodyOf(sent)).sort()).toEqual(["host", "port", "username"]);
+  });
+
+  it("disableIdentitySmtp sends no body", async () => {
+    const { c, sent } = capture();
+    await c.reseller.disableIdentitySmtp();
+    expect(sent[0]!.init!.body).toBeUndefined();
+  });
+
+  it("setClientAccess sends blocked, the target and detach_numbers", async () => {
+    const { c, sent } = capture();
+    await c.reseller.setClientAccess({ blocked: true, organization_id: 5678, detach_numbers: true });
+    expect(bodyOf(sent)).toEqual({ blocked: true, organization_id: 5678, detach_numbers: true });
+  });
 });

@@ -68,7 +68,8 @@ export interface paths {
          * Create agent
          * @description Create a new agent with the provided configuration. The full
          *     config supports transcriber, model, voice, web search, transfer,
-         *     end-call conditions, post-call actions (email + webhook),
+         *     end-call conditions, post-call actions (email, webhook, Omni CRM,
+         *     Cloud WhatsApp, or a workflow),
          *     ambient background track, initial ringing sound, and multilingual support.
          *
          *     > **Voicemail detection is an access-gated feature** that we turn on per
@@ -95,7 +96,7 @@ export interface paths {
         };
         /**
          * Get agent
-         * @description Get details of a specific agent by ID. The response also includes a `version_history_enabled` boolean showing whether [version history](/docs/api-reference/agents/listAgentVersions) is turned on for the agent's organization.
+         * @description Get details of a specific agent by ID. The response also includes a `can_publish` boolean showing whether [version history](/docs/api-reference/agents/listAgentVersions) is turned on for the agent's organization.
          */
         get: operations["getAgent"];
         /**
@@ -377,7 +378,7 @@ export interface paths {
         post?: never;
         /**
          * Cancel bulk call
-         * @description Cancel a bulk-call campaign.
+         * @description Cancel a scheduled bulk-call campaign. A campaign that is already running, or is still a draft, is refused.
          */
         delete: operations["cancelBulkCall"];
         options?: never;
@@ -519,9 +520,10 @@ export interface paths {
          *     number usually means two real reasons to call.
          *
          *     Rows that fail validation are reported in `rejected` and the rest are
-         *     still added, so a single bad number does not lose the batch. If the
-         *     campaign has `call_conditions`, rows that do not match are added with
-         *     status `Skipped`.
+         *     still added, so a single bad number does not lose the batch. A row that
+         *     is missing a column the campaign's `call_conditions` need is reported in
+         *     `rejected`; the condition values themselves are not evaluated on this
+         *     route.
          */
         post: operations["addBulkCallContacts"];
         delete?: never;
@@ -869,7 +871,9 @@ export interface paths {
         put?: never;
         /**
          * Attach phone number to agent
-         * @description Attach an account-owned phone number to an existing agent.
+         * @description Attach a phone number to an existing agent. Without `user_id`, use any
+         *     number and agent your key can manage. With `user_id`, the number and the
+         *     agent must both belong to that client.
          */
         post: operations["attachPhoneNumber"];
         delete?: never;
@@ -889,7 +893,9 @@ export interface paths {
         put?: never;
         /**
          * Detach phone number
-         * @description Detach a phone number from its associated agent.
+         * @description Detach a phone number from its agent. Without `user_id`, use any number
+         *     your key can manage. With `user_id`, the number must belong to that
+         *     client.
          */
         post: operations["detachPhoneNumber"];
         delete?: never;
@@ -988,7 +994,8 @@ export interface paths {
         /**
          * List voices
          * @description Retrieve voices with filtering and pagination support. ElevenLabs
-         *     supports advanced filtering by name, language, accent, and gender.
+         *     and Cartesia support advanced filtering by name, language, accent,
+         *     and gender.
          *     Other providers support basic pagination only.
          */
         get: operations["listVoices"];
@@ -1261,6 +1268,324 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reseller/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get brand identity
+         * @description Read your brand and your custom email server settings. The brand
+         *     is what your client organizations see: your brand name on their
+         *     emails, and spoken in their verification calls. Your own emails
+         *     do not change.
+         *
+         *     Who may call: a key whose user is the owner or an admin of a
+         *     reseller organization. Any other user gets `403`.
+         *
+         *     The response always has the same shape. `has_identity` is `false`
+         *     and `identity` is `{}` until the first save. `smtp` never contains
+         *     the password. `can_use_brand_identity` is `false` for an account
+         *     that cannot hold a brand (for example one that already holds
+         *     another organization's configuration). Such an account can read
+         *     but every write returns `403`.
+         *
+         *     Errors: `401` for a missing or invalid key. `403` when the user is
+         *     not the owner or an admin of the organization. `500` for a server
+         *     error.
+         */
+        get: operations["getResellerIdentity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/identity/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save brand identity
+         * @description Set the brand your client organizations see: your brand name and
+         *     company name on their emails, and your brand name spoken in their
+         *     verification calls. The first save creates the brand. Later saves
+         *     change only the fields you send. Your own emails do not change.
+         *
+         *     Who may call: a key whose user is the owner or an admin of a
+         *     reseller organization that can hold a brand. Any other user, and
+         *     any account that already holds another organization's
+         *     configuration, gets `403`.
+         *
+         *     `platform_name` and `company_name` are 1 to 60 characters of plain
+         *     text. On the first save, a name you leave out is taken from your
+         *     organization name. `primary_color` is a hex colour such as
+         *     `#1976d2`. `real_email` is the sender and reply-to address on your
+         *     clients' emails.
+         *
+         *     The response is the full brand state, the same object that
+         *     `GET /reseller/identity` returns.
+         *
+         *     Errors: `400 invalid_request` for a name that is empty, longer than
+         *     60 characters or not plain text, a `primary_color` that is not a
+         *     hex value, or a `real_email` that is not an email address. The
+         *     `error_description` says which. `401` for a missing or invalid key.
+         *     `403 forbidden` when the user is not the owner or an admin, or the
+         *     account cannot hold a brand. `500 server_error` for a server error.
+         */
+        post: operations["saveResellerIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/identity/smtp/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save custom email server
+         * @description Send your clients' emails through your own email server, so they
+         *     come from your domain. The server is checked with a live login
+         *     before anything is saved. If the login fails, nothing changes and
+         *     the response is `400` with the reason. Save your brand first.
+         *
+         *     Who may call: a key whose user is the owner or an admin of a
+         *     reseller organization that can hold a brand and use a custom email
+         *     server. Any other user gets `403`.
+         *
+         *     `host` and `port` are required. `encryption` is `starttls` (the
+         *     default), `ssl` or `none`. If you leave `password` blank and a
+         *     server is already saved, the saved password is used. The password
+         *     is never returned.
+         *
+         *     The response is the full brand state, the same object that
+         *     `GET /reseller/identity` returns, with `smtp.active` set to `true`.
+         *     Use `POST /reseller/identity/smtp/test` to check a server without
+         *     saving it, and `POST /reseller/identity/smtp/disable` to stop
+         *     using it.
+         *
+         *     Errors: `400 invalid_request` when no brand is saved yet, when
+         *     `host` or `port` is missing, when `encryption` is not one of the
+         *     three values, or when the login fails. `401` for a missing or
+         *     invalid key. `403 forbidden` when the user is not the owner or an
+         *     admin, or the account cannot hold a brand or use a custom email
+         *     server. `500 server_error` for a server error.
+         */
+        post: operations["saveResellerIdentitySmtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/identity/smtp/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test custom email server
+         * @description Check that a login to an email server works. Nothing is saved and
+         *     nothing changes for your clients. Use it before
+         *     `POST /reseller/identity/smtp/save`.
+         *
+         *     Send the same body as the save call. If you leave `password`
+         *     blank, the saved password is used. A brand must be saved first.
+         *
+         *     Who may call: a key whose user is the owner or an admin of a
+         *     reseller organization that can hold a brand and use a custom email
+         *     server. Any other user gets `403`.
+         *
+         *     Errors: `400 invalid_request` when no brand is saved yet, when
+         *     `host` or `port` is missing, or when the login fails. The
+         *     `error_description` gives the reason. `401` for a missing or
+         *     invalid key. `403 forbidden` when the user is not the owner or an
+         *     admin, or the account cannot hold a brand or use a custom email
+         *     server. `500 server_error` for a server error.
+         */
+        post: operations["testResellerIdentitySmtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/identity/smtp/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disable custom email server
+         * @description Stop sending your clients' emails through your own email server.
+         *     Their emails go back to the default sender. The saved server and its
+         *     login are kept, so you can switch it on again with
+         *     `POST /reseller/identity/smtp/save`. Your brand is not changed.
+         *
+         *     Send no body. Who may call: a key whose user is the owner or an
+         *     admin of a reseller organization that can hold a brand and use a
+         *     custom email server. Any other user gets `403`.
+         *
+         *     The response is the full brand state, the same object that
+         *     `GET /reseller/identity` returns, with `smtp.active` set to `false`.
+         *
+         *     Errors: `400 invalid_request` when no brand is saved yet. `401` for
+         *     a missing or invalid key. `403 forbidden` when the user is not the
+         *     owner or an admin, or the account cannot hold a brand or use a
+         *     custom email server. `500 server_error` for a server error.
+         */
+        post: operations["disableResellerIdentitySmtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/users/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Block or restore a client
+         * @description Block a client, or restore one you blocked. Nothing is deleted, so
+         *     the client's agents, numbers, campaigns and history stay as they
+         *     are and a restore brings the client back as it was.
+         *
+         *     Name the target with exactly one of `user_id` (one user) or
+         *     `organization_id` (every user in a client organization). Both
+         *     must be your direct clients.
+         *
+         *     Block (`blocked: true`): the client is signed out and its API keys
+         *     stop working at once. Users that are already blocked by their own
+         *     organization admin, or whose account has expired, are left as they
+         *     are. The owner of a client organization can only be blocked
+         *     together with the whole organization: send `organization_id`.
+         *
+         *     Restore (`blocked: false`): lifts only the blocks you made, and
+         *     clears an expiry date that passed while the client was blocked.
+         *     Restoring a user you did not block returns `409`.
+         *
+         *     `detach_numbers` (only with `organization_id` and `blocked: true`)
+         *     also detaches the organization's phone numbers from their agents,
+         *     so nothing answers on them. The response lists what was detached
+         *     in `detached_numbers`, so you can attach them again.
+         *
+         *     Who may call: a reseller key. Any other key gets `403`.
+         *
+         *     Errors: `400 invalid_request` when `blocked` or `detach_numbers`
+         *     is not a JSON boolean, when `user_id` and `organization_id` are
+         *     both sent or both missing, when an id is not an integer, or when
+         *     `detach_numbers` is used without `organization_id` or with
+         *     `blocked: false`. `401` for a missing or invalid key.
+         *     `403 forbidden` when the key is not a reseller's, or when you block a
+         *     user who owns a client organization by `user_id`. `404 not_found`
+         *     when the user or organization is not your client. A client that
+         *     belongs to someone else gives the same answer as one that does
+         *     not exist. `409 conflict` when you restore a user you did not
+         *     block.
+         */
+        post: operations["setClientAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/clients/release-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview releasing a client
+         * @description What releasing a client would do, changing nothing. Call it before
+         *     `POST /reseller/clients/release` to confirm the amounts and the
+         *     numbers that come back.
+         *
+         *     Returns the client's balance and the share of it that returns to
+         *     you, each of its numbers and whether it transfers back to you, its
+         *     users, and `has_live_subscription`. A release is refused while
+         *     `has_live_subscription` is true.
+         *
+         *     Who may call: a reseller key. Any other key gets `403`. A client that
+         *     is not one of your direct clients gets `404`, the same answer as one
+         *     that does not exist.
+         */
+        get: operations["previewClientRelease"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/clients/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release a client
+         * @description End your relationship with one direct client, for good. One-way:
+         *     unlike blocking, a release cannot be undone.
+         *
+         *     It reverts the balance you funded, detaches the client's numbers,
+         *     takes back the ones you bought, unlinks the organization, and retires
+         *     its logins so the same email can sign up fresh. The client
+         *     organization stays as history.
+         *
+         *     Preview it first with `GET /reseller/clients/release-preview`.
+         *
+         *     Who may call: a reseller key. Any other key gets `403`. A client that
+         *     is not one of your direct clients gets `404`.
+         *
+         *     Errors: `409 conflict` while the client has a live subscription, which
+         *     must be cancelled first. `500 server_error` if the balance moved while
+         *     releasing; nothing is changed, so try again.
+         */
+        post: operations["releaseClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reseller/users/expiry": {
         parameters: {
             query?: never;
@@ -1276,6 +1601,53 @@ export interface paths {
          *     belong to a child organization of your reseller.
          */
         post: operations["setUserExpiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/users/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a client API key
+         * @description Issue a named API key for a user in one of your client organizations.
+         *     The secret is in this response only, so store it now. No listing shows
+         *     it again. To rotate a key, issue a new one, switch the integration to
+         *     it, then revoke the old one.
+         */
+        post: operations["issueChildApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/users/api-keys/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a client API key
+         * @description Revoke one of a client user's API keys. The key stops working on the
+         *     next request. Pass the key's `api_key_id`, or `0` for the
+         *     default key every account gets at signup. Revoking a key that is
+         *     already revoked succeeds. `GET /reseller/organizations` lists each
+         *     user's active keys by `id` and `name`.
+         */
+        post: operations["revokeChildApiKey"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1533,10 +1905,169 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List cloned voices
+         * @description Your cloned voices, oldest first, one cursor page at a time. Call it with
+         *     no `cursor`, then pass back the `next_cursor` you were handed until it is
+         *     `null`.
+         *
+         *     Once a voice is `ready`, its `voice_id` is the provider voice id to put
+         *     in an agent's `voice.voice_id` with `voice.provider: cartesia`.
+         */
+        get: operations["listClonedVoices"];
+        put?: never;
+        /**
+         * Create a cloned voice
+         * @description Clone a voice from an audio sample. The sample must be Base64 encoded and
+         *     1 KB to 25 MB. MP3, WAV and WebM are accepted; a non-audio body is
+         *     refused.
+         *
+         *     Creation is asynchronous. This call returns `202` at once with
+         *     `status: processing`. Poll `GET /voices/{voice_id}` until `status` is
+         *     `ready` or `failed`, then use the `voice_id` in an agent's `voice` config with
+         *     `voice.provider: cartesia`.
+         *
+         *     You must send `consent: true`: you confirm you have the right to clone
+         *     this voice. The attestation is recorded against the clone.
+         *
+         *     Limits apply per user: 5 clones an hour, 20 a day, and 200 stored
+         *     (processing plus ready). A request over a limit is refused with `429`.
+         */
+        post: operations["createClonedVoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/voices/{voice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a cloned voice
+         * @description One cloned voice, including its creation `status`.
+         */
+        get: operations["getClonedVoice"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a cloned voice
+         * @description Delete a cloned voice and remove it from the provider. A voice that is
+         *     still `processing` cannot be deleted.
+         */
+        delete: operations["deleteClonedVoice"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a cloned voice
+         * @description Change the name, description or gender of a cloned voice.
+         */
+        patch: operations["updateClonedVoice"];
+        trace?: never;
+    };
+    "/voices/{voice_id}/sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Play a cloned voice sample
+         * @description Stream the generated mp3 sample of a cloned voice. Only the owner can
+         *     fetch it. `404` (`sample_not_ready`) when no sample exists yet. The
+         *     request needs your API key in the `Authorization` header.
+         */
+        get: operations["getClonedVoiceSample"];
+        put?: never;
+        /**
+         * Regenerate a cloned voice sample
+         * @description Regenerate the sample audio for a `ready` voice.
+         */
+        post: operations["regenerateClonedVoiceSample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Reseller keys only: the id of one of your direct client users. The
+         *     call then acts as that client, on that client's agents, numbers,
+         *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+         *     client's balance and concurrency. Omit it to act on your own account.
+         *     Send it as a JSON integer in the body. `null`, `0`, `false` or your
+         *     own user id also means your own account. Any other value that is not
+         *     a positive integer id is refused with `400 invalid_request`. A key
+         *     that is not a reseller's gets `403` when it names someone else. A
+         *     user who is not your direct client gets `404`.
+         * @example 1234
+         */
+        ClientUserId: number;
+        /** @description Your brand and custom email server state. The SMTP password is never returned. */
+        ResellerIdentityState: {
+            success?: boolean;
+            /** @description Whether this account may hold a brand. When `false`, every write returns `403`. */
+            can_use_brand_identity?: boolean;
+            /** @description Whether this account may send clients' emails through its own email server. */
+            can_use_custom_smtp?: boolean;
+            /** @description `false` until the first save. */
+            has_identity?: boolean;
+            /** @description The saved brand. Empty until the first save. Other branding keys can appear. */
+            identity?: {
+                platform_name?: string;
+                company_name?: string;
+                logo_url?: string;
+                primary_color?: string;
+                real_email?: string;
+            } & {
+                [key: string]: unknown;
+            };
+            smtp?: {
+                /** @description A server is saved. */
+                configured?: boolean;
+                /** @description Clients' emails go out through the saved server now. */
+                active?: boolean;
+                host?: string;
+                port?: number;
+                username?: string;
+                /** @enum {string} */
+                encryption?: "starttls" | "ssl" | "none";
+                from_email?: string;
+            };
+        };
+        ResellerIdentitySmtpInput: {
+            /** @description Email server host name. */
+            host: string;
+            /** @description Email server port, usually 587 for `starttls` or 465 for `ssl`. */
+            port: number;
+            /** @description Login name. */
+            username?: string;
+            /** @description Login password. Leave it blank to use the saved password. */
+            password?: string;
+            /**
+             * @default starttls
+             * @enum {string}
+             */
+            encryption: "starttls" | "ssl" | "none";
+            /** @description Address your clients' emails are sent from. */
+            from_email?: string;
+        };
         Pagination: {
             /** @example 1 */
             page?: number;
@@ -1554,6 +2085,55 @@ export interface components {
             error?: string;
             /** @description Human-readable explanation. */
             error_description?: string;
+            /**
+             * @description Stable, specific reason. Present on the newer endpoints (Voice
+             *     cloning, WhatsApp); older endpoints return only `error`.
+             */
+            code?: string;
+            /**
+             * @description Correlates this response with the server log. Present alongside
+             *     `code`. Also sent as the `X-Request-Id` header.
+             */
+            request_id?: string;
+        };
+        /**
+         * @description A voice cloned from an audio sample. Created asynchronously: `status` is
+         *     `processing` until the provider finishes, then `ready` or `failed`.
+         *     `voice_id` is the provider id an agent uses, and is `null` until ready.
+         */
+        ClonedVoice: {
+            /** @example 412 */
+            id?: number;
+            /** @example Front desk */
+            name?: string;
+            description?: string | null;
+            /** @example en */
+            language?: string;
+            /** @enum {string} */
+            gender?: "male" | "female";
+            /** @enum {string} */
+            status?: "processing" | "ready" | "failed";
+            /**
+             * @description The provider voice id. Put it in an agent's `voice.voice_id` with
+             *     `voice.provider: cartesia`. `null` until `status` is `ready`.
+             * @example 8a1c2f5e-3b7d-4c9a-9f21-2e6b0d4a7c88
+             */
+            voice_id?: string | null;
+            /**
+             * @description An mp3 preview of the cloned voice, when one exists. Fetching it
+             *     needs your API key in the `Authorization: Bearer` header, so a
+             *     browser `<audio>` tag cannot play it directly.
+             */
+            sample_url?: string | null;
+            /**
+             * @description Present only when `status` is `failed`. Deliberately generic: no
+             *     provider name and no internal detail.
+             */
+            error?: string | null;
+            /** @description ISO 8601 time in UTC, with no offset. */
+            created_at?: string | null;
+            /** @description ISO 8601 time in UTC, with no offset. */
+            ready_at?: string | null;
         };
         /**
          * @description One carrier in a region: a network you can buy numbers from, with its
@@ -1732,9 +2312,60 @@ export interface components {
             /** @description Connected integration records (HubSpot, Salesforce, Slack, etc.). */
             integrations?: Record<string, never>[];
             flow_data?: Record<string, never> | boolean;
+            bot_action_id?: number | boolean;
+            /** @description Whether publishing and version history are enabled for this agent's organization. */
+            can_publish?: boolean;
+        };
+        /** @description An agent as returned in the agent list. */
+        AgentSummary: {
+            id?: number;
+            name?: string;
+            bot_type?: string;
+            /** @enum {string} */
+            bot_call_type?: "Incoming" | "Outgoing";
+            user_id?: number;
+            user_name?: string;
             bot_action_name?: string | boolean;
-            /** @description Whether version history is turned on for this agent's organization. */
-            version_history_enabled?: boolean;
+            /** @description Display names of the languages the agent supports. */
+            language?: string[];
+            /** @description Display name of the agent's voice. */
+            voice?: string;
+            voice_provider?: string;
+            voice_external_id?: string;
+            voice_name?: string;
+            english_voice_accent?: string;
+            eleven_lab_voice_public_owner_id?: string | null;
+            llm_service?: string;
+            is_filler_enable?: boolean;
+            filler_after_sec?: number;
+            fillers?: string[];
+            llm_straming_enabled?: boolean;
+            allow_to_delete?: boolean;
+            status_of_building_flow?: string;
+            dynamic_variables?: Record<string, never>[];
+            flow_data?: Record<string, never> | boolean;
+            agent_creation_error?: string;
+            attach_file_ids?: number[];
+            attach_file_access_description?: string;
+            integration_ids?: number[];
+            integrations?: Record<string, never>[];
+            enable_web_search?: boolean;
+            web_search_engine?: string;
+            post_call_config_ids?: Record<string, never>[];
+            is_end_call_enabled?: boolean;
+            end_call_condition?: string;
+            end_call_message?: string;
+            end_call_message_type?: string;
+            end_call_message_prompt?: string;
+            voicemail_enabled?: boolean;
+            screening_detection_enabled?: boolean;
+            background_noice_name?: string | boolean;
+            background_audio_volume?: number;
+            background_noise_enabled?: boolean;
+            initial_ringing_sound_enabled?: boolean;
+            speech_speed?: number;
+            organization_branch_ids?: Record<string, never>[];
+            closed_organization_branch_ids?: Record<string, never>[];
         };
         /** @description A saved snapshot of an agent's configuration. */
         AgentVersion: {
@@ -1744,10 +2375,10 @@ export interface components {
             name?: string;
             note?: string;
             /**
-             * @description `manual`: a person saved it. `auto`: auto-saved after editing went quiet. `system`: a backup taken automatically before a restore.
+             * @description `manual`: a person saved it, or the agent was published. `system`: a backup taken automatically before a restore.
              * @enum {string}
              */
-            kind?: "manual" | "auto" | "system";
+            kind?: "manual" | "system";
             created_by?: {
                 id?: number;
                 name?: string;
@@ -1831,7 +2462,6 @@ export interface components {
             prompt_tokens?: number;
             completion_tokens?: number;
             total_tokens?: number;
-            aggregated_estimated_cost?: number;
             model_name?: string;
             asr_service?: string;
             tts_service?: string;
@@ -1987,7 +2617,7 @@ export interface components {
             failed_reason?: string | boolean;
             /** @description Whether failed calls are automatically retried. */
             auto_retry?: boolean;
-            /** @description When retries fire (e.g. `immediately`, `after_delay`). */
+            /** @description When retries fire: `immediately`, `next_day`, or `scheduled_time`. */
             auto_retry_schedule?: string;
             /** @description Days to wait before retrying when `auto_retry_schedule` uses a delay. */
             retry_schedule_days?: number;
@@ -2028,13 +2658,13 @@ export interface components {
                 /** @description Allowed values when `variable_type` is `enum`; `false` otherwise. */
                 enum_values?: string[] | boolean;
             }[];
-            /** @description How outbound numbers rotate across the pool (e.g. `none`, `round_robin`, `health_aware`). */
+            /** @description How outbound numbers rotate across the pool: `none`, `fixed_count`, `cpr_threshold`, or `both`. */
             rotation_strategy?: string;
             /** @description Calls placed on a single number before rotating. */
             calls_per_number?: number;
             /** @description Health-score threshold below which a number is skipped during rotation. */
             rotation_health_threshold?: number;
-            /** @description Fallback behavior when no healthy number is available (e.g. `pause`, `continue`). */
+            /** @description Fallback behavior when no healthy number is available: `pause` or `continue_best`. */
             rotation_fallback?: string;
             /** @description ID of the number assignment currently dispatching calls. Null when idle. */
             current_number_assignment_id?: number | null;
@@ -2153,8 +2783,12 @@ export interface components {
             purchase_date?: string;
             expiry_date?: string | boolean;
             location?: string;
-            /** @enum {string} */
-            number_provider?: "twilio" | "exotel" | "sip" | "cloud_whatsapp";
+            /**
+             * @description How this number is connected. Not a fixed list: the set grows as
+             *     providers are added, so treat the value as a label rather than
+             *     validating against specific values.
+             */
+            number_provider?: string;
             number_source?: string;
             is_manually_imported?: boolean;
             can_message?: boolean;
@@ -2186,7 +2820,7 @@ export interface components {
             provider_name?: string | boolean;
             is_premium?: boolean;
             /** @enum {string} */
-            service_type?: "LLM" | "STT" | "TTS" | "other";
+            service_type?: "LLM" | "STT" | "TTS";
             is_active?: boolean;
         };
         Voice: {
@@ -2273,7 +2907,10 @@ export interface components {
              */
             prompt: string;
         };
-        /** @description Side effects that fire once the call ends. Configure email, webhook, or both. */
+        /**
+         * @description Side effects that fire once the call ends. Configure email, webhook,
+         *     Omni CRM, Cloud WhatsApp, or a workflow.
+         */
         PostCallActions: {
             email?: {
                 enabled?: boolean;
@@ -2298,7 +2935,7 @@ export interface components {
                  *       "voicemail_detected"
                  *     ]
                  */
-                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
+                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
             };
             webhook?: {
                 enabled?: boolean;
@@ -2320,8 +2957,73 @@ export interface components {
                  *       "failed"
                  *     ]
                  */
-                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no_answer" | "busy" | "cancelled")[];
+                trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
             };
+            omni_crm?: components["schemas"]["PostCallActionCommon"] & Record<string, never>;
+            cloud_whatsapp?: components["schemas"]["PostCallActionCommon"] & {
+                /**
+                 * @description The id of your organization's Cloud WhatsApp number the
+                 *     message is sent from.
+                 */
+                phone_number_id?: number;
+                /**
+                 * @description An approved template on that number. A template that is not
+                 *     approved, or that belongs to another number, is refused.
+                 */
+                template_id?: number;
+                /** @description Values for the template placeholders. */
+                template_variables?: {
+                    /**
+                     * @description The placeholder number, as a string.
+                     * @example 1
+                     */
+                    index?: string;
+                    /** @description The value to place at that index. */
+                    value?: string;
+                }[];
+                /** @description One or more templates to send, each with its variable mapping. */
+                templates?: components["schemas"]["CloudWhatsAppTemplate"][];
+            };
+            workflow?: components["schemas"]["PostCallActionCommon"] & {
+                /** @description The id of the workflow to run. */
+                workflow_id?: number;
+            };
+        };
+        /** @description Settings every post-call channel shares. */
+        PostCallActionCommon: {
+            enabled?: boolean;
+            /** @description Which sections to include in this action. */
+            include?: ("summary" | "extracted_variables" | "fullConversation" | "sentiment")[];
+            /** @description Variables the model should pull out of the conversation for this action. */
+            extracted_variables?: components["schemas"]["ExtractedVariable"][];
+            /**
+             * @description Call outcomes that fire this action. Omit to use the default
+             *     (`completed`, `voicemail_detected`).
+             */
+            trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
+        };
+        /** @description One Cloud WhatsApp template to send after the call. */
+        CloudWhatsAppTemplate: {
+            /** @description An approved template on the chosen number. */
+            template_id?: number;
+            /** @description Send this template on every call, not only when the variables are extracted. */
+            always_send?: boolean;
+            /** @description How to fill each template placeholder. */
+            variable_mappings?: {
+                /**
+                 * @description The placeholder number, as a string.
+                 * @example 1
+                 */
+                index?: string;
+                /** @description The extracted variable whose value fills this placeholder. */
+                extracted_var?: string;
+                /** @description A fixed value to fill this placeholder instead of a variable. */
+                static_value?: string;
+                /** @description How the value is chosen when both a variable and a static value are set. */
+                mode?: string;
+                /** @description The value to use when the variable is not extracted. */
+                fallback_value?: string;
+            }[];
         };
         /** @description A post-call action sent with a call that was dropped, and why. */
         PostCallActionIgnored: {
@@ -2344,6 +3046,7 @@ export interface components {
         };
         /** @description Agent configuration. */
         AgentConfigInput: {
+            user_id?: components["schemas"]["ClientUserId"];
             /**
              * @description Name for the agent.
              * @example Customer Support Agent
@@ -2410,11 +3113,12 @@ export interface components {
                  */
                 provider?: "deepgram_stream" | "cartesia" | "sarvam" | "azure_stream" | "soniox";
                 /**
-                 * @description The model to use for transcription (required when provider is `deepgram_stream`).
+                 * @description Transcription model for the selected provider. For
+                 *     `deepgram_stream` this is `nova-3` or `nova-2`; other
+                 *     providers take their own model identifiers.
                  * @example nova-3
-                 * @enum {string}
                  */
-                model?: "nova-3" | "nova-2";
+                model?: string;
                 /**
                  * @description Language code for the transcriber. Format and supported
                  *     values depend on the provider (e.g. `en-US` for Deepgram,
@@ -2489,14 +3193,6 @@ export interface components {
                  */
                 voice_id?: string;
                 /**
-                 * @description TTS model identifier. Only consumed when `provider` is
-                 *     `cartesia` (e.g. `sonic-3.5`). For ElevenLabs and other
-                 *     providers the model is implied by `voice_id` and this
-                 *     field is ignored.
-                 * @example sonic-3.5
-                 */
-                model?: string;
-                /**
                  * @description Playback speed multiplier for the agent's voice. 1.0 is normal speed.
                  * @default 1
                  */
@@ -2511,7 +3207,7 @@ export interface components {
                  * @example DuckDuckGo
                  * @enum {string}
                  */
-                provider?: "DuckDuckGo";
+                provider?: "DuckDuckGo" | "openAI";
             };
             post_call_actions?: components["schemas"]["PostCallActions"];
             /** @description Conditional call transfer to a human agent or another number. */
@@ -2735,7 +3431,22 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description Id of the cloned voice. */
+        ClonedVoiceId: number;
+        /**
+         * @description Reseller keys only: the id of one of your direct client users. The
+         *     call then acts as that client, on that client's agents, numbers,
+         *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+         *     client's balance and concurrency. Omit it to act on your own account.
+         *     An empty value, `0`, `false` or your own user id also means your own
+         *     account. Any other value that is not a positive integer id is
+         *     refused with `400 invalid_request`. A key that is not a reseller's
+         *     gets `403` when it names someone else. A user who is not your
+         *     direct client gets `404`.
+         */
+        ClientUserId: components["schemas"]["ClientUserId"];
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -2752,6 +3463,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description ID of the agent the session talks to.
                      * @example 158910
@@ -2934,6 +3646,18 @@ export interface operations {
     listAgents: {
         parameters: {
             query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
                 pageno?: number;
                 /** @description Number of items per page (max 150). */
@@ -3055,7 +3779,7 @@ export interface operations {
                      *     }
                      */
                     "application/json": {
-                        bots?: components["schemas"]["Agent"][];
+                        bots?: components["schemas"]["AgentSummary"][];
                         /** @description Total number of agents on the account. */
                         total_records?: number;
                     };
@@ -3136,7 +3860,20 @@ export interface operations {
     };
     getAgent: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description The ID of the agent. */
@@ -3320,7 +4057,7 @@ export interface operations {
                      *       "asr_cartesia_language": "en",
                      *       "asr_azure_language": "en-IN",
                      *       "asr_cartesia_model": "ink-whisper",
-                     *       "tts_cartesia_model_id": "ink-whisper",
+                     *       "tts_cartesia_language": "en",
                      *       "asr_sarvam_language": "unknown",
                      *       "asr_soniox_language": false,
                      *       "asr_sarvam_model": "saaras:v3",
@@ -3408,7 +4145,20 @@ export interface operations {
     };
     deleteAgent: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description The ID of the agent. */
@@ -3441,6 +4191,18 @@ export interface operations {
     listAgentVersions: {
         parameters: {
             query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
                 pageno?: number;
                 /** @description Number of items per page (max 150). */
@@ -3448,7 +4210,7 @@ export interface operations {
                 /** @description Filter versions whose name matches this substring (case-insensitive). */
                 search?: string;
                 /** @description Filter versions by kind. */
-                kind?: "manual" | "auto" | "system";
+                kind?: "manual" | "system";
             };
             header?: never;
             path: {
@@ -3525,12 +4287,11 @@ export interface operations {
                      *       "counts": {
                      *         "all": 5,
                      *         "manual": 2,
-                     *         "auto": 2,
                      *         "system": 1
                      *       },
                      *       "page": 1,
                      *       "page_size": 30,
-                     *       "version_history_enabled": true
+                     *       "can_publish": true
                      *     }
                      */
                     "application/json": {
@@ -3541,13 +4302,12 @@ export interface operations {
                         counts?: {
                             all?: number;
                             manual?: number;
-                            auto?: number;
                             system?: number;
                         };
                         page?: number;
                         page_size?: number;
-                        /** @description Whether version history is turned on for this agent's organization. */
-                        version_history_enabled?: boolean;
+                        /** @description Whether publishing and version history are enabled for this agent's organization. */
+                        can_publish?: boolean;
                     };
                 };
             };
@@ -3602,6 +4362,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Display name for the version.
                      * @example v2 pricing script
@@ -3717,7 +4478,20 @@ export interface operations {
     };
     deleteAgentVersion: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description The ID of the agent. */
@@ -3800,6 +4574,7 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description New display name for the version.
                      * @example v2 pricing script
@@ -3898,6 +4673,18 @@ export interface operations {
     diffAgentVersion: {
         parameters: {
             query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
                 /** @description What to compare against. Omit or `previous` for the version before this one (the default). `current` for the agent's live config. A version number to compare with that version. */
                 against?: string;
             };
@@ -4037,7 +4824,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
+                };
+            };
+        };
         responses: {
             /** @description Version restored. */
             200: {
@@ -4122,6 +4915,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description The ID of the agent that will handle the call.
                      * @example 158910
@@ -4245,6 +5039,18 @@ export interface operations {
     listCallLogs: {
         parameters: {
             query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
                 pageno?: number;
                 /** @description Number of items per page. */
@@ -4306,9 +5112,7 @@ export interface operations {
                      *           "total_tts_speaking_minutes": 0,
                      *           "total_tts_speaking_seconds": 0,
                      *           "llm_prompt": false,
-                     *           "aggregated_estimated_cost": 0.123,
                      *           "model_name": "gpt-4o",
-                     *           "model_type": "chat",
                      *           "asr_service": "deepgram_stream",
                      *           "tts_service": "eleven_labs",
                      *           "has_issue": false,
@@ -4495,7 +5299,20 @@ export interface operations {
     };
     getCallLog: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description Id of the call log, as returned by the call log list. */
@@ -4549,9 +5366,7 @@ export interface operations {
                      *           "total_tts_speaking_minutes": 0,
                      *           "total_tts_speaking_seconds": 0,
                      *           "llm_prompt": false,
-                     *           "aggregated_estimated_cost": 0.123,
                      *           "model_name": "gpt-4o",
-                     *           "model_type": "chat",
                      *           "asr_service": "deepgram_stream",
                      *           "tts_service": "eleven_labs",
                      *           "has_issue": false,
@@ -4739,6 +5554,18 @@ export interface operations {
     fetchBulkCalls: {
         parameters: {
             query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
                 pageno?: number;
                 /** @description Items per page (max 150). */
@@ -4859,6 +5686,7 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Name of the bulk call campaign.
                      * @example Customer Follow-up Campaign
@@ -5061,7 +5889,7 @@ export interface operations {
                      *       "id": 314,
                      *       "is_scheduled": false,
                      *       "is_dynamic": false,
-                     *       "current_status": "pending"
+                     *       "current_status": "in_progress"
                      *     }
                      */
                     "application/json": {
@@ -5097,6 +5925,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Contact phone number in international format (e.g., +15551234567).
                      * @example +15551234567
@@ -5175,7 +6004,20 @@ export interface operations {
     };
     getBulkCall: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description Id of the bulk call campaign. */
@@ -5328,6 +6170,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description What to do with the campaign.
                      * @example pause
@@ -5378,7 +6221,20 @@ export interface operations {
     };
     cancelBulkCall: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description Id of the bulk call campaign. */
@@ -5397,7 +6253,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "status": "success",
-                     *       "message": "Bulk call cancelled successfully",
+                     *       "message": "Scheduled bulk call cancelled successfully",
                      *       "current_status": "cancelled"
                      *     }
                      */
@@ -5413,6 +6269,18 @@ export interface operations {
     listBulkCallLines: {
         parameters: {
             query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
                 /**
                  * @description The `next_cursor` from your previous response. Omit it on the first
                  *     request. Opaque: pass it back unchanged.
@@ -5511,7 +6379,20 @@ export interface operations {
     };
     listBulkCallNumbers: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description Id of the bulk call campaign. */
@@ -5564,10 +6445,13 @@ export interface operations {
                     "application/json": {
                         status?: string;
                         bulk_call_id?: number;
-                        rotation_strategy?: string;
-                        calls_per_number?: number;
-                        rotation_health_threshold?: number;
-                        rotation_fallback?: string;
+                        /** @description The campaign's rotation settings. */
+                        rotation?: {
+                            strategy?: string;
+                            calls_per_number?: number;
+                            health_threshold?: number;
+                            fallback?: string;
+                        };
                         numbers?: components["schemas"]["BulkCallPoolNumber"][];
                     };
                 };
@@ -5587,6 +6471,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description One of your numbers, from List phone numbers.
                      * @example 178
@@ -5673,6 +6558,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Each row needs `to_number`. Note this differs from the
                      *     `contact_list` on Create bulk call, which uses
@@ -5779,7 +6665,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
+                };
+            };
+        };
         responses: {
             /** @description Campaign started. */
             200: {
@@ -5790,7 +6682,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "status": "success",
-                     *       "message": "Campaign started",
+                     *       "message": "Bulk call started successfully",
                      *       "current_status": "in_progress"
                      *     }
                      */
@@ -5816,6 +6708,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Calls to place at once.
                      * @example 5
@@ -5860,17 +6753,18 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Which contacts to re-queue. `all` takes everything that did
-                     *     not connect.
+                     *     not connect. `specific` re-queues only the statuses listed
+                     *     in `failure_reasons`.
                      * @default all
                      */
                     retry_strategy?: string;
-                    /** @description Skip contacts already retried this many times. */
-                    max_retries?: number;
                     /**
-                     * @description Re-queue only contacts that failed for these reasons, for
-                     *     example `no-answer` and `busy`.
+                     * @description Statuses to re-queue. Read only when `retry_strategy` is
+                     *     `specific`; for example `no-answer` and `busy`. Ignored when
+                     *     `retry_strategy` is `all`.
                      */
                     failure_reasons?: string[];
                 };
@@ -5912,6 +6806,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Stop dialing at `daily_stop_time` each day.
                      * @example true
@@ -5970,7 +6865,20 @@ export interface operations {
     };
     getBulkCallLiveStatus: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path: {
                 /** @description Id of the bulk call campaign. */
@@ -6022,7 +6930,20 @@ export interface operations {
     };
     listKnowledgeBaseFiles: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6073,6 +6994,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Size in bytes.
                      * @example 524288
@@ -6128,6 +7050,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /** @description Base64-encoded file content. */
                     file: string;
                     /**
@@ -6279,6 +7202,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description ID of the file to delete.
                      * @example 17686
@@ -6392,12 +7316,12 @@ export interface operations {
                 region: "IN" | "US";
                 /**
                  * @description Which carrier's stock to search: carriers in a region do not sell
-                 *     the same numbers. Always required, even where a region holds one,
-                 *     and omitting it returns `409 carrier_required` naming that
-                 *     region's carriers and what each one stocks.
+                 *     the same numbers. Required where a region has more than one
+                 *     carrier; omitting it there returns `409 carrier_required` naming
+                 *     the region's carriers and what each one stocks.
                  * @example carrier-1
                  */
-                carrier: string;
+                carrier?: string;
                 /**
                  * @description Digits or prefix to match within the number.
                  * @example 555
@@ -6615,8 +7539,8 @@ export interface operations {
                     /**
                      * @description The carrier to buy from: pass the `carrier` the search
                      *     response named, so you buy from the inventory you searched.
-                     *     Always required, and omitting it returns
-                     *     `409 carrier_required` naming that region's carriers.
+                     *     Required where the region has more than one carrier;
+                     *     omitting it there returns `409 carrier_required`.
                      * @example carrier-1
                      */
                     carrier: string;
@@ -6940,6 +7864,11 @@ export interface operations {
                      * @example 158910
                      */
                     agent_id: number;
+                    /**
+                     * @description Reseller accounts only: the client to act on. Omit it to act on your own account.
+                     * @example 1234
+                     */
+                    user_id?: number;
                 };
             };
         };
@@ -6962,6 +7891,73 @@ export interface operations {
                     };
                 };
             };
+            /**
+             * @description The request body is missing a required field, or an id is not an
+             *     integer. Without `user_id`, the request is also refused when the
+             *     number belongs to another organization than the agent. Transfer the
+             *     number to the agent's organization first, then attach it. Two cases
+             *     are still allowed: the number belongs to the direct reseller of the
+             *     agent's organization, or the number is already attached to that
+             *     agent.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: phone_number_id."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Your key cannot change phone numbers, a `user_id` was sent by a key
+             *     that is not a reseller admin, or the named client's account is
+             *     currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients. A number or agent
+             *     you cannot use answers 200 with `success: false`.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
         };
     };
     detachPhoneNumber: {
@@ -6979,6 +7975,11 @@ export interface operations {
                      * @example 23
                      */
                     phone_number_id: number;
+                    /**
+                     * @description Reseller accounts only: the client to act on. Omit it to act on your own account.
+                     * @example 1234
+                     */
+                    user_id?: number;
                 };
             };
         };
@@ -7001,6 +8002,65 @@ export interface operations {
                     };
                 };
             };
+            /** @description The request body is missing a required field, or the id is not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: phone_number_id."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Your key cannot change phone numbers, a `user_id` was sent by a key
+             *     that is not a reseller admin, or the named client's account is
+             *     currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients. A number you
+             *     cannot use answers 200 with `success: false`.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Child user not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
         };
     };
     importTwilioNumber: {
@@ -7013,6 +8073,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Phone number in E.164 format (starting with `+`).
                      * @example +12025550123
@@ -7061,6 +8122,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Exotel phone number in E.164 format.
                      * @example +919876543210
@@ -7115,6 +8177,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
                     /**
                      * @description Phone number in E.164 format (starting with `+`).
                      * @example +12025550123
@@ -7224,14 +8287,14 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description TTS provider to list voices from. Omit to list across all providers. */
-                provider?: "eleven_labs" | "google" | "deepgram" | "cartesia" | "sarvam";
-                /** @description Substring match against voice name or description. ElevenLabs only. */
+                provider?: "eleven_labs" | "google" | "deepgram" | "cartesia" | "sarvam" | "rime" | "playht" | "hume" | "inworld" | "smallest";
+                /** @description Substring match against voice name or description. ElevenLabs and Cartesia. */
                 search?: string;
-                /** @description ISO language code (e.g. `en`, `hi`, `es`). ElevenLabs only. */
+                /** @description ISO language code (e.g. `en`, `hi`, `es`). ElevenLabs and Cartesia. */
                 language?: string;
-                /** @description Accent label (e.g. `american`, `british`). ElevenLabs only. */
+                /** @description Accent label (e.g. `american`, `british`). ElevenLabs and Cartesia. */
                 accent?: string;
-                /** @description Filter voices by gender. ElevenLabs only. */
+                /** @description Filter voices by gender. ElevenLabs and Cartesia. */
                 gender?: "male" | "female";
                 /** @description 1-indexed page number. */
                 page?: number;
@@ -9385,8 +10448,14 @@ export interface operations {
                                 is_active?: boolean;
                                 /** Format: date */
                                 expiry_date?: string | null;
-                                access_level?: boolean;
+                                /** @description Access role of this user: `owner` or `manager`. */
+                                access_level?: string;
                                 dashboard_menu_access?: components["schemas"]["ResellerDashboardMenuAccess"];
+                                /** @description The user's active API keys, without secrets. `id` is `0` for the default key the account got at signup. */
+                                api_keys?: {
+                                    id?: number;
+                                    name?: string;
+                                }[];
                             }[];
                         }[];
                         total_organizations?: number;
@@ -9529,6 +10598,902 @@ export interface operations {
             };
         };
     };
+    getResellerIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current brand and email server state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "can_use_brand_identity": true,
+                     *       "can_use_custom_smtp": true,
+                     *       "has_identity": true,
+                     *       "identity": {
+                     *         "platform_name": "Acme Voice",
+                     *         "company_name": "Acme Ltd",
+                     *         "logo_url": "https://acme.example/logo.png",
+                     *         "primary_color": "#1976d2",
+                     *         "real_email": "hello@acme.example"
+                     *       },
+                     *       "smtp": {
+                     *         "configured": true,
+                     *         "active": true,
+                     *         "host": "smtp.acme.example",
+                     *         "port": 587,
+                     *         "username": "mailer@acme.example",
+                     *         "encryption": "starttls",
+                     *         "from_email": "hello@acme.example"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResellerIdentityState"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The key's user is not the owner or an admin of the organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Only an account owner or admin can change brand settings."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong. Please try again."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    saveResellerIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "platform_name": "Acme Voice",
+                 *       "company_name": "Acme Ltd",
+                 *       "primary_color": "#1976d2",
+                 *       "real_email": "hello@acme.example"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description Brand name. Your clients' emails show it and their verification calls speak it. Plain text. */
+                    platform_name?: string;
+                    /** @description Company name. Plain text. */
+                    company_name?: string;
+                    /** @description Public URL of your logo. */
+                    logo_url?: string;
+                    /** @description Brand colour as a hex value, for example `#1976d2`. */
+                    primary_color?: string;
+                    /**
+                     * Format: email
+                     * @description Sender and reply-to address on your clients' emails.
+                     */
+                    real_email?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The brand was saved. The body is the full brand state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "can_use_brand_identity": true,
+                     *       "can_use_custom_smtp": true,
+                     *       "has_identity": true,
+                     *       "identity": {
+                     *         "platform_name": "Acme Voice",
+                     *         "company_name": "Acme Ltd",
+                     *         "logo_url": "",
+                     *         "primary_color": "#1976d2",
+                     *         "real_email": "hello@acme.example"
+                     *       },
+                     *       "smtp": {
+                     *         "configured": false,
+                     *         "active": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResellerIdentityState"];
+                };
+            };
+            /** @description A field failed validation. `error_description` names it. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Primary color must be a hex value like"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description The key's user is not the owner or an admin of the organization,
+             *     or the account cannot hold a brand.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Brand settings are not available for your account."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong. Please try again."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    saveResellerIdentitySmtp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "host": "smtp.acme.example",
+                 *       "port": 587,
+                 *       "username": "mailer@acme.example",
+                 *       "password": "app-password",
+                 *       "encryption": "starttls",
+                 *       "from_email": "hello@acme.example"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ResellerIdentitySmtpInput"];
+            };
+        };
+        responses: {
+            /** @description The server was saved and is in use. The body is the full brand state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "can_use_brand_identity": true,
+                     *       "can_use_custom_smtp": true,
+                     *       "has_identity": true,
+                     *       "identity": {
+                     *         "platform_name": "Acme Voice",
+                     *         "company_name": "Acme Ltd",
+                     *         "real_email": "hello@acme.example"
+                     *       },
+                     *       "smtp": {
+                     *         "configured": true,
+                     *         "active": true,
+                     *         "host": "smtp.acme.example",
+                     *         "port": 587,
+                     *         "username": "mailer@acme.example",
+                     *         "encryption": "starttls",
+                     *         "from_email": "hello@acme.example"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResellerIdentityState"];
+                };
+            };
+            /**
+             * @description No brand is saved yet, a field is missing or invalid, or the
+             *     login to the server failed. `error_description` gives the reason.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Save your brand before connecting an email server."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description The key's user is not the owner or an admin of the organization,
+             *     or the account cannot hold a brand or use a custom email server.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Brand settings are not available for your account."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong. Please try again."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    testResellerIdentitySmtp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "host": "smtp.acme.example",
+                 *       "port": 587,
+                 *       "username": "mailer@acme.example",
+                 *       "encryption": "starttls"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ResellerIdentitySmtpInput"];
+            };
+        };
+        responses: {
+            /** @description The login worked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                    };
+                };
+            };
+            /**
+             * @description No brand is saved yet, a field is missing, or the login failed.
+             *     `error_description` gives the reason.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "SMTP host is required."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description The key's user is not the owner or an admin of the organization,
+             *     or the account cannot hold a brand or use a custom email server.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Brand settings are not available for your account."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong. Please try again."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    disableResellerIdentitySmtp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Custom email server turned off. The body is the full brand state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "can_use_brand_identity": true,
+                     *       "can_use_custom_smtp": true,
+                     *       "has_identity": true,
+                     *       "identity": {
+                     *         "platform_name": "Acme Voice",
+                     *         "company_name": "Acme Ltd"
+                     *       },
+                     *       "smtp": {
+                     *         "configured": true,
+                     *         "active": false,
+                     *         "host": "smtp.acme.example",
+                     *         "port": 587,
+                     *         "username": "mailer@acme.example",
+                     *         "encryption": "starttls",
+                     *         "from_email": "hello@acme.example"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResellerIdentityState"];
+                };
+            };
+            /** @description No brand is saved yet. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Save your brand before connecting an email server."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description The key's user is not the owner or an admin of the organization,
+             *     or the account cannot hold a brand or use a custom email server.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Brand settings are not available for your account."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong. Please try again."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    setClientAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "blocked": true,
+                 *       "organization_id": 5678,
+                 *       "detach_numbers": true
+                 *     }
+                 */
+                "application/json": {
+                    /** @description `true` blocks, `false` restores. Must be a JSON boolean. */
+                    blocked: boolean;
+                    /** @description The client user to block or restore. Send this or `organization_id`, not both. */
+                    user_id?: number;
+                    /** @description The client organization whose users are all blocked or restored. Send this or `user_id`, not both. */
+                    organization_id?: number;
+                    /**
+                     * @description Also detach the organization's numbers from their agents.
+                     *     Only with `organization_id` and `blocked: true`.
+                     * @default false
+                     */
+                    detach_numbers?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Access changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "blocked": true,
+                     *       "user_ids": [
+                     *         1234,
+                     *         1235
+                     *       ],
+                     *       "detached_numbers": {
+                     *         "91": {
+                     *           "agent_id": 412,
+                     *           "sms_enabled": false
+                     *         }
+                     *       },
+                     *       "message": "Client access blocked."
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        /** @description The state you asked for. */
+                        blocked?: boolean;
+                        /** @description The users whose access changed. Users that were left as they were are not listed. */
+                        user_ids?: number[];
+                        /**
+                         * @description Numbers detached from their agents, keyed by number id.
+                         *     Empty unless `detach_numbers` was true. Use it to attach
+                         *     the numbers again.
+                         */
+                        detached_numbers?: {
+                            [key: string]: {
+                                agent_id?: number;
+                                sms_enabled?: boolean;
+                            };
+                        };
+                        message?: string;
+                    };
+                };
+            };
+            /** @description The body is not valid. `error_description` says what to fix. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Send user_id or organization_id, not both."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description The key is not a reseller's, or you tried to block the owner of
+             *     a client organization by `user_id`.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "This user owns the client organization. Block the organization instead."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The user or organization is not one of your clients. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "User not found."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description You tried to restore a user you did not block. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This user was not blocked by you. Their organization admin can restore them."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    previewClientRelease: {
+        parameters: {
+            query: {
+                /** @description The client organization to preview releasing. */
+                organization_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What a release would do. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "organization_id": 5678,
+                     *       "name": "Demo Client",
+                     *       "currency_symbol": "$",
+                     *       "balance": 12.5,
+                     *       "credit_revert": {
+                     *         "deducted": 12.5,
+                     *         "refunded": 10
+                     *       },
+                     *       "numbers": [
+                     *         {
+                     *           "id": 91,
+                     *           "phone_number": "+15551234567",
+                     *           "attached": true,
+                     *           "transfers_back": true
+                     *         }
+                     *       ],
+                     *       "users": [
+                     *         {
+                     *           "id": 1234,
+                     *           "email": "demo@example.com"
+                     *         }
+                     *       ],
+                     *       "is_white_label": false,
+                     *       "has_live_subscription": false
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        organization_id?: number;
+                        name?: string;
+                        currency_symbol?: string;
+                        /** @description The client's balance, in your currency. */
+                        balance?: number;
+                        credit_revert?: {
+                            deducted?: number;
+                            refunded?: number;
+                        };
+                        numbers?: {
+                            id?: number;
+                            phone_number?: string;
+                            attached?: boolean;
+                            transfers_back?: boolean;
+                        }[];
+                        users?: {
+                            id?: number;
+                            email?: string;
+                        }[];
+                        is_white_label?: boolean;
+                        /**
+                         * @description While true, a release is refused. The client must cancel
+                         *     its subscription first.
+                         */
+                        has_live_subscription?: boolean;
+                    };
+                };
+            };
+            /** @description `organization_id` is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields organization_id."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The key is not a reseller's, or not the owner or an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The organization is not one of your direct clients. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    releaseClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "organization_id": 5678
+                 *     }
+                 */
+                "application/json": {
+                    /** @description The client organization to release. */
+                    organization_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The client was released. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "organization_id": 5678,
+                     *       "reverted_credits": {
+                     *         "deducted": 12.5,
+                     *         "refunded": 10
+                     *       },
+                     *       "user_ids": [
+                     *         1234
+                     *       ],
+                     *       "detached_numbers": {
+                     *         "91": {
+                     *           "agent_id": 412,
+                     *           "sms_enabled": false
+                     *         }
+                     *       },
+                     *       "transferred_numbers": [
+                     *         91
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        organization_id?: number;
+                        /**
+                         * @description The balance returned to you, or `{}` when the client had
+                         *     nothing to return.
+                         */
+                        reverted_credits?: {
+                            deducted?: number;
+                            refunded?: number;
+                        };
+                        /** @description The client users whose logins were retired. */
+                        user_ids?: number[];
+                        /** @description Numbers detached from their agents, keyed by number id. */
+                        detached_numbers?: {
+                            [key: string]: {
+                                agent_id?: number;
+                                sms_enabled?: boolean;
+                            };
+                        };
+                        /** @description Numbers that transferred back to you. */
+                        transferred_numbers?: number[];
+                    };
+                };
+            };
+            /** @description `organization_id` is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The key is not a reseller's, or not the owner or an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The organization is not one of your direct clients. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The client has a live subscription and must cancel it first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This client has an active subscription. It must be cancelled before the client can be released."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The balance moved while releasing. Nothing changed, so try again. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
     setUserExpiry: {
         parameters: {
             query?: never;
@@ -9569,6 +11534,141 @@ export interface operations {
                         /** Format: date */
                         expiry_date?: string | null;
                     };
+                };
+            };
+        };
+    };
+    issueChildApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "user_id": 1234,
+                 *       "name": "n8n"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description ID of the client user who will own the key. */
+                    user_id: number;
+                    /** @description A name for the key. Must be unique among that user's keys. */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Key issued. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        user_id?: number;
+                        api_key_id?: number;
+                        name?: string;
+                        /** @description The secret. Shown only in this response. */
+                        api_key?: string;
+                    };
+                };
+            };
+            /** @description The name is missing, or the user already has a key with this name. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Your key is not a reseller owner or admin key, or the user's account is blocked. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The user is not in one of your client organizations. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    revokeChildApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "user_id": 1234,
+                 *       "api_key_id": 88
+                 *     }
+                 */
+                "application/json": {
+                    /** @description ID of the client user who owns the key. */
+                    user_id: number;
+                    /** @description The key's ID, or `0` for the default key the account got at signup. */
+                    api_key_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Key revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        revoked?: boolean;
+                        api_key_id?: number;
+                    };
+                };
+            };
+            /** @description `api_key_id` is not a whole number. Pass a key ID, or `0` for the default key. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Your key is not a reseller owner or admin key. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The user is not in one of your client organizations, or the key does not belong to that user. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
                 };
             };
         };
@@ -9840,7 +11940,7 @@ export interface operations {
                                     email?: string;
                                 };
                                 status?: string;
-                                /** @description One of `credit_transfer`, `credit_revert`, or `channel_allocation`. */
+                                /** @description One of `credit_transfer`, `credit_revert`, `channel_allocation`, or `channel_revert`. */
                                 transaction_type?: string;
                                 channels_count?: number;
                                 previous_channels?: number;
@@ -10031,12 +12131,12 @@ export interface operations {
                 region: "IN" | "US";
                 /**
                  * @description Which carrier's steps to return: carriers in a region do not share
-                 *     a step list. Always required, even where a region holds one, and
-                 *     omitting it returns `409 carrier_required` naming that region's
-                 *     carriers.
+                 *     a step list. Required where a region has more than one carrier;
+                 *     omitting it there returns `409 carrier_required` naming the
+                 *     region's carriers.
                  * @example carrier-1
                  */
-                carrier: string;
+                carrier?: string;
             };
             header?: never;
             path?: never;
@@ -10583,7 +12683,7 @@ export interface operations {
                         next_step?: string | null;
                         /**
                          * @description Echoes how the step that just ran is performed. Present
-                         *     on every step response.
+                         *     on redirect steps.
                          * @enum {string}
                          */
                         method?: "submit" | "otp" | "redirect" | "upload";
@@ -10855,6 +12955,732 @@ export interface operations {
                      * @example {
                      *       "error": "forbidden",
                      *       "error_description": "You do not have access to Billing. If Billing is enabled for your organization, an administrator can grant it."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    listClonedVoices: {
+        parameters: {
+            query?: {
+                /** @description Rows per page. Above 100 the request is refused. */
+                limit?: number;
+                /**
+                 * @description The `next_cursor` from your previous response. Omit it on the first
+                 *     request. Opaque: pass it back unchanged.
+                 */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of cloned voices, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": [
+                     *         {
+                     *           "id": 412,
+                     *           "name": "Front desk",
+                     *           "description": null,
+                     *           "language": "en",
+                     *           "gender": "female",
+                     *           "status": "ready",
+                     *           "voice_id": "8a1c2f5e-3b7d-4c9a-9f21-2e6b0d4a7c88",
+                     *           "sample_url": "https://backend.omnidim.io/api/v1/voices/412/sample",
+                     *           "error": null,
+                     *           "created_at": "2026-10-12T15:18:07.424509",
+                     *           "ready_at": "2026-10-12T15:18:31.009881"
+                     *         }
+                     *       ],
+                     *       "has_more": false,
+                     *       "next_cursor": null
+                     *     }
+                     */
+                    "application/json": {
+                        data?: components["schemas"]["ClonedVoice"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            /** @description A bad `limit` (not 1 to 100) or an invalid `cursor`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "limit must be a whole number from 1 to 100.",
+                     *       "code": "invalid_limit",
+                     *       "request_id": "req_5d9a1f3e8b02"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key",
+                     *       "code": "invalid_api_key",
+                     *       "request_id": "req_6e2b9d4f1a38"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description Voice cloning is not enabled for this account. It must be included in
+             *     your plan, and your API key's user needs access to it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have permission to view Voice Cloning.",
+                     *       "code": "feature_not_enabled",
+                     *       "request_id": "req_9f2c1a4b7d3e"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    createClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Optional. Send a unique value per clone; a retry with the same key
+                 *     and body returns the first clone instead of creating a second. Every
+                 *     clone costs money at the provider, so this makes a retry safe. Up to
+                 *     255 printable characters.
+                 */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description A name for the cloned voice, 1 to 100 characters.
+                     * @example Front desk
+                     */
+                    name: string;
+                    /** @description Base64-encoded audio, 1 KB to 25 MB (MP3, WAV or WebM). */
+                    clip: string;
+                    /**
+                     * @description Optional original filename, for your reference.
+                     * @example sample.mp3
+                     */
+                    filename?: string;
+                    /** @description Optional description. */
+                    description?: string;
+                    /**
+                     * @description A short language code for the voice. Defaults to `en`.
+                     * @example en
+                     */
+                    language?: string;
+                    /**
+                     * @description The voice's gender. Defaults to `female`.
+                     * @default female
+                     * @enum {string}
+                     */
+                    gender?: "male" | "female";
+                    /**
+                     * @description Required and must be `true`: you confirm you have the right
+                     *     to clone this voice.
+                     * @example true
+                     */
+                    consent: boolean;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description The clone was accepted and is being created. Poll the status until it
+             *     is `ready` or `failed`.
+             */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "voice": {
+                     *         "id": 412,
+                     *         "name": "Front desk",
+                     *         "description": null,
+                     *         "language": "en",
+                     *         "gender": "female",
+                     *         "status": "processing",
+                     *         "voice_id": null,
+                     *         "sample_url": null,
+                     *         "error": null,
+                     *         "created_at": "2026-10-12T15:18:07.424509",
+                     *         "ready_at": null
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /**
+             * @description The body is invalid: missing `name`, `clip` or `consent`, a `clip`
+             *     that is not valid Base64, not audio, too small or too large, a bad
+             *     language code, or a bad gender. Also `invalid_idempotency_key` when
+             *     the `Idempotency-Key` header is longer than 255 characters or has
+             *     unprintable characters.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "clip does not look like an audio file. Upload MP3, WAV or WebM.",
+                     *       "code": "invalid_audio",
+                     *       "request_id": "req_4a1e8c2d9f60"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key",
+                     *       "code": "invalid_api_key",
+                     *       "request_id": "req_6e2b9d4f1a38"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description Voice cloning is not enabled for this account. It must be included in
+             *     your plan, and your API key's user needs write access to it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have permission to make changes to Voice Cloning.",
+                     *       "code": "permission_denied",
+                     *       "request_id": "req_7b3d5e1a0c94"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `Idempotency-Key` was already used with a different body.
+             *     `code` is `idempotency_key_reused`.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This Idempotency-Key was already used with a different request. Use a new key for a new request.",
+                     *       "code": "idempotency_key_reused",
+                     *       "request_id": "req_8d1f4a7c2e59"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description A per-user limit was hit. `code` is `rate_limited` (5 an hour or 20 a
+             *     day) or `stored_limit` (200 stored voices). A `Retry-After` header is
+             *     sent on `rate_limited`.
+             */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "too_many_requests",
+                     *       "error_description": "Too many voice clones were requested. Please wait and try again.",
+                     *       "code": "rate_limited",
+                     *       "request_id": "req_2c8f0d6b5a17"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The clone could not be started. Nothing was created; safe to retry. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Could not start the voice clone. Please try again.",
+                     *       "code": "clone_failed",
+                     *       "request_id": "req_1e6b4a9c2d78"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is temporarily unavailable. Try again shortly. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "service_unavailable",
+                     *       "error_description": "Voice cloning is temporarily unavailable.",
+                     *       "code": "provider_unavailable",
+                     *       "request_id": "req_3f7c0b5d8a21"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cloned voice. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key",
+                     *       "code": "invalid_api_key",
+                     *       "request_id": "req_6e2b9d4f1a38"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is not enabled for this account. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have permission to view Voice Cloning.",
+                     *       "code": "feature_not_enabled",
+                     *       "request_id": "req_9f2c1a4b7d3e"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Voice not found.",
+                     *       "code": "not_found",
+                     *       "request_id": "req_0b5e7a2d9c14"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    deleteClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The voice was deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "id": 412,
+                     *       "name": "Front desk"
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        id?: number;
+                        name?: string;
+                    };
+                };
+            };
+            /** @description Voice cloning is not enabled for this account, or the key's user cannot delete it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The voice is still being created. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This voice is still being created. Delete it once it is ready or failed.",
+                     *       "code": "voice_processing",
+                     *       "request_id": "req_7a3d9e0c5b16"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    updateClonedVoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description 1 to 100 characters. */
+                    name?: string;
+                    description?: string;
+                    /** @enum {string} */
+                    gender?: "male" | "female";
+                };
+            };
+        };
+        responses: {
+            /** @description The updated voice. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /**
+             * @description A field is invalid, or the body is not a JSON object (`code` is
+             *     `invalid_json`).
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Request body must be a JSON object",
+                     *       "code": "invalid_json",
+                     *       "request_id": "req_4c8a1e6b3f20"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is not enabled for this account, or the key's user cannot write it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getClonedVoiceSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sample audio. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mpeg": string;
+                };
+            };
+            /** @description Voice cloning is not enabled for this account. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, it belongs to another account, or no sample exists yet. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Sample audio is not available yet.",
+                     *       "code": "sample_not_ready",
+                     *       "request_id": "req_2e9b6d1a8f43"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The stored sample is unreadable. Regenerate it with `POST /voices/{voice_id}/sample`. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "The sample audio is unavailable. Try regenerating it.",
+                     *       "code": "sample_unavailable",
+                     *       "request_id": "req_5f0a3c7e2d81"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    regenerateClonedVoiceSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the cloned voice. */
+                voice_id: components["parameters"]["ClonedVoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The voice, with a fresh sample. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        voice?: components["schemas"]["ClonedVoice"];
+                    };
+                };
+            };
+            /** @description Voice cloning is not enabled for this account, or the key's user cannot write it. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description No such voice, or it belongs to another account. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The voice is not ready yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This voice is not ready yet.",
+                     *       "code": "voice_not_ready",
+                     *       "request_id": "req_3b6e8f1d4a07"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description You regenerated too many samples. The limit is 10 an hour per user.
+             *     Retry after the number of seconds in the `Retry-After` header (3600).
+             */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "too_many_requests",
+                     *       "error_description": "Too many sample regenerations. Please wait and try again.",
+                     *       "code": "rate_limited",
+                     *       "request_id": "req_9c2a5e7b0d36"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The sample could not be regenerated. Try again. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Could not regenerate the sample. Please try again.",
+                     *       "code": "sample_failed",
+                     *       "request_id": "req_1d4f8a3e6c92"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Voice cloning is temporarily unavailable. Try again shortly. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "service_unavailable",
+                     *       "error_description": "Voice cloning is temporarily unavailable.",
+                     *       "code": "provider_unavailable",
+                     *       "request_id": "req_3f7c0b5d8a21"
                      *     }
                      */
                     "application/json": components["schemas"]["SessionError"];

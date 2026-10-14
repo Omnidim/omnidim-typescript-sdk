@@ -23,6 +23,84 @@ export class Reseller {
     return this.http.request<ResultOf<"setUserAccessControl">>("POST", "/reseller/users/access-control", { body });
   }
 
+  /**
+   * Block or restore a client, reversibly. Nothing is deleted.
+   *
+   * Send `blocked` and exactly one of `user_id` or `organization_id`.
+   * `detach_numbers` only applies to an organization block.
+   */
+  setClientAccess(body: BodyOf<"setClientAccess">) {
+    return this.http.request<ResultOf<"setClientAccess">>("POST", "/reseller/users/access", { body });
+  }
+
+  /**
+   * What releasing a client would do, changing nothing. Call it before
+   * `releaseClient`. A release is refused while `has_live_subscription` is
+   * true.
+   */
+  previewClientRelease(query: QueryOf<"previewClientRelease">) {
+    return this.http.request<ResultOf<"previewClientRelease">>(
+      "GET",
+      "/reseller/clients/release-preview",
+      { query },
+    );
+  }
+
+  /**
+   * Release a client for good. One-way: unlike `setClientAccess`, it cannot be
+   * undone. It reverts the balance you funded, detaches the client's numbers,
+   * takes back the ones you bought, and retires its logins.
+   */
+  releaseClient(body: BodyOf<"releaseClient">) {
+    return this.http.request<ResultOf<"releaseClient">>("POST", "/reseller/clients/release", { body });
+  }
+
+  /**
+   * Issue an API key for a user in one of your client organizations. The
+   * secret is in this response only; store it now, because no listing shows it
+   * again.
+   */
+  issueChildApiKey(body: BodyOf<"issueChildApiKey">) {
+    return this.http.request<ResultOf<"issueChildApiKey">>("POST", "/reseller/users/api-keys", { body });
+  }
+
+  /**
+   * Revoke a client's API key. Pass the key's `api_key_id`, or `0` for the
+   * default key every account gets at signup. The key stops working on the
+   * next request.
+   */
+  revokeChildApiKey(body: BodyOf<"revokeChildApiKey">) {
+    return this.http.request<ResultOf<"revokeChildApiKey">>("POST", "/reseller/users/api-keys/revoke", { body });
+  }
+
+  /** Read your brand and custom email server settings. */
+  getIdentity() {
+    return this.http.request<ResultOf<"getResellerIdentity">>("GET", "/reseller/identity");
+  }
+
+  /** Set the brand your client organizations see. The first save creates it. */
+  saveIdentity(body: BodyOf<"saveResellerIdentity">) {
+    return this.http.request<ResultOf<"saveResellerIdentity">>("POST", "/reseller/identity/save", { body });
+  }
+
+  /**
+   * Send your clients' emails through your own email server. The login is
+   * checked before it is saved. Save your brand first.
+   */
+  saveIdentitySmtp(body: BodyOf<"saveResellerIdentitySmtp">) {
+    return this.http.request<ResultOf<"saveResellerIdentitySmtp">>("POST", "/reseller/identity/smtp/save", { body });
+  }
+
+  /** Check a login to an email server. Nothing is saved. */
+  testIdentitySmtp(body: BodyOf<"testResellerIdentitySmtp">) {
+    return this.http.request<ResultOf<"testResellerIdentitySmtp">>("POST", "/reseller/identity/smtp/test", { body });
+  }
+
+  /** Send your clients' emails back to the default sender. The saved server is kept. */
+  disableIdentitySmtp() {
+    return this.http.request<ResultOf<"disableResellerIdentitySmtp">>("POST", "/reseller/identity/smtp/disable");
+  }
+
   /** Set a user's expiry. */
   setUserExpiry(body: BodyOf<"setUserExpiry">) {
     return this.http.request<ResultOf<"setUserExpiry">>("POST", "/reseller/users/expiry", { body });
