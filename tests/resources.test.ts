@@ -120,6 +120,8 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
     "/reseller/kyc/steps/upload-pan",
   ],
   ["reseller.setClientAccess", (c) => c.reseller.setClientAccess(B), "POST", "/reseller/users/access"],
+  ["reseller.usage", (c) => c.reseller.usage({ month: "2026-09" }), "GET", "/reseller/usage?month=2026-09"],
+  ["reseller.clientUsage", (c) => c.reseller.clientUsage(ID), "GET", "/reseller/usage/clients/7"],
   ["reseller.getIdentity", (c) => c.reseller.getIdentity(), "GET", "/reseller/identity"],
   ["reseller.saveIdentity", (c) => c.reseller.saveIdentity(B), "POST", "/reseller/identity/save"],
   ["reseller.saveIdentitySmtp", (c) => c.reseller.saveIdentitySmtp(B), "POST", "/reseller/identity/smtp/save"],
@@ -139,7 +141,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(88);
+    expect(cases).toHaveLength(90);
   });
 
   for (const [name, call, method, path] of cases) {
