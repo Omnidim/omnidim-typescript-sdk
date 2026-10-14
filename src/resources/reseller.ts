@@ -73,6 +73,24 @@ export class Reseller {
     return this.http.request<ResultOf<"revokeChildApiKey">>("POST", "/reseller/users/api-keys/revoke", { body });
   }
 
+  /**
+   * Usage, spend and margin across all your clients for a month
+   * (`{ month: "2026-09" }`) or a date range. With no query, the current
+   * month. Amounts are in USD.
+   */
+  usage(query?: QueryOf<"getResellerUsage">) {
+    return this.http.request<ResultOf<"getResellerUsage">>("GET", "/reseller/usage", { query });
+  }
+
+  /** One client's usage statement and your margin on it, for the same window. */
+  clientUsage(organizationId: number | string, query?: QueryOf<"getResellerClientUsage">) {
+    return this.http.request<ResultOf<"getResellerClientUsage">>(
+      "GET",
+      `/reseller/usage/clients/${organizationId}`,
+      { query },
+    );
+  }
+
   /** Read your brand and custom email server settings. */
   getIdentity() {
     return this.http.request<ResultOf<"getResellerIdentity">>("GET", "/reseller/identity");

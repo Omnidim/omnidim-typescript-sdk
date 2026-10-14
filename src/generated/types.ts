@@ -1520,6 +1520,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reseller/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get usage across your clients
+         * @description Your whole book for one period: each client's minutes, calls, spend
+         *     and the margin you made on it, your totals, how long your balance
+         *     will last, and your recurring revenue.
+         *
+         *     Pass `month`, or `date_from` and `date_to`. With neither, you get the
+         *     current month. Days are counted in your account's timezone, which the
+         *     response returns. A range can span at most 366 days.
+         *
+         *     All amounts are in US dollars. Revenue and margin count credit sales
+         *     to your clients in the period. Usage counts what your clients spent
+         *     their credit on. Burn and runway always look at the last 30 days, so
+         *     they do not move with the period you pick.
+         *
+         *     Who may call: the reseller account owner or an admin. Any other key
+         *     gets `403`.
+         */
+        get: operations["getResellerUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reseller/usage/clients/{organization_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one client's usage
+         * @description One client's statement for a period: its spend by type, its calls
+         *     broken down by day, agent, campaign, number and direction, the numbers
+         *     and channels it bought, and the margin you made on it.
+         *
+         *     Takes the same `month`, or `date_from` and `date_to`, as
+         *     `GET /reseller/usage`. All amounts are in US dollars, at the rates
+         *     you set for the client. Minutes are billable minutes. Each breakdown
+         *     lists the biggest spend first, and `by_day` runs oldest first.
+         *
+         *     Who may call: the reseller account owner or an admin. A client that is
+         *     not one of your direct clients gets `404`, the same answer as one that
+         *     does not exist.
+         */
+        get: operations["getResellerClientUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reseller/clients/release-preview": {
         parameters: {
             query?: never;
@@ -2095,6 +2160,29 @@ export interface components {
              *     `code`. Also sent as the `X-Request-Id` header.
              */
             request_id?: string;
+        };
+        /**
+         * @description One line of a client's calls in a period. Each breakdown names its line
+         *     by one key: `day`, `agent_id`, `campaign_id`, `phone_number` or
+         *     `direction`.
+         */
+        ResellerUsageRow: {
+            /** Format: date */
+            day?: string;
+            agent_id?: number | null;
+            campaign_id?: number | null;
+            phone_number?: string;
+            direction?: string;
+            /** @description The agent, campaign, number or direction. Not on `by_day` lines. */
+            name?: string;
+            calls?: number;
+            /** @description Billable Voice AI minutes. */
+            minutes?: number;
+            /** @description Voice AI spend. */
+            amount?: number;
+            telephony_minutes?: number;
+            telephony_amount?: number;
+            total_amount?: number;
         };
         /**
          * @description A voice cloned from an audio sample. Created asynchronously: `status` is
@@ -11248,6 +11336,365 @@ export interface operations {
                      * @example {
                      *       "error": "conflict",
                      *       "error_description": "This user was not blocked by you. Their organization admin can restore them."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getResellerUsage: {
+        parameters: {
+            query?: {
+                /** @description A calendar month, as `YYYY-MM`. */
+                month?: string;
+                /** @description First day of a custom range, as `YYYY-MM-DD`. Send with `date_to`. */
+                date_from?: string;
+                /** @description Last day of a custom range, as `YYYY-MM-DD`. Send with `date_from`. */
+                date_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usage and margin across your clients for the period. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "reseller_organization_id": 1234,
+                     *       "date_from": "2026-09-01",
+                     *       "date_to": "2026-09-30",
+                     *       "timezone": "Asia/Kolkata",
+                     *       "currency": "USD",
+                     *       "totals": {
+                     *         "clients": 2,
+                     *         "active_clients": 1,
+                     *         "total_minutes": 412.5,
+                     *         "total_calls": 380,
+                     *         "total_consumption": 61.88,
+                     *         "total_purchases": 3,
+                     *         "total_revenue": 100,
+                     *         "total_wholesale_cost": 70,
+                     *         "total_realized_margin": 30,
+                     *         "margin_pct": 30
+                     *       },
+                     *       "pool": {
+                     *         "balance": 250,
+                     *         "wholesale_charged": 70,
+                     *         "burn_per_day": 2.33,
+                     *         "burn_window_days": 30,
+                     *         "runway_days": 107.3
+                     *       },
+                     *       "business": {
+                     *         "mrr": 50,
+                     *         "mrr_wholesale": 35,
+                     *         "mrr_profit": 15,
+                     *         "active_subscriptions": 1,
+                     *         "top_client": {
+                     *           "organization_id": 5678,
+                     *           "name": "Demo Client",
+                     *           "realized_margin": 30,
+                     *           "share_pct": 100
+                     *         },
+                     *         "previous_period_realized_margin": 24,
+                     *         "realized_margin_change_pct": 25
+                     *       },
+                     *       "clients": [
+                     *         {
+                     *           "organization_id": 5678,
+                     *           "name": "Demo Client",
+                     *           "minutes": 412.5,
+                     *           "calls": 380,
+                     *           "consumption": 61.88,
+                     *           "purchases": 3,
+                     *           "numbers_spend": 3,
+                     *           "channels_spend": 0,
+                     *           "realized_margin": 30,
+                     *           "balance": 38.12,
+                     *           "runway_days": 18.5
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        reseller_organization_id?: number;
+                        /** Format: date */
+                        date_from?: string;
+                        /** Format: date */
+                        date_to?: string;
+                        /** @description The timezone the days are counted in. */
+                        timezone?: string;
+                        /** @description Always `USD`. */
+                        currency?: string;
+                        totals?: {
+                            /** @description Your direct clients today. */
+                            clients?: number;
+                            /** @description Clients with any usage, spend or margin in the period. */
+                            active_clients?: number;
+                            total_minutes?: number;
+                            total_calls?: number;
+                            /** @description What your clients spent on calls and call features, at the rates you set. */
+                            total_consumption?: number;
+                            /** @description What your clients spent on phone numbers and channels. */
+                            total_purchases?: number;
+                            /** @description What your clients paid you for credit. */
+                            total_revenue?: number;
+                            /** @description What that credit cost you. */
+                            total_wholesale_cost?: number;
+                            /** @description Revenue minus wholesale cost. */
+                            total_realized_margin?: number;
+                            /** @description Realized margin as a percent of revenue. */
+                            margin_pct?: number;
+                        };
+                        /** @description Your own balance and how fast client sales draw it down. */
+                        pool?: {
+                            balance?: number;
+                            /** @description Wholesale cost of the credit you sold in the period. */
+                            wholesale_charged?: number;
+                            /** @description Average wholesale cost per day over the last `burn_window_days`. */
+                            burn_per_day?: number;
+                            burn_window_days?: number;
+                            /** @description Days your balance lasts at that rate. `null` when nothing is drawing it down. */
+                            runway_days?: number | null;
+                        };
+                        business?: {
+                            /** @description Monthly revenue from your clients' active plan subscriptions. */
+                            mrr?: number;
+                            mrr_wholesale?: number;
+                            mrr_profit?: number;
+                            active_subscriptions?: number;
+                            /** @description The client that earned you the most in the period. `null` when no client made a profit. */
+                            top_client?: {
+                                organization_id?: number;
+                                name?: string;
+                                realized_margin?: number;
+                                /** @description Its share of your total realized margin. */
+                                share_pct?: number;
+                            } | null;
+                            /** @description Realized margin in the period of the same length just before this one. */
+                            previous_period_realized_margin?: number;
+                            /** @description Change against that period. `null` when the previous period made no profit. */
+                            realized_margin_change_pct?: number | null;
+                        };
+                        clients?: {
+                            organization_id?: number;
+                            name?: string;
+                            minutes?: number;
+                            calls?: number;
+                            consumption?: number;
+                            purchases?: number;
+                            numbers_spend?: number;
+                            channels_spend?: number;
+                            realized_margin?: number;
+                            /** @description The client's balance now. */
+                            balance?: number;
+                            /** @description Days the client's balance lasts at its last 30 days of usage. `null` when it is not using any. */
+                            runway_days?: number | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description The period is not a valid month or day range, or spans more than 366 days. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Pass month as YYYY-MM, or date_from and date_to as YYYY-MM-DD. A range can span at most 366 days.",
+                     *       "code": "invalid_window",
+                     *       "request_id": "req_5d9a1f3e8b02"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The key is not a reseller's, or not the owner or an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getResellerClientUsage: {
+        parameters: {
+            query?: {
+                /** @description A calendar month, as `YYYY-MM`. */
+                month?: string;
+                /** @description First day of a custom range, as `YYYY-MM-DD`. Send with `date_to`. */
+                date_from?: string;
+                /** @description Last day of a custom range, as `YYYY-MM-DD`. Send with `date_from`. */
+                date_to?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The client organization, as listed by `GET /reseller/organizations`. */
+                organization_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The client's usage and your margin on it for the period. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "organization_id": 5678,
+                     *       "name": "Demo Client",
+                     *       "date_from": "2026-09-01",
+                     *       "date_to": "2026-09-30",
+                     *       "timezone": "Asia/Kolkata",
+                     *       "currency": "USD",
+                     *       "balance": 38.12,
+                     *       "calls": 380,
+                     *       "summary": {
+                     *         "voice_ai": {
+                     *           "minutes": 412.5,
+                     *           "amount": 61.88
+                     *         },
+                     *         "telephony": {
+                     *           "minutes": 0,
+                     *           "amount": 0
+                     *         },
+                     *         "phone_numbers": {
+                     *           "count": 1,
+                     *           "amount": 3
+                     *         },
+                     *         "channels": {
+                     *           "count": 0,
+                     *           "amount": 0
+                     *         },
+                     *         "total_amount": 64.88
+                     *       },
+                     *       "margin": {
+                     *         "revenue": 100,
+                     *         "wholesale_cost": 70,
+                     *         "realized_margin": 30,
+                     *         "bonus": 0
+                     *       },
+                     *       "by_agent": [
+                     *         {
+                     *           "agent_id": 901,
+                     *           "name": "Front desk",
+                     *           "calls": 380,
+                     *           "minutes": 412.5,
+                     *           "amount": 61.88,
+                     *           "telephony_minutes": 0,
+                     *           "telephony_amount": 0,
+                     *           "total_amount": 61.88
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        organization_id?: number;
+                        name?: string;
+                        /** Format: date */
+                        date_from?: string;
+                        /** Format: date */
+                        date_to?: string;
+                        timezone?: string;
+                        /** @description Always `USD`. */
+                        currency?: string;
+                        /** @description The client's balance now. */
+                        balance?: number;
+                        calls?: number;
+                        /**
+                         * @description Spend by type. `voice_ai` and `telephony` carry `minutes`
+                         *     and `amount`. `phone_numbers`, `channels`, `call_audit`,
+                         *     `asr_eval`, `whatsapp`, `sms`, `email` and
+                         *     `channel_renewal` carry `count` and `amount`. `addons` is
+                         *     one line per add-on. `whatsapp_activity` counts incoming
+                         *     messages and active chats. `total_amount` is the sum of
+                         *     the spend.
+                         */
+                        summary?: {
+                            [key: string]: unknown;
+                        };
+                        margin?: {
+                            /** @description What the client paid you for credit in the period. */
+                            revenue?: number;
+                            /** @description What that credit cost you. */
+                            wholesale_cost?: number;
+                            /** @description `revenue` minus `wholesale_cost`. */
+                            realized_margin?: number;
+                            /** @description Bonus credit you funded on the client's own purchases. */
+                            bonus?: number;
+                        };
+                        by_day?: components["schemas"]["ResellerUsageRow"][];
+                        by_agent?: components["schemas"]["ResellerUsageRow"][];
+                        /** @description `campaign_id` is `null` for calls outside a campaign. */
+                        by_campaign?: components["schemas"]["ResellerUsageRow"][];
+                        by_number?: components["schemas"]["ResellerUsageRow"][];
+                        by_direction?: components["schemas"]["ResellerUsageRow"][];
+                        /**
+                         * @description Each phone number rental and channel purchase in the
+                         *     period. `date` is the day it was paid, in `timezone`.
+                         */
+                        purchases?: {
+                            numbers?: {
+                                label?: string;
+                                /** Format: date */
+                                date?: string | null;
+                                amount?: number;
+                            }[];
+                            channels?: {
+                                label?: string;
+                                /** Format: date */
+                                date?: string | null;
+                                amount?: number;
+                                num_channels?: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description The period is not a valid month or day range, or spans more than 366 days. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The key is not a reseller's, or not the owner or an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description The organization is not one of your direct clients. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_found",
+                     *       "error_description": "Client organization not found.",
+                     *       "code": "client_not_found",
+                     *       "request_id": "req_5d9a1f3e8b02"
                      *     }
                      */
                     "application/json": components["schemas"]["SessionError"];
