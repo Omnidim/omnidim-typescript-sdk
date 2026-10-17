@@ -94,8 +94,12 @@ export class Agents {
   }
 
   /** List the post-call actions of an agent. */
-  listPostCallActions(agentId: number | string) {
-    return this.http.request<ResultOf<"listPostCallActions">>("GET", `/agents/${agentId}/post-call-actions`);
+  listPostCallActions(agentId: number | string, query?: QueryOf<"listPostCallActions">) {
+    return this.http.request<ResultOf<"listPostCallActions">>(
+      "GET",
+      `/agents/${agentId}/post-call-actions`,
+      { query },
+    );
   }
 
   /** Add a post-call action to an agent. Pass an idempotency key to make a retry safe. */
