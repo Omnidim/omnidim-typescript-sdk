@@ -2067,6 +2067,240 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/workflow-node-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List workflow node types
+         * @description Search the node types a workflow can use, such as `whatsapp`, `voice_ai` or `conditional`. Call it first when you do not know which node to add. Then call `getWorkflowNodeType` for the settings of one type.
+         */
+        get: operations["listWorkflowNodeTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflow-node-types/{node_type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a workflow node type
+         * @description The settings one node type reads, with their types, required flags and outputs. Call it before you add or edit a node, because its `fields` are the keys of the node's `config`. Use `detail=full` only when you need help text and examples.
+         */
+        get: operations["getWorkflowNodeType"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflow-node-types/{node_type}/options/{field}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List choices for a node field
+         * @description The choices for one `ref` field of a node type, such as the phone numbers, agents or integrations in your account. Call it for every `ref` field and never guess an id. If it returns `400 no_options`, the field is not chosen from a list, so ask the user for the value.
+         */
+        get: operations["listWorkflowFieldOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List workflows
+         * @description Your workflows, oldest first, one cursor page at a time. Use it to find a workflow id. Pass back `next_cursor` until it is `null`.
+         */
+        get: operations["listWorkflows"];
+        put?: never;
+        /**
+         * Create a workflow
+         * @description Create a workflow with a draft. Without `graph`, the draft holds one `trigger` node, ready for `editWorkflow` ops. Pass `graph` only to start from a complete graph. The response carries the `revision` you need to edit.
+         */
+        post: operations["createWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/{workflow_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a workflow
+         * @description One workflow with its draft, status and `revision`. Call it before every edit to get the current `revision`. Use `view=structure` to see nodes and edges without config on a large workflow. Secrets read back as `********`.
+         */
+        get: operations["getWorkflow"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a workflow
+         * @description Delete a workflow. Its published version stops running. This cannot be undone, so confirm with the user first. To stop it without deleting, use `deactivateWorkflow`.
+         */
+        delete: operations["deleteWorkflow"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit a workflow draft
+         * @description Change the draft with a list of `ops`: add, update, move or delete nodes, and connect or disconnect them. The ops apply all together or not at all. You must send the `revision` from your last read. If you get `409 revision_conflict`, read the workflow again and retry. Secrets read back as `********`. Send them back unchanged to keep the stored value. This edits the draft only. Use `publishWorkflow` to make it live.
+         */
+        patch: operations["editWorkflow"];
+        trace?: never;
+    };
+    "/workflows/{workflow_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate a workflow draft
+         * @description Check the draft and list what blocks publish. It changes nothing. Call it after your edits and fix every error before `publishWorkflow`.
+         */
+        post: operations["validateWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/{workflow_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a workflow
+         * @description Make the draft the live version. Real events then run it, unless the workflow is paused. Run `validateWorkflow` first: publish is refused while the draft has errors. Ask the user before you publish.
+         */
+        post: operations["publishWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/{workflow_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate a workflow
+         * @description Turn the published workflow on, so real events run it. Use it to resume a workflow you paused with `deactivateWorkflow`.
+         */
+        post: operations["activateWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/{workflow_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate a workflow
+         * @description Turn the published workflow off, so real events stop running it. The workflow and its draft stay. Use `activateWorkflow` to turn it back on.
+         */
+        post: operations["deactivateWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/{workflow_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test a workflow
+         * @description Runs the draft once with payload as the trigger data. Every node runs for real: WhatsApp messages, SMS, emails and calls go out and CRM records change. Ask the user before calling it, and use their own phone number or email in the payload.
+         *
+         *     It returns an `execution_id` at once. Poll `getWorkflowExecution` for the result.
+         */
+        post: operations["testWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/{workflow_id}/executions/{execution_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a workflow run
+         * @description One run of a workflow, with the result of each step. Use it to read the outcome of `testWorkflow`. A run is finished when `state` is `completed`, `failed` or `cancelled`.
+         */
+        get: operations["getWorkflowExecution"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2160,6 +2394,265 @@ export interface components {
              *     `code`. Also sent as the `X-Request-Id` header.
              */
             request_id?: string;
+        };
+        /**
+         * @description The v1 error envelope. Some errors add keys: `errors` (validation
+         *     issues), `op_index` and `hint` (a refused op), `revision` (the current
+         *     revision after a conflict).
+         */
+        WorkflowError: {
+            /** @description Machine-readable error code, such as `revision_conflict`. */
+            error?: string;
+            /** @description Human-readable explanation. */
+            error_description?: string;
+            /** @description Stable, specific reason. Present on 400 errors and auth errors. */
+            code?: string;
+            /** @description Correlates this response with the server log. Also sent as the `X-Request-Id` header. */
+            request_id?: string;
+            /** @description On `validation_failed`, the issues that blocked the request. */
+            errors?: components["schemas"]["WorkflowIssue"][];
+            /** @description On `invalid_op`, the zero-based position of the op that failed. */
+            op_index?: number;
+            /** @description On `invalid_op`, what to do next. */
+            hint?: string;
+            /** @description On `revision_conflict`, the current revision of the draft. */
+            revision?: string;
+        };
+        /** @description One problem found in a draft. */
+        WorkflowIssue: {
+            /**
+             * @description Stable issue code. `not_found`: an id is not in this workspace, pick one with
+             *     `listWorkflowFieldOptions`. `templated_ref`: an id field holds a `{{ }}` template; ids
+             *     must be literal. Others include `missing_field`, `bad_option`, `bad_handle`,
+             *     `unreachable`, `trigger_count`, `unknown_type`, `unknown_reference` and `malformed`.
+             */
+            code?: string;
+            message?: string;
+            /** @description Id of the node the issue is about, if any. */
+            node?: string | null;
+            /** @description Config field the issue is about, if any. */
+            field?: string | null;
+            /** @description What to do to fix it. */
+            hint?: string | null;
+        };
+        /** @description What validation found. Errors block publish. Warnings do not. */
+        WorkflowIssues: {
+            errors?: components["schemas"]["WorkflowIssue"][];
+            warnings?: components["schemas"]["WorkflowIssue"][];
+        };
+        /**
+         * @description A complete graph to start a workflow from, in the same shape `getWorkflow`
+         *     returns under `draft`. A workflow you read can be sent back as a new one.
+         *     It is built with the same checks as `editWorkflow` ops. Most callers skip it
+         *     and build with `editWorkflow` instead.
+         */
+        WorkflowGraph: {
+            nodes: {
+                /** @description Lowercase letters, digits and underscores, starting with a letter. Later nodes read this node's output as `{{ context.<id>.<field> }}`. */
+                id: string;
+                /** @description A node type from `listWorkflowNodeTypes`. */
+                type: string;
+                label?: string;
+                position?: {
+                    x?: number;
+                    y?: number;
+                };
+                /** @description The node's settings. The fields come from `getWorkflowNodeType`. */
+                config?: {
+                    [key: string]: unknown;
+                };
+            }[];
+            edges: {
+                /** @description Id of the node the edge starts at. */
+                from: string;
+                /** @description Id of the node the edge ends at. */
+                to: string;
+                /** @description The output of the `from` node. Omit it, or send `default`, for a plain node's only output. */
+                handle?: string;
+            }[];
+        };
+        /** @description A node as the API shows it. */
+        WorkflowNode: {
+            id?: string;
+            /** @description A node type from `listWorkflowNodeTypes`. */
+            type?: string;
+            label?: string | null;
+            position?: {
+                x?: number;
+                y?: number;
+            };
+            /**
+             * @description Only in `view=full`. The node's settings. The fields for each node
+             *     type come from `getWorkflowNodeType`. Secrets read back as
+             *     `********`.
+             */
+            config?: {
+                [key: string]: unknown;
+            };
+        };
+        WorkflowEdge: {
+            /** @description Id of the node the edge starts at. */
+            from?: string;
+            /** @description Id of the node the edge ends at. */
+            to?: string;
+            /** @description The output of the `from` node. `default` for a plain edge. */
+            handle?: string;
+        };
+        /** @description The editable version of a workflow. */
+        WorkflowDraft: {
+            version_id?: number;
+            /** @description Send this back in `editWorkflow`. It changes on every edit, including edits made in the dashboard. */
+            revision?: string;
+            nodes?: components["schemas"]["WorkflowNode"][];
+            edges?: components["schemas"]["WorkflowEdge"][];
+        };
+        Workflow: {
+            id?: number;
+            name?: string;
+            /**
+             * @description `draft`: never published. `active`: the published version is live. `paused`: published but turned off.
+             * @enum {string}
+             */
+            status?: "draft" | "active" | "paused";
+            published_version_id?: number | null;
+            /** @description Set when the workflow takes a webhook trigger. */
+            webhook_url?: string | null;
+            draft?: components["schemas"]["WorkflowDraft"] | null;
+        };
+        WorkflowSummary: {
+            id?: number;
+            name?: string;
+            /** @enum {string} */
+            status?: "draft" | "active" | "paused";
+            /** @description ISO 8601 time of the last change. */
+            updated_at?: string | null;
+        };
+        /**
+         * @description One edit to the draft. Set `op` and the fields that op uses.
+         *
+         *     | `op` | Fields | Effect |
+         *     |---|---|---|
+         *     | `add_node` | `id`, `type`, `label?`, `config?`, `after?`, `handle?`, `position?` | Adds a node. With `after`, it also connects it to that node (on output `handle`). |
+         *     | `update_node` | `id`, `config?`, `label?` | Merges `config` keys into the node. A `null` value removes a key. |
+         *     | `move_node` | `id`, `position` | Moves a node on the canvas. |
+         *     | `delete_node` | `id` | Deletes a node and its edges. |
+         *     | `connect` | `from`, `to`, `handle?` | Adds an edge. |
+         *     | `disconnect` | `from`, `to`, `handle?` | Removes an edge. |
+         */
+        WorkflowOp: {
+            /** @enum {string} */
+            op: "add_node" | "update_node" | "move_node" | "delete_node" | "connect" | "disconnect";
+            /** @description Node id. For `add_node`, lowercase letters, digits and underscores, starting with a letter. It must be new. */
+            id?: string;
+            /** @description `add_node`: a node type from `listWorkflowNodeTypes`. */
+            type?: string;
+            /** @description `add_node`, `update_node`: the name shown on the canvas. */
+            label?: string;
+            /**
+             * @description `add_node`, `update_node`: the node's settings. The fields come from
+             *     `getWorkflowNodeType`. Send a secret back as `********` to keep the
+             *     stored value.
+             */
+            config?: {
+                [key: string]: unknown;
+            };
+            /** @description `add_node`: id of the node to connect the new node to. */
+            after?: string;
+            /** @description `add_node`, `connect`, `disconnect`: the output of the source node. Omit for the default output. */
+            handle?: string;
+            /** @description `add_node`, `move_node`: canvas position. `add_node` places the node for you if you omit it. */
+            position?: {
+                x?: number;
+                y?: number;
+            };
+            /** @description `connect`, `disconnect`: id of the node the edge starts at. */
+            from?: string;
+            /** @description `connect`, `disconnect`: id of the node the edge ends at. */
+            to?: string;
+        };
+        /** @description One setting of a node type. */
+        WorkflowNodeField: {
+            /** @enum {string} */
+            type?: "text" | "number" | "boolean" | "enum" | "ref" | "ref_list" | "map" | "list" | "json";
+            required?: boolean;
+            /** @description The field is required only when another field has this value. */
+            required_if?: {
+                [key: string]: unknown;
+            };
+            /** @description The value the node uses when the field is missing. */
+            default?: unknown;
+            /** @description For `enum`, the accepted values. */
+            options?: unknown[];
+            /** @description For `ref`, what the id points at. Get the choices from `listWorkflowFieldOptions`. */
+            ref?: string;
+            /** @description For `ref`, the field whose value narrows the choices. Pass its value as `depends`. */
+            depends_on?: string;
+            /** @description For `list`, the fields of each item. */
+            items?: {
+                [key: string]: unknown;
+            };
+            /** @description `{{ context.<node>.<field> }}` expressions are filled in at run time. */
+            templated?: boolean;
+            /** @description Holds a credential. It reads back as `********`. */
+            secret?: boolean;
+            /** @description Only with `detail=full`. */
+            description?: string;
+            /** @description Only with `detail=full`. */
+            example?: unknown;
+        };
+        WorkflowNodeTypeSummary: {
+            type?: string;
+            label?: string;
+            /** @description One of `triggers`, `messaging`, `calls`, `flow`, `ai`, `crm`, `integrations`. */
+            category?: string;
+            /** @enum {string} */
+            kind?: "trigger" | "action" | "flow" | "note";
+            /** @description True when the node has a real outside effect, such as a message, a call or a CRM write. */
+            sends?: boolean;
+            description?: string;
+        };
+        /** @description One node type with the settings it reads. */
+        WorkflowNodeType: {
+            type?: string;
+            label?: string;
+            category?: string;
+            /** @enum {string} */
+            kind?: "trigger" | "action" | "flow" | "note";
+            /** @description Only with `detail=full`. */
+            description?: string;
+            sends?: boolean;
+            /** @description The node's settings, by name. Put these under `config` in an op. */
+            fields?: {
+                [key: string]: components["schemas"]["WorkflowNodeField"];
+            };
+            /** @description The outputs an edge can start from. `default` is a plain edge. */
+            outputs?: string[];
+            /** @description Only with `detail=full`. What later nodes can read as `{{ context.<node id>.<key> }}`. */
+            output_example?: {
+                [key: string]: unknown;
+            };
+        };
+        WorkflowOption: {
+            /** @description The value to put in the field. */
+            id?: number;
+            label?: string;
+        };
+        WorkflowExecutionStep: {
+            /** @description Id of the node. */
+            node?: string;
+            /** @description Step result, such as `success`, `error` or `waiting_time`. */
+            status?: string;
+            error?: string | null;
+            /** @description What the node produced. */
+            output?: unknown;
+        };
+        WorkflowExecution: {
+            id?: number;
+            /** @enum {string} */
+            state?: "running" | "waiting" | "completed" | "failed" | "cancelled";
+            /** @description True for a run started by `testWorkflow`. */
+            test?: boolean;
+            steps?: components["schemas"]["WorkflowExecutionStep"][];
         };
         /**
          * @description One line of a client's calls in a period. Each breakdown names its line
@@ -3518,7 +4011,80 @@ export interface components {
             };
         };
     };
-    responses: never;
+    responses: {
+        /** @description A bad parameter or body. `code` says which, such as `invalid_json`, `invalid_parameter`, `missing_fields` or `no_options`. */
+        WorkflowBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "invalid_request",
+                 *       "error_description": "revision is required. Read the workflow to get it.",
+                 *       "code": "missing_fields",
+                 *       "request_id": "req_5d9a1f3e8b02"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WorkflowError"];
+            };
+        };
+        /** @description Missing or invalid API key. */
+        WorkflowUnauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "unauthorized",
+                 *       "error_description": "Missing or invalid API key",
+                 *       "code": "invalid_api_key",
+                 *       "request_id": "req_6e2b9d4f1a38"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WorkflowError"];
+            };
+        };
+        /**
+         * @description The Workflow Builder is not enabled for this account
+         *     (`feature_not_enabled`), or your API key's user cannot make this
+         *     change (`permission_denied`). The Workflow Builder must be included in
+         *     your plan.
+         */
+        WorkflowForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "forbidden",
+                 *       "error_description": "You do not have permission to use Workflows.",
+                 *       "code": "feature_not_enabled",
+                 *       "request_id": "req_9f2c1a4b7d3e"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WorkflowError"];
+            };
+        };
+        /** @description No workflow, node type or run with that id in your account. */
+        WorkflowNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "not_found",
+                 *       "error_description": "No workflow with that id.",
+                 *       "request_id": "req_2c8e7a1d9b40"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WorkflowError"];
+            };
+        };
+    };
     parameters: {
         /** @description Id of the cloned voice. */
         ClonedVoiceId: number;
@@ -3534,6 +4100,10 @@ export interface components {
          *     direct client gets `404`.
          */
         ClientUserId: components["schemas"]["ClientUserId"];
+        /** @description Id of the workflow. */
+        WorkflowId: number;
+        /** @description A node type from `listWorkflowNodeTypes`, such as `whatsapp`. */
+        WorkflowNodeTypeName: string;
     };
     requestBodies: never;
     headers: never;
@@ -11510,7 +12080,7 @@ export interface operations {
                      * @example {
                      *       "error": "invalid_request",
                      *       "error_description": "Pass month as YYYY-MM, or date_from and date_to as YYYY-MM-DD. A range can span at most 366 days.",
-                     *       "code": "invalid_window",
+                     *       "code": "invalid_request",
                      *       "request_id": "req_5d9a1f3e8b02"
                      *     }
                      */
@@ -14133,6 +14703,729 @@ export interface operations {
                     "application/json": components["schemas"]["SessionError"];
                 };
             };
+        };
+    };
+    listWorkflowNodeTypes: {
+        parameters: {
+            query?: {
+                /** @description Words to match against the type, label and description, such as `whatsapp`. */
+                q?: string;
+                /** @description Only types in this category. */
+                category?: "triggers" | "messaging" | "calls" | "flow" | "ai" | "crm" | "integrations";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matching node types. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        types?: components["schemas"]["WorkflowNodeTypeSummary"][];
+                    };
+                };
+            };
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+        };
+    };
+    getWorkflowNodeType: {
+        parameters: {
+            query?: {
+                /** @description `full` adds descriptions, examples and `output_example`. */
+                detail?: "minimal" | "full";
+            };
+            header?: never;
+            path: {
+                /** @description A node type from `listWorkflowNodeTypes`, such as `whatsapp`. */
+                node_type: components["parameters"]["WorkflowNodeTypeName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The node type. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        type?: components["schemas"]["WorkflowNodeType"];
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+        };
+    };
+    listWorkflowFieldOptions: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+                /** @description The value of the field this one depends on (`depends_on` in the node type), such as the chosen phone number id. */
+                depends?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A node type from `listWorkflowNodeTypes`, such as `whatsapp`. */
+                node_type: components["parameters"]["WorkflowNodeTypeName"];
+                /** @description A field name from `getWorkflowNodeType`. */
+                field: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 100 choices. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        options?: components["schemas"]["WorkflowOption"][];
+                    };
+                };
+            };
+            /** @description The field is not chosen from a list (`no_options`), or `depends` is not an id. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "no_options",
+                     *       "error_description": "'to_number' is not chosen from a list here. Ask the user for the value.",
+                     *       "request_id": "req_5d9a1f3e8b02"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+        };
+    };
+    listWorkflows: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. Omit it on the first request. Pass it back unchanged. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of workflows. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WorkflowSummary"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+        };
+    };
+    createWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description A non-empty name. */
+                    name: string;
+                    graph?: components["schemas"]["WorkflowGraph"];
+                };
+            };
+        };
+        responses: {
+            /** @description The workflow was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workflow?: components["schemas"]["Workflow"];
+                        issues?: components["schemas"]["WorkflowIssues"];
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            /** @description `validation_failed`: the graph has a problem that blocks saving, such as an unknown node type or an edge to a missing node. Nothing was created. The problems are in `errors`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+        };
+    };
+    getWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+                /** @description `structure` leaves node `config` out. */
+                view?: "structure" | "full";
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workflow. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workflow?: components["schemas"]["Workflow"];
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+        };
+    };
+    deleteWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workflow was deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        id?: number;
+                        name?: string;
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+        };
+    };
+    editWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The `draft.revision` from your last `getWorkflow` or edit. */
+                    revision: string;
+                    ops: components["schemas"]["WorkflowOp"][];
+                    /** @description Rename the workflow. */
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The ops were applied. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The new revision. Use it for your next edit. */
+                        revision?: string;
+                        issues?: components["schemas"]["WorkflowIssues"];
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+            /**
+             * @description `revision_conflict`: the draft changed since you read it. The body
+             *     has the current `revision`. Read the workflow again, then retry.
+             *     `no_draft` or `not_draft`: there is no draft to edit.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "revision_conflict",
+                     *       "error_description": "The workflow changed since you read it. Read it again, then retry.",
+                     *       "revision": "8c1d4e7a92f0",
+                     *       "request_id": "req_7a3d9c2e5b18"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+            /**
+             * @description `invalid_op`: an op was refused. `op_index` and `hint` say which
+             *     and why. `validation_failed`: the result would be unsafe to save,
+             *     such as an unknown node type or an edge to a missing node. The
+             *     problems are in `errors`. Nothing was saved.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_op",
+                     *       "error_description": "No node 'send_helo' in this workflow.",
+                     *       "op_index": 0,
+                     *       "hint": "Read the workflow for its node ids.",
+                     *       "request_id": "req_4b8f1e6a3c27"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+        };
+    };
+    validateWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The errors and warnings. Errors block publish. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowIssues"];
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+            /** @description `no_draft`: this workflow has no draft. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+        };
+    };
+    publishWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft is now live. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workflow?: components["schemas"]["Workflow"];
+                        warnings?: components["schemas"]["WorkflowIssue"][];
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+            /** @description `no_draft`: there is no draft to publish. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+            /** @description `validation_failed`: the draft has errors. They are in `errors`. Fix them with `editWorkflow`, then publish again. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+        };
+    };
+    activateWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workflow is active. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workflow?: components["schemas"]["Workflow"];
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+            /** @description `not_published`: publish the workflow first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+        };
+    };
+    deactivateWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workflow is paused. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        workflow?: components["schemas"]["Workflow"];
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+            /** @description `not_published`: publish the workflow first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+        };
+    };
+    testWorkflow: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description The trigger data. Nodes read it as `{{ context.<trigger id>.<field> }}`. See `output_example` of the trigger node type for its shape. */
+                    payload?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The run started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        execution_id?: number;
+                    };
+                };
+            };
+            400: components["responses"]["WorkflowBadRequest"];
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+            /** @description `no_trigger`: the draft has no trigger node, or `no_draft`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowError"];
+                };
+            };
+        };
+    };
+    getWorkflowExecution: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: the id of one of your direct client users. The
+                 *     call then acts as that client, on that client's agents, numbers,
+                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
+                 *     client's balance and concurrency. Omit it to act on your own account.
+                 *     An empty value, `0`, `false` or your own user id also means your own
+                 *     account. Any other value that is not a positive integer id is
+                 *     refused with `400 invalid_request`. A key that is not a reseller's
+                 *     gets `403` when it names someone else. A user who is not your
+                 *     direct client gets `404`.
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+                /** @description The `execution_id` from `testWorkflow`. */
+                execution_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The run. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        execution?: components["schemas"]["WorkflowExecution"];
+                    };
+                };
+            };
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
         };
     };
 }
