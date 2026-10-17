@@ -1,4 +1,4 @@
 # Spec used to generate src/generated/types.ts. Run `npm run regen` to refresh.
 openapi_spec_url: https://docs.omnidim.io/openapi.yaml
-openapi_spec_hash: "ecefab25896986529f64f2f71357da4771294f66641a8c3bbf25009456ef37d2"
+openapi_spec_hash: "2a35849a45ef2959e8408a5276f077e8cb0eb32f6c09e0e03b42eb339ec6d98d"
 generator: openapi-typescript

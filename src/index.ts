@@ -8,6 +8,7 @@ import { PhoneNumbers } from "./resources/phoneNumbers.js";
 import { Providers } from "./resources/providers.js";
 import { Reseller } from "./resources/reseller.js";
 import { Voices } from "./resources/voices.js";
+import { Workflows } from "./resources/workflows.js";
 import { Integrations } from "./resources/integrations.js";
 
 export { OmniDimensionError } from "./errors.js";
@@ -52,6 +53,7 @@ export class OmniDimension {
   readonly reseller: Reseller;
   readonly voices: Voices;
   readonly integrations: Integrations;
+  readonly workflows: Workflows;
 
   constructor(options: ClientOptions) {
     const http = new HttpClient(options);
@@ -65,6 +67,7 @@ export class OmniDimension {
     this.reseller = new Reseller(http);
     this.voices = new Voices(http);
     this.integrations = new Integrations(http);
+    this.workflows = new Workflows(http);
   }
 }
 

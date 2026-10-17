@@ -103,6 +103,8 @@ export interface paths {
          * Update agent
          * @description Update an existing agent. Send only the fields you want to change.
          *
+         *     `post_call_actions` replaces the agent's email, webhook, Omni CRM, Cloud WhatsApp and workflow actions as one set, but only when you send at least one of those types. Google Sheets, Slack, Salesforce, HubSpot and Zoho Bigin actions are replaced only when their key is sent, and kept otherwise. If a sent action gives a variable key a new prompt, kept actions that use the same key take the new prompt too. To add, change or remove one action without touching the others, use `/agents/{agent_id}/post-call-actions`.
+         *
          *     > **Voicemail detection is an access-gated feature** that we turn on per account. If it isn't enabled for yours yet, [request access](https://omnidim.io/contact-us?reason=product&lock=1) before configuring the `voicemail` object below.
          */
         put: operations["updateAgent"];
@@ -112,6 +114,82 @@ export interface paths {
          * @description Permanently delete an agent.
          */
         delete: operations["deleteAgent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/post-call-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * List post-call actions
+         * @description List every post-call action on the agent, each with its own `id`.
+         */
+        get: operations["listPostCallActions"];
+        put?: never;
+        /**
+         * Add a post-call action
+         * @description Add one post-call action to the agent. The agent's other actions are not changed. Send an `Idempotency-Key` header to make a retry safe: the same key and body return the action the first request added.
+         */
+        post: operations["addPostCallAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/post-call-actions/{action_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The ID of the post-call action. */
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a post-call action
+         * @description Remove one post-call action from the agent. The agent's other actions are not changed.
+         */
+        delete: operations["deletePostCallAction"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a post-call action
+         * @description Change fields of one post-call action. Fields you don't send keep their value. The `type` cannot change.
+         */
+        patch: operations["updatePostCallAction"];
+        trace?: never;
+    };
+    "/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integrations
+         * @description List the integrations connected to your workspace, with each one's `id` and `integration_type`. Stored credentials (tokens, secrets, passwords, API keys, and the values of a custom API's headers and parameters) are never returned: they read `********`. When you create an integration, send the real values: `********` is refused. Accounts that sign in with OAuth (Google Sheets, Slack, HubSpot, Salesforce, Zoho Bigin) are connected in the dashboard.
+         */
+        get: operations["listIntegrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2306,15 +2384,9 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * @description Reseller keys only: the id of one of your direct client users. The
-         *     call then acts as that client, on that client's agents, numbers,
-         *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-         *     client's balance and concurrency. Omit it to act on your own account.
-         *     Send it as a JSON integer in the body. `null`, `0`, `false` or your
-         *     own user id also means your own account. Any other value that is not
-         *     a positive integer id is refused with `400 invalid_request`. A key
-         *     that is not a reseller's gets `403` when it names someone else. A
-         *     user who is not your direct client gets `404`.
+         * @description Reseller keys only: act as one of your clients by its user id. Omit
+         *     it to act on your own account.
+         *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
          * @example 1234
          */
         ClientUserId: number;
@@ -3489,8 +3561,9 @@ export interface components {
             prompt: string;
         };
         /**
-         * @description Side effects that fire once the call ends. Configure email, webhook,
-         *     Omni CRM, Cloud WhatsApp, or a workflow.
+         * @description Side effects that fire once the call ends: email, webhook, Omni CRM,
+         *     Cloud WhatsApp, a workflow, Google Sheets, Slack, Salesforce, HubSpot
+         *     or Zoho Bigin.
          */
         PostCallActions: {
             email?: {
@@ -3552,15 +3625,18 @@ export interface components {
                  *     approved, or that belongs to another number, is refused.
                  */
                 template_id?: number;
-                /** @description Values for the template placeholders. */
+                /** @description Which extracted variable fills each template placeholder. */
                 template_variables?: {
                     /**
                      * @description The placeholder number, as a string.
                      * @example 1
                      */
                     index?: string;
-                    /** @description The value to place at that index. */
-                    value?: string;
+                    /**
+                     * @description The key of the extracted variable whose value fills this placeholder.
+                     * @example customer_name
+                     */
+                    extracted_var?: string;
                 }[];
                 /** @description One or more templates to send, each with its variable mapping. */
                 templates?: components["schemas"]["CloudWhatsAppTemplate"][];
@@ -3569,6 +3645,224 @@ export interface components {
                 /** @description The id of the workflow to run. */
                 workflow_id?: number;
             };
+            google_sheets?: components["schemas"]["PostCallActionCommon"] & {
+                /** @description Required. The id of your Google Sheets integration. */
+                integration_id?: number;
+                /** @description Required. The id in the sheet's URL, the part after `/d/`. */
+                spreadsheet_id?: string;
+                spreadsheet_name?: string;
+                /** @description The tab to append to. Defaults to `Sheet1`. */
+                worksheet_name?: string;
+            };
+            slack?: components["schemas"]["PostCallActionCommon"] & {
+                /** @description Required. The id of your Slack integration. */
+                integration_id?: number;
+                /** @description The channel id. Send this or `channel_name`. */
+                channel_id?: string;
+                /** @description The channel name. Send this or `channel_id`. */
+                channel_name?: string;
+            };
+            salesforce?: components["schemas"]["PostCallActionCommon"] & {
+                /** @description Required. The id of your Salesforce integration. */
+                integration_id?: number;
+                /**
+                 * @description Defaults to `Lead`.
+                 * @enum {string}
+                 */
+                object_name?: "Lead" | "Contact" | "Account" | "Opportunity" | "Case" | "Task" | "Product";
+            };
+            hubspot?: components["schemas"]["PostCallActionCommon"] & {
+                /** @description Required. The id of your HubSpot integration. */
+                integration_id?: number;
+                /**
+                 * @description Required.
+                 * @enum {string}
+                 */
+                object_name?: "contact" | "company" | "deal" | "ticket";
+            };
+            zoho_bigin?: components["schemas"]["PostCallActionCommon"] & {
+                /** @description Required. The id of your Zoho Bigin integration. */
+                integration_id?: number;
+                /** @description Log the call. Defaults to true. */
+                create_call_log?: boolean;
+                /** @description Update a matching contact with what the call captured. Defaults to true. */
+                update_contact?: boolean;
+                /** @description Create a contact when no contact matches. Defaults to true. */
+                create_contact?: boolean;
+            };
+        };
+        /**
+         * @description One connected integration. Besides the fields below, each type adds
+         *     its own settings, for example `slack_channels` for Slack or
+         *     `google_sheets_email` for Google Sheets.
+         */
+        Integration: {
+            /** @description Use it as `integration_id` in a post-call action. */
+            id?: number;
+            name?: string;
+            /**
+             * @description The kind of integration.
+             * @example google_sheets
+             */
+            integration_type?: string;
+            user_id?: number;
+            user_name?: string;
+            organization_id?: number;
+            organization_name?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description One post-call action. `type` picks the channel; send the fields of
+         *     that channel plus any of the shared ones. `type` is required when
+         *     adding an action; an update sends only the fields it changes.
+         */
+        PostCallActionInput: {
+            user_id?: components["schemas"]["ClientUserId"];
+            /**
+             * @description The channel. It cannot change after the action is created:
+             *     delete it and add a new one. `google_sheets`, `slack`,
+             *     `salesforce`, `hubspot` and `zoho_bigin` deliver through an
+             *     account connected in the dashboard: pass its id as
+             *     `integration_id` (see List integrations).
+             * @enum {string}
+             */
+            type?: "email" | "webhook" | "omni_crm" | "cloud_whatsapp" | "workflow" | "google_sheets" | "slack" | "salesforce" | "hubspot" | "zoho_bigin";
+            /**
+             * @description `google_sheets`, `slack`, `salesforce`, `hubspot`, `zoho_bigin`
+             *     only, required: the id of your integration of that type.
+             */
+            integration_id?: number;
+            /**
+             * @description `google_sheets` only, required: the id in the sheet's URL, the
+             *     part after `/d/`.
+             * @example 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms
+             */
+            spreadsheet_id?: string;
+            /** @description `google_sheets` only: the sheet's name, for display. */
+            spreadsheet_name?: string;
+            /**
+             * @description `google_sheets` only: the tab to append to. Defaults to `Sheet1`.
+             * @example Calls
+             */
+            worksheet_name?: string;
+            /**
+             * @description `slack` only: the channel id. Send this or `channel_name`.
+             * @example C08RTQ1NY81
+             */
+            channel_id?: string;
+            /**
+             * @description `slack` only: the channel name. Send this or `channel_id`.
+             * @example sales
+             */
+            channel_name?: string;
+            /**
+             * @description `salesforce`: `Lead` (default), `Contact`, `Account`,
+             *     `Opportunity`, `Case`, `Task` or `Product`. `hubspot`, required:
+             *     `contact`, `company`, `deal` or `ticket`. Both send a fixed set of
+             *     fields for the chosen object, so they take no `extracted_variables`.
+             */
+            object_name?: string;
+            /** @description `zoho_bigin` only: log the call in Zoho Bigin. Defaults to true. */
+            create_call_log?: boolean;
+            /** @description `zoho_bigin` only: update a matching contact with what the call captured. Defaults to true. */
+            update_contact?: boolean;
+            /** @description `zoho_bigin` only: create a contact when no contact matches. Defaults to true. */
+            create_contact?: boolean;
+            /**
+             * @description `email` only, required: the addresses to notify.
+             * @example [
+             *       "support@acme-corp.io"
+             *     ]
+             */
+            recipients?: string[];
+            /**
+             * Format: uri
+             * @description `webhook` only, required: the endpoint that receives a POST with the call payload.
+             * @example https://crm.acme-corp.io/omnidim-callback
+             */
+            url?: string;
+            /** @description `cloud_whatsapp` only, required: your Cloud WhatsApp number the message is sent from. Also send `template_id` or `templates`, or nothing is sent. */
+            phone_number_id?: number;
+            /** @description `cloud_whatsapp` only: an approved template on that number. */
+            template_id?: number;
+            /** @description `cloud_whatsapp` only: which extracted variable fills each template placeholder. */
+            template_variables?: {
+                /**
+                 * @description The placeholder number, as a string.
+                 * @example 1
+                 */
+                index?: string;
+                /**
+                 * @description The key of the extracted variable whose value fills this placeholder.
+                 * @example customer_name
+                 */
+                extracted_var?: string;
+            }[];
+            /** @description `cloud_whatsapp` only: one or more templates to send. */
+            templates?: components["schemas"]["CloudWhatsAppTemplate"][];
+            /** @description `workflow` only, required: the workflow to run. It must have a published version, or the action is skipped. */
+            workflow_id?: number;
+            /** @description Which sections to include. */
+            include?: ("summary" | "extracted_variables" | "fullConversation" | "sentiment")[];
+            /**
+             * @description Variables the model should pull out of the conversation. A key
+             *     already used by another action on this agent must have the same
+             *     prompt, or the request is refused with `400`. Other actions are
+             *     never changed to match.
+             */
+            extracted_variables?: components["schemas"]["ExtractedVariable"][];
+            /**
+             * @description Call outcomes that fire this action. Omit to use the default
+             *     (`completed`, `voicemail_detected`).
+             */
+            trigger_call_statuses?: ("completed" | "voicemail_detected" | "failed" | "no-answer" | "busy" | "canceled")[];
+        };
+        /**
+         * @description False for an agent that has never been published: the change is live
+         *     on the next call. True when the agent is published: changes go to the
+         *     draft, so they reach live calls only after you publish the agent in
+         *     the dashboard.
+         */
+        AppliesAfterPublish: boolean;
+        PostCallActionError: {
+            /** @description Machine-readable error code. */
+            error?: string;
+            /** @description What was wrong with the request. */
+            error_description?: string;
+        };
+        /** @description One post-call action on an agent, with the fields of its type. */
+        PostCallAction: {
+            /**
+             * @description The action's id. Saving post-call changes in the dashboard, or
+             *     restoring a version, gives every action a new id. To find an
+             *     action you added, list the actions and match its target (`url`,
+             *     `recipients` or `integration_id`) instead of keeping the id.
+             */
+            id?: number;
+            /** @enum {string} */
+            type?: "email" | "webhook" | "omni_crm" | "cloud_whatsapp" | "workflow" | "google_sheets" | "slack" | "salesforce" | "hubspot" | "zoho_bigin";
+            recipients?: string[];
+            url?: string;
+            phone_number_id?: number | null;
+            template_id?: number | null;
+            template_variables?: Record<string, never>[] | null;
+            templates?: Record<string, never>[] | null;
+            workflow_id?: number | null;
+            /** @description The connected account the action delivers through. */
+            integration_id?: number | null;
+            spreadsheet_id?: string | null;
+            spreadsheet_name?: string | null;
+            worksheet_name?: string | null;
+            channel_id?: string | null;
+            channel_name?: string | null;
+            object_name?: string | null;
+            create_call_log?: boolean;
+            update_contact?: boolean;
+            create_contact?: boolean;
+            include?: string[];
+            extracted_variables?: components["schemas"]["ExtractedVariable"][];
+            trigger_call_statuses?: string[];
         };
         /** @description Settings every post-call channel shares. */
         PostCallActionCommon: {
@@ -3587,7 +3881,13 @@ export interface components {
         CloudWhatsAppTemplate: {
             /** @description An approved template on the chosen number. */
             template_id?: number;
-            /** @description Send this template on every call, not only when the variables are extracted. */
+            /**
+             * @description When this template should be sent. After the call, the model reads
+             *     these descriptions to choose which templates fit the conversation.
+             * @example Send when the caller books an appointment.
+             */
+            usage_description?: string;
+            /** @description Send this template after every call, whichever templates the model chooses. */
             always_send?: boolean;
             /** @description How to fill each template placeholder. */
             variable_mappings?: {
@@ -3598,10 +3898,18 @@ export interface components {
                 index?: string;
                 /** @description The extracted variable whose value fills this placeholder. */
                 extracted_var?: string;
-                /** @description A fixed value to fill this placeholder instead of a variable. */
+                /**
+                 * @description A fixed value for this placeholder. When set, it is used
+                 *     instead of the extracted variable.
+                 */
                 static_value?: string;
-                /** @description How the value is chosen when both a variable and a static value are set. */
-                mode?: string;
+                /**
+                 * @description Which input the dashboard shows for this placeholder. It
+                 *     does not change the value sent: a `static_value` is used
+                 *     first, then the extracted variable, then `fallback_value`.
+                 * @enum {string}
+                 */
+                mode?: "variable" | "static";
                 /** @description The value to use when the variable is not extracted. */
                 fallback_value?: string;
             }[];
@@ -4089,15 +4397,9 @@ export interface components {
         /** @description Id of the cloned voice. */
         ClonedVoiceId: number;
         /**
-         * @description Reseller keys only: the id of one of your direct client users. The
-         *     call then acts as that client, on that client's agents, numbers,
-         *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-         *     client's balance and concurrency. Omit it to act on your own account.
-         *     An empty value, `0`, `false` or your own user id also means your own
-         *     account. Any other value that is not a positive integer id is
-         *     refused with `400 invalid_request`. A key that is not a reseller's
-         *     gets `403` when it names someone else. A user who is not your
-         *     direct client gets `404`.
+         * @description Reseller keys only: act as one of your clients by its user id. Omit
+         *     it to act on your own account.
+         *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
          */
         ClientUserId: components["schemas"]["ClientUserId"];
         /** @description Id of the workflow. */
@@ -4305,15 +4607,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
@@ -4520,15 +4816,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -4805,15 +5095,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -4846,19 +5130,338 @@ export interface operations {
             };
         };
     };
+    listPostCallActions: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The agent's post-call actions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        actions?: components["schemas"]["PostCallAction"][];
+                        applies_after_publish?: components["schemas"]["AppliesAfterPublish"];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agent not found or access denied. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    addPostCallAction: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Any unique string. A retry with the same key and body adds nothing new. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "type": "webhook",
+                 *       "url": "https://crm.acme-corp.io/omnidim-callback",
+                 *       "include": [
+                 *         "summary",
+                 *         "extracted_variables"
+                 *       ],
+                 *       "extracted_variables": [
+                 *         {
+                 *           "key": "outcome",
+                 *           "prompt": "Did the caller book an appointment?"
+                 *         }
+                 *       ],
+                 *       "trigger_call_statuses": [
+                 *         "completed",
+                 *         "failed"
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["PostCallActionInput"] & unknown;
+            };
+        };
+        responses: {
+            /** @description The action was added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        action?: components["schemas"]["PostCallAction"];
+                        applies_after_publish?: components["schemas"]["AppliesAfterPublish"];
+                    };
+                };
+            };
+            /** @description The action is not valid. Nothing was added. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "Missing required fields: url"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PostCallActionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot make changes to agents. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have permission to make changes to Voice AI Assistants."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PostCallActionError"];
+                };
+            };
+            /** @description Agent not found or access denied. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The `Idempotency-Key` was already used with a different request. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "conflict",
+                     *       "error_description": "This Idempotency-Key was already used with a different request. Use a new key for a new request."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PostCallActionError"];
+                };
+            };
+        };
+    };
+    deletePostCallAction: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The ID of the post-call action. */
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The action was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The id of the removed action. */
+                        deleted?: number;
+                        applies_after_publish?: components["schemas"]["AppliesAfterPublish"];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot make changes to agents. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Agent or action not found. The action may have a new id after a
+             *     dashboard edit: list the actions to find it.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updatePostCallAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The ID of the post-call action. */
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "url": "https://crm.acme-corp.io/omnidim-callback-v2"
+                 *     }
+                 */
+                "application/json": components["schemas"]["PostCallActionInput"];
+            };
+        };
+        responses: {
+            /** @description The action was updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        action?: components["schemas"]["PostCallAction"];
+                        applies_after_publish?: components["schemas"]["AppliesAfterPublish"];
+                    };
+                };
+            };
+            /** @description The change is not valid. Nothing was changed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "The type of an action cannot change. Delete it and add a new one."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PostCallActionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot make changes to agents. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Agent or action not found. The action may have a new id after a
+             *     dashboard edit: list the actions to find it.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listIntegrations: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workspace's integrations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        integrations?: components["schemas"]["Integration"][];
+                    };
+                };
+            };
+        };
+    };
     listAgentVersions: {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
@@ -5138,15 +5741,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -5332,15 +5929,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description What to compare against. Omit or `previous` for the version before this one (the default). `current` for the agent's live config. A version number to compare with that version. */
@@ -5698,15 +6289,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
@@ -5959,15 +6544,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -6213,15 +6792,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description Page number for pagination. */
@@ -6664,15 +7237,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -6881,15 +7448,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -6928,15 +7489,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /**
@@ -7039,15 +7594,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -7525,15 +8074,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -7590,15 +8133,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -14770,15 +15307,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description The value of the field this one depends on (`depends_on` in the node type), such as the chosen phone number id. */
@@ -14831,15 +15362,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description Rows per page. */
@@ -14875,15 +15400,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -14931,15 +15450,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
                 /** @description `structure` leaves node `config` out. */
@@ -14975,15 +15488,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -15019,15 +15526,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -15117,15 +15618,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -15166,15 +15661,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -15227,15 +15716,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -15278,15 +15761,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -15329,15 +15806,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };
@@ -15389,15 +15860,9 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Reseller keys only: the id of one of your direct client users. The
-                 *     call then acts as that client, on that client's agents, numbers,
-                 *     campaigns and balance. Calls, sessions and bulk campaigns spend that
-                 *     client's balance and concurrency. Omit it to act on your own account.
-                 *     An empty value, `0`, `false` or your own user id also means your own
-                 *     account. Any other value that is not a positive integer id is
-                 *     refused with `400 invalid_request`. A key that is not a reseller's
-                 *     gets `403` when it names someone else. A user who is not your
-                 *     direct client gets `404`.
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
                  */
                 user_id?: components["parameters"]["ClientUserId"];
             };

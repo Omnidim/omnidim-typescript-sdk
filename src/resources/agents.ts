@@ -92,4 +92,39 @@ export class Agents {
       `/agents/${agentId}/versions/${versionNumber}`,
     );
   }
+
+  /** List the post-call actions of an agent. */
+  listPostCallActions(agentId: number | string) {
+    return this.http.request<ResultOf<"listPostCallActions">>("GET", `/agents/${agentId}/post-call-actions`);
+  }
+
+  /** Add a post-call action to an agent. */
+  addPostCallAction(agentId: number | string, body: BodyOf<"addPostCallAction">) {
+    return this.http.request<ResultOf<"addPostCallAction">>(
+      "POST",
+      `/agents/${agentId}/post-call-actions`,
+      { body },
+    );
+  }
+
+  /** Update a post-call action. */
+  updatePostCallAction(
+    agentId: number | string,
+    actionId: number | string,
+    body: BodyOf<"updatePostCallAction">,
+  ) {
+    return this.http.request<ResultOf<"updatePostCallAction">>(
+      "PATCH",
+      `/agents/${agentId}/post-call-actions/${actionId}`,
+      { body },
+    );
+  }
+
+  /** Delete a post-call action. */
+  deletePostCallAction(agentId: number | string, actionId: number | string) {
+    return this.http.request<ResultOf<"deletePostCallAction">>(
+      "DELETE",
+      `/agents/${agentId}/post-call-actions/${actionId}`,
+    );
+  }
 }

@@ -137,11 +137,29 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["integrations.createCal", (c) => c.integrations.createCal(B), "POST", "/integrations/cal"],
   ["integrations.addToAgent", (c) => c.integrations.addToAgent(ID, 3), "POST", "/agents/7/integrations"],
   ["integrations.removeFromAgent", (c) => c.integrations.removeFromAgent(ID, 3), "DELETE", "/agents/7/integrations/3"],
+  ["agents.listPostCallActions", (c) => c.agents.listPostCallActions(ID), "GET", "/agents/7/post-call-actions"],
+  ["agents.addPostCallAction", (c) => c.agents.addPostCallAction(ID, B), "POST", "/agents/7/post-call-actions"],
+  ["agents.updatePostCallAction", (c) => c.agents.updatePostCallAction(ID, 3, B), "PATCH", "/agents/7/post-call-actions/3"],
+  ["agents.deletePostCallAction", (c) => c.agents.deletePostCallAction(ID, 3), "DELETE", "/agents/7/post-call-actions/3"],
+  ["workflows.listNodeTypes", (c) => c.workflows.listNodeTypes(), "GET", "/workflow-node-types"],
+  ["workflows.getNodeType", (c) => c.workflows.getNodeType("http_request"), "GET", "/workflow-node-types/http_request"],
+  ["workflows.listFieldOptions", (c) => c.workflows.listFieldOptions("http_request", "agent"), "GET", "/workflow-node-types/http_request/options/agent"],
+  ["workflows.list", (c) => c.workflows.list(), "GET", "/workflows"],
+  ["workflows.create", (c) => c.workflows.create(B), "POST", "/workflows"],
+  ["workflows.get", (c) => c.workflows.get(ID), "GET", "/workflows/7"],
+  ["workflows.edit", (c) => c.workflows.edit(ID, B), "PATCH", "/workflows/7"],
+  ["workflows.delete", (c) => c.workflows.delete(ID), "DELETE", "/workflows/7"],
+  ["workflows.validate", (c) => c.workflows.validate(ID), "POST", "/workflows/7/validate"],
+  ["workflows.publish", (c) => c.workflows.publish(ID), "POST", "/workflows/7/publish"],
+  ["workflows.activate", (c) => c.workflows.activate(ID), "POST", "/workflows/7/activate"],
+  ["workflows.deactivate", (c) => c.workflows.deactivate(ID), "POST", "/workflows/7/deactivate"],
+  ["workflows.test", (c) => c.workflows.test(ID), "POST", "/workflows/7/test"],
+  ["workflows.getExecution", (c) => c.workflows.getExecution(ID, 3), "GET", "/workflows/7/executions/3"],
 ];
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(90);
+    expect(cases).toHaveLength(108);
   });
 
   for (const [name, call, method, path] of cases) {

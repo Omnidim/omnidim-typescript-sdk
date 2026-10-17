@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http.js";
+import type { QueryOf, ResultOf } from "../types.js";
 
 export type HttpVerb = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
@@ -66,8 +67,8 @@ export class Integrations {
   constructor(private readonly http: HttpClient) {}
 
   /** List the integrations on the account. */
-  list() {
-    return this.http.request<IntegrationListResponse>("GET", "/integrations");
+  list(query?: QueryOf<"listIntegrations">) {
+    return this.http.request<ResultOf<"listIntegrations">>("GET", "/integrations", { query });
   }
 
   /** List the integrations attached to an agent. */
