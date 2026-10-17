@@ -137,11 +137,29 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["integrations.createCal", (c) => c.integrations.createCal(B), "POST", "/integrations/cal"],
   ["integrations.addToAgent", (c) => c.integrations.addToAgent(ID, 3), "POST", "/agents/7/integrations"],
   ["integrations.removeFromAgent", (c) => c.integrations.removeFromAgent(ID, 3), "DELETE", "/agents/7/integrations/3"],
+  ["agents.listPostCallActions", (c) => c.agents.listPostCallActions(ID), "GET", "/agents/7/post-call-actions"],
+  ["agents.addPostCallAction", (c) => c.agents.addPostCallAction(ID, B), "POST", "/agents/7/post-call-actions"],
+  ["agents.updatePostCallAction", (c) => c.agents.updatePostCallAction(ID, 3, B), "PATCH", "/agents/7/post-call-actions/3"],
+  ["agents.deletePostCallAction", (c) => c.agents.deletePostCallAction(ID, 3), "DELETE", "/agents/7/post-call-actions/3"],
+  ["workflows.listNodeTypes", (c) => c.workflows.listNodeTypes(), "GET", "/workflow-node-types"],
+  ["workflows.getNodeType", (c) => c.workflows.getNodeType("http_request"), "GET", "/workflow-node-types/http_request"],
+  ["workflows.listFieldOptions", (c) => c.workflows.listFieldOptions("http_request", "agent"), "GET", "/workflow-node-types/http_request/options/agent"],
+  ["workflows.list", (c) => c.workflows.list(), "GET", "/workflows"],
+  ["workflows.create", (c) => c.workflows.create(B), "POST", "/workflows"],
+  ["workflows.get", (c) => c.workflows.get(ID), "GET", "/workflows/7"],
+  ["workflows.edit", (c) => c.workflows.edit(ID, B), "PATCH", "/workflows/7"],
+  ["workflows.delete", (c) => c.workflows.delete(ID), "DELETE", "/workflows/7"],
+  ["workflows.validate", (c) => c.workflows.validate(ID), "POST", "/workflows/7/validate"],
+  ["workflows.publish", (c) => c.workflows.publish(ID), "POST", "/workflows/7/publish"],
+  ["workflows.activate", (c) => c.workflows.activate(ID), "POST", "/workflows/7/activate"],
+  ["workflows.deactivate", (c) => c.workflows.deactivate(ID), "POST", "/workflows/7/deactivate"],
+  ["workflows.test", (c) => c.workflows.test(ID), "POST", "/workflows/7/test"],
+  ["workflows.getExecution", (c) => c.workflows.getExecution(ID, 3), "GET", "/workflows/7/executions/3"],
 ];
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(90);
+    expect(cases).toHaveLength(108);
   });
 
   for (const [name, call, method, path] of cases) {
@@ -197,5 +215,82 @@ describe("reseller identity and client access bodies", () => {
     const { c, sent } = capture();
     await c.reseller.setClientAccess({ blocked: true, organization_id: 5678, detach_numbers: true });
     expect(bodyOf(sent)).toEqual({ blocked: true, organization_id: 5678, detach_numbers: true });
+  });
+});
+
+describe("workflow and post-call action requests", () => {
+  function capture() {
+    const sent: { url: string; init: RequestInit }[] = [];
+    const fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      sent.push({ url: String(url).replace("https://backend.omnidim.io/api/v1", ""), init: init ?? {} });
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    return { c: new OmniDimension({ apiKey: "test-api-key-1234", fetch }), sent };
+  }
+  const body = (s: { init: RequestInit }) => JSON.parse(s.init.body as string);
+
+  it("create sends the name and graph", async () => {
+    const { c, sent } = capture();
+    const graph = { nodes: [], edges: [] } as never;
+    await c.workflows.create({ name: "Follow up", graph });
+    expect(body(sent[0]!)).toEqual({ name: "Follow up", graph });
+  });
+
+  it("edit sends the revision and ops", async () => {
+    const { c, sent } = capture();
+    const ops = [{ op: "delete_node", id: "a" }] as never;
+    await c.workflows.edit(7, { revision: "r1", ops });
+    expect(body(sent[0]!)).toEqual({ revision: "r1", ops });
+  });
+
+  it("test sends the payload", async () => {
+    const { c, sent } = capture();
+    await c.workflows.test(7, { payload: { phone: "+15550100" } } as never);
+    expect(body(sent[0]!)).toEqual({ payload: { phone: "+15550100" } });
+  });
+
+  it("passes the query through on a workflow call", async () => {
+    const { c, sent } = capture();
+    await c.workflows.getNodeType("http_request", { detail: "full" } as never);
+    await c.workflows.activate(7, { user_id: 42 } as never);
+    expect(sent[0]!.url).toBe("/workflow-node-types/http_request?detail=full");
+    expect(sent[1]!.url).toBe("/workflows/7/activate?user_id=42");
+  });
+
+  it("escapes the node type in the path", async () => {
+    const { c, sent } = capture();
+    await c.workflows.getNodeType("a/b c");
+    expect(sent[0]!.url).toBe("/workflow-node-types/a%2Fb%20c");
+  });
+
+  it("listPostCallActions passes the user_id query through", async () => {
+    const { c, sent } = capture();
+    await c.agents.listPostCallActions(7, { user_id: 42 });
+    expect(sent[0]!.url).toBe("/agents/7/post-call-actions?user_id=42");
+  });
+
+  it("deletePostCallAction passes the user_id query through", async () => {
+    const { c, sent } = capture();
+    await c.agents.deletePostCallAction(7, "a1", { user_id: 42 });
+    expect(sent[0]!.url).toBe("/agents/7/post-call-actions/a1?user_id=42");
+  });
+
+  it("addPostCallAction sends the body and the idempotency key", async () => {
+    const { c, sent } = capture();
+    await c.agents.addPostCallAction(7, { type: "webhook", url: "https://x.example/h" }, "key-1");
+    expect(body(sent[0]!)).toEqual({ type: "webhook", url: "https://x.example/h" });
+    expect((sent[0]!.init.headers as Record<string, string>)["Idempotency-Key"]).toBe("key-1");
+  });
+
+  it("addPostCallAction sends no idempotency key when none is given", async () => {
+    const { c, sent } = capture();
+    await c.agents.addPostCallAction(7, { type: "webhook" });
+    expect((sent[0]!.init.headers as Record<string, string>)["Idempotency-Key"]).toBeUndefined();
+  });
+
+  it("updatePostCallAction sends the changed fields", async () => {
+    const { c, sent } = capture();
+    await c.agents.updatePostCallAction(7, 3, { url: "https://x.example/v2" });
+    expect(body(sent[0]!)).toEqual({ url: "https://x.example/v2" });
   });
 });

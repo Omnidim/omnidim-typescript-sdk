@@ -55,6 +55,7 @@ describe("construction", () => {
       "providers",
       "reseller",
       "integrations",
+      "workflows",
     ] as const) {
       expect(c[r]).toBeDefined();
     }

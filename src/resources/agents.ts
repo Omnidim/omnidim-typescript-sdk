@@ -92,4 +92,52 @@ export class Agents {
       `/agents/${agentId}/versions/${versionNumber}`,
     );
   }
+
+  /** List the post-call actions of an agent. */
+  listPostCallActions(agentId: number | string, query?: QueryOf<"listPostCallActions">) {
+    return this.http.request<ResultOf<"listPostCallActions">>(
+      "GET",
+      `/agents/${agentId}/post-call-actions`,
+      { query },
+    );
+  }
+
+  /** Add a post-call action to an agent. Pass an idempotency key to make a retry safe. */
+  addPostCallAction(
+    agentId: number | string,
+    body: BodyOf<"addPostCallAction">,
+    idempotencyKey?: string,
+  ) {
+    return this.http.request<ResultOf<"addPostCallAction">>(
+      "POST",
+      `/agents/${agentId}/post-call-actions`,
+      { body, headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined },
+    );
+  }
+
+  /** Update a post-call action. */
+  updatePostCallAction(
+    agentId: number | string,
+    actionId: number | string,
+    body: BodyOf<"updatePostCallAction">,
+  ) {
+    return this.http.request<ResultOf<"updatePostCallAction">>(
+      "PATCH",
+      `/agents/${agentId}/post-call-actions/${actionId}`,
+      { body },
+    );
+  }
+
+  /** Delete a post-call action. */
+  deletePostCallAction(
+    agentId: number | string,
+    actionId: number | string,
+    query?: QueryOf<"deletePostCallAction">,
+  ) {
+    return this.http.request<ResultOf<"deletePostCallAction">>(
+      "DELETE",
+      `/agents/${agentId}/post-call-actions/${actionId}`,
+      { query },
+    );
+  }
 }
