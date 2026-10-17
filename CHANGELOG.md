@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-17
+
+### Added
+
+- `client.workflows` builds and runs workflows from TypeScript: `listNodeTypes`, `getNodeType`, `listFieldOptions`, `list`, `create`, `get`, `edit`, `delete`, `validate`, `publish`, `activate`, `deactivate`, `test`, and `getExecution`.
+- Post-call action methods on `client.agents`: `listPostCallActions`, `addPostCallAction`, `updatePostCallAction`, and `deletePostCallAction`.
+- `client.integrations.list` accepts the `user_id` query, so a reseller can list the integrations of a client.
+- Reseller usage methods on `client.reseller`: `usage` for the whole account and `clientUsage` for one client organization.
+- Voice cloning on `client.voices`: `listClonedVoices`, `createClonedVoice`, `getClonedVoice`, `updateClonedVoice`, `deleteClonedVoice`, `getClonedVoiceSample`, and `regenerateClonedVoiceSample`.
+- More reseller operations on `client.reseller`: `setClientAccess`, `previewClientRelease`, `releaseClient`, `issueChildApiKey`, `revokeChildApiKey`, `getIdentity`, `saveIdentity`, `saveIdentitySmtp`, `testIdentitySmtp`, and `disableIdentitySmtp`.
+
 ## [0.7.0] - 2026-10-12
 
 ### Added
