@@ -98,12 +98,16 @@ export class Agents {
     return this.http.request<ResultOf<"listPostCallActions">>("GET", `/agents/${agentId}/post-call-actions`);
   }
 
-  /** Add a post-call action to an agent. */
-  addPostCallAction(agentId: number | string, body: BodyOf<"addPostCallAction">) {
+  /** Add a post-call action to an agent. Pass an idempotency key to make a retry safe. */
+  addPostCallAction(
+    agentId: number | string,
+    body: BodyOf<"addPostCallAction">,
+    idempotencyKey?: string,
+  ) {
     return this.http.request<ResultOf<"addPostCallAction">>(
       "POST",
       `/agents/${agentId}/post-call-actions`,
-      { body },
+      { body, headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined },
     );
   }
 
