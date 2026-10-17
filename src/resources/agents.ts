@@ -129,10 +129,15 @@ export class Agents {
   }
 
   /** Delete a post-call action. */
-  deletePostCallAction(agentId: number | string, actionId: number | string) {
+  deletePostCallAction(
+    agentId: number | string,
+    actionId: number | string,
+    query?: QueryOf<"deletePostCallAction">,
+  ) {
     return this.http.request<ResultOf<"deletePostCallAction">>(
       "DELETE",
       `/agents/${agentId}/post-call-actions/${actionId}`,
+      { query },
     );
   }
 }

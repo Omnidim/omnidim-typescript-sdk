@@ -269,6 +269,12 @@ describe("workflow and post-call action requests", () => {
     expect(sent[0]!.url).toBe("/agents/7/post-call-actions?user_id=42");
   });
 
+  it("deletePostCallAction passes the user_id query through", async () => {
+    const { c, sent } = capture();
+    await c.agents.deletePostCallAction(7, "a1", { user_id: 42 });
+    expect(sent[0]!.url).toBe("/agents/7/post-call-actions/a1?user_id=42");
+  });
+
   it("addPostCallAction sends the body and the idempotency key", async () => {
     const { c, sent } = capture();
     await c.agents.addPostCallAction(7, { type: "webhook", url: "https://x.example/h" }, "key-1");
