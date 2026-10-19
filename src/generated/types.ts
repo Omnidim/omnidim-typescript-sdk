@@ -4416,7 +4416,7 @@ export interface components {
              * @default true
              */
             isLLMGenerated: boolean;
-            /** @description Nested fields of an `object` or `array` parameter. */
+            /** @description Nested fields of an `object` or `array` body parameter. Query parameters have no children. */
             children?: components["schemas"]["CustomApiParam"][];
         };
         IntegrationCreated: {
@@ -4424,6 +4424,7 @@ export interface components {
             message?: string;
             /** @description Use it as `integration_id` to attach the integration to an agent. */
             integration_id?: number;
+            /** @description The new integration. Stored credentials read `********`. */
             integration?: components["schemas"]["Integration"];
         };
         IntegrationChanged: {
@@ -6985,7 +6986,7 @@ export interface operations {
                  */
                 "application/json": {
                     user_id?: components["schemas"]["ClientUserId"];
-                    /** @description A name for the integration. Must be unique in your workspace. */
+                    /** @description A name for the integration. */
                     name: string;
                     /**
                      * @description What the endpoint does. The agent reads this to decide
@@ -7003,7 +7004,11 @@ export interface operations {
                     }[];
                     /** @description Query string parameters. */
                     query_params?: components["schemas"]["CustomApiParam"][];
-                    /** @description Request body fields, sent as JSON. */
+                    /**
+                     * @description Request body fields, sent as JSON. A GET request sends no
+                     *     body. Every request with a body also carries the call's
+                     *     `from_number`, `to_number` and `call_sid`.
+                     */
                     body_params?: components["schemas"]["CustomApiParam"][];
                     /**
                      * @description Seconds to wait for your endpoint before the agent moves on.
@@ -7025,7 +7030,7 @@ export interface operations {
             };
             /**
              * @description The integration was not created: a required field is missing, the
-             *     name is already used in your workspace, or a value is the hidden
+             *     name is taken by another integration, or a value is the hidden
              *     `********` copied from a listing.
              */
             400: {
@@ -7068,7 +7073,7 @@ export interface operations {
             content: {
                 "application/json": {
                     user_id?: components["schemas"]["ClientUserId"];
-                    /** @description A name for the integration. Must be unique in your workspace. */
+                    /** @description A name for the integration. */
                     name: string;
                     /** @description Your Cal.com API key. */
                     cal_api_key: string;
@@ -7091,8 +7096,8 @@ export interface operations {
             };
             /**
              * @description The integration was not created: a required field is missing, the
-             *     name is already used in your workspace, or the API key is the
-             *     hidden `********` copied from a listing.
+             *     name is taken by another integration, or the API key is the hidden
+             *     `********` copied from a listing.
              */
             400: {
                 headers: {
@@ -7207,7 +7212,7 @@ export interface operations {
                     "application/json": components["schemas"]["IntegrationChanged"];
                 };
             };
-            /** @description `integration_id` is missing. */
+            /** @description `integration_id` is missing or not an integer. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -13477,6 +13482,13 @@ export interface operations {
             };
             /** @description Missing or invalid API key. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot run simulations. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

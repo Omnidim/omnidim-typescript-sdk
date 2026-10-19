@@ -342,3 +342,21 @@ describe("whatsapp idempotency", () => {
     expect(seen[1]["Idempotency-Key"]).toBe("launch-42");
   });
 });
+
+describe("whatsapp media upload", () => {
+  it("sends multipart FormData, not JSON", async () => {
+    let init: RequestInit | undefined;
+    const fetch = vi.fn(async (_url: string | URL | Request, i?: RequestInit) => {
+      init = i;
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const c = new OmniDimension({ apiKey: "test-api-key-1234", fetch }) as any;
+    await c.whatsapp.uploadMedia(7, "image", new Blob(["x"], { type: "image/png" }), "a.png");
+    expect(init?.body).toBeInstanceOf(FormData);
+    const form = init?.body as FormData;
+    expect(form.get("phone_number_id")).toBe("7");
+    expect(form.get("type")).toBe("image");
+    expect((init?.headers as Record<string, string>)["Content-Type"]).toBeUndefined();
+  });
+});
