@@ -10,6 +10,7 @@ import { Reseller } from "./resources/reseller.js";
 import { Voices } from "./resources/voices.js";
 import { Workflows } from "./resources/workflows.js";
 import { Integrations } from "./resources/integrations.js";
+import { WhatsApp } from "./resources/whatsapp.js";
 
 export { OmniDimensionError } from "./errors.js";
 export type { ClientOptions } from "./http.js";
@@ -54,6 +55,7 @@ export class OmniDimension {
   readonly voices: Voices;
   readonly integrations: Integrations;
   readonly workflows: Workflows;
+  readonly whatsapp: WhatsApp;
 
   constructor(options: ClientOptions) {
     const http = new HttpClient(options);
@@ -68,6 +70,7 @@ export class OmniDimension {
     this.voices = new Voices(http);
     this.integrations = new Integrations(http);
     this.workflows = new Workflows(http);
+    this.whatsapp = new WhatsApp(http);
   }
 }
 

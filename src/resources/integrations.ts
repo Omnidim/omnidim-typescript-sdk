@@ -9,12 +9,18 @@ export interface IntegrationHeader {
   value: string;
 }
 
-/** A query or body parameter the agent can fill when calling the integration. */
+/**
+ * A query or body parameter. With `isLLMGenerated` true (the default) the agent
+ * fills it from the conversation, guided by `description`. With it false, the
+ * text in `description` is sent as a fixed value.
+ */
 export interface IntegrationParam {
   key: string;
   description?: string;
-  type?: "string" | "number" | "boolean";
+  type?: "string" | "number" | "boolean" | "object" | "array";
   required?: boolean;
+  isLLMGenerated?: boolean;
+  children?: IntegrationParam[];
 }
 
 export interface Integration {
@@ -73,33 +79,33 @@ export class Integrations {
 
   /** List the integrations attached to an agent. */
   listForAgent(agentId: number | string) {
-    return this.http.request<IntegrationListResponse>("GET", `/agents/${agentId}/integrations`);
+    return this.http.request<ResultOf<"listAgentIntegrations">>("GET", `/agents/${agentId}/integrations`);
   }
 
   /** Create a custom REST API integration. */
   createCustomApi(input: CustomApiIntegrationInput) {
-    return this.http.request<IntegrationMutationResponse>("POST", "/integrations/custom-api", {
+    return this.http.request<ResultOf<"createCustomApiIntegration">>("POST", "/integrations/custom-api", {
       body: { integration_type: "custom_api", ...input },
     });
   }
 
   /** Create a Cal.com scheduling integration. */
   createCal(input: CalIntegrationInput) {
-    return this.http.request<IntegrationMutationResponse>("POST", "/integrations/cal", {
+    return this.http.request<ResultOf<"createCalIntegration">>("POST", "/integrations/cal", {
       body: { integration_type: "cal", ...input },
     });
   }
 
   /** Attach an existing integration to an agent. */
   addToAgent(agentId: number | string, integrationId: number) {
-    return this.http.request<IntegrationMutationResponse>("POST", `/agents/${agentId}/integrations`, {
+    return this.http.request<ResultOf<"attachAgentIntegration">>("POST", `/agents/${agentId}/integrations`, {
       body: { integration_id: integrationId },
     });
   }
 
   /** Remove an integration from an agent. */
   removeFromAgent(agentId: number | string, integrationId: number) {
-    return this.http.request<IntegrationMutationResponse>(
+    return this.http.request<ResultOf<"detachAgentIntegration">>(
       "DELETE",
       `/agents/${agentId}/integrations/${integrationId}`,
     );
