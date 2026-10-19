@@ -155,11 +155,39 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["workflows.deactivate", (c) => c.workflows.deactivate(ID), "POST", "/workflows/7/deactivate"],
   ["workflows.test", (c) => c.workflows.test(ID), "POST", "/workflows/7/test"],
   ["workflows.getExecution", (c) => c.workflows.getExecution(ID, 3), "GET", "/workflows/7/executions/3"],
+  ["whatsapp.listNumbers", (c) => c.whatsapp.listNumbers(), "GET", "/whatsapp/numbers"],
+  ["whatsapp.previewNumbers", (c) => c.whatsapp.previewNumbers(B), "POST", "/whatsapp/numbers/preview"],
+  ["whatsapp.importNumbers", (c) => c.whatsapp.importNumbers(B), "POST", "/whatsapp/numbers"],
+  ["whatsapp.getNumber", (c) => c.whatsapp.getNumber(ID), "GET", "/whatsapp/numbers/7"],
+  ["whatsapp.listTemplates", (c) => c.whatsapp.listTemplates(ID), "GET", "/whatsapp/numbers/7/templates"],
+  ["whatsapp.syncTemplates", (c) => c.whatsapp.syncTemplates(ID), "POST", "/whatsapp/numbers/7/templates/sync"],
+  ["whatsapp.getCalling", (c) => c.whatsapp.getCalling(ID), "GET", "/whatsapp/numbers/7/calling"],
+  ["whatsapp.setCalling", (c) => c.whatsapp.setCalling(ID, B), "PATCH", "/whatsapp/numbers/7/calling"],
+  ["whatsapp.listConversations", (c) => c.whatsapp.listConversations(ID), "GET", "/whatsapp/numbers/7/conversations"],
+  ["whatsapp.getConversation", (c) => c.whatsapp.getConversation(ID), "GET", "/whatsapp/conversations/7"],
+  ["whatsapp.takeOverConversation", (c) => c.whatsapp.takeOverConversation(ID), "POST", "/whatsapp/conversations/7/take_over"],
+  ["whatsapp.handBackConversation", (c) => c.whatsapp.handBackConversation(ID), "POST", "/whatsapp/conversations/7/hand_back"],
+  ["whatsapp.listMessages", (c) => c.whatsapp.listMessages(B), "GET", "/whatsapp/messages"],
+  ["whatsapp.sendMessage", (c) => c.whatsapp.sendMessage(B, "k"), "POST", "/whatsapp/messages"],
+  ["whatsapp.getMessage", (c) => c.whatsapp.getMessage(ID), "GET", "/whatsapp/messages/7"],
+  ["whatsapp.uploadMedia", (c) => c.whatsapp.uploadMedia(ID, "image", new Blob(["x"])), "POST", "/whatsapp/media"],
+  ["whatsapp.listOptOuts", (c) => c.whatsapp.listOptOuts(ID), "GET", "/whatsapp/numbers/7/opt_outs"],
+  ["whatsapp.addOptOut", (c) => c.whatsapp.addOptOut(ID, B), "POST", "/whatsapp/numbers/7/opt_outs"],
+  ["whatsapp.liftOptOut", (c) => c.whatsapp.liftOptOut(ID, 3), "DELETE", "/whatsapp/numbers/7/opt_outs/3"],
+  ["whatsapp.listCampaigns", (c) => c.whatsapp.listCampaigns(), "GET", "/whatsapp/campaigns"],
+  ["whatsapp.createCampaign", (c) => c.whatsapp.createCampaign(B), "POST", "/whatsapp/campaigns"],
+  ["whatsapp.getCampaign", (c) => c.whatsapp.getCampaign(ID), "GET", "/whatsapp/campaigns/7"],
+  ["whatsapp.listCampaignContacts", (c) => c.whatsapp.listCampaignContacts(ID), "GET", "/whatsapp/campaigns/7/contacts"],
+  ["whatsapp.addCampaignContacts", (c) => c.whatsapp.addCampaignContacts(ID, B), "POST", "/whatsapp/campaigns/7/contacts"],
+  ["whatsapp.launchCampaign", (c) => c.whatsapp.launchCampaign(ID, "k"), "POST", "/whatsapp/campaigns/7/launch"],
+  ["whatsapp.pauseCampaign", (c) => c.whatsapp.pauseCampaign(ID), "POST", "/whatsapp/campaigns/7/pause"],
+  ["whatsapp.resumeCampaign", (c) => c.whatsapp.resumeCampaign(ID), "POST", "/whatsapp/campaigns/7/resume"],
+  ["whatsapp.cancelCampaign", (c) => c.whatsapp.cancelCampaign(ID), "POST", "/whatsapp/campaigns/7/cancel"],
 ];
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(108);
+    expect(cases).toHaveLength(136);
   });
 
   for (const [name, call, method, path] of cases) {
@@ -292,5 +320,25 @@ describe("workflow and post-call action requests", () => {
     const { c, sent } = capture();
     await c.agents.updatePostCallAction(7, 3, { url: "https://x.example/v2" });
     expect(body(sent[0]!)).toEqual({ url: "https://x.example/v2" });
+  });
+});
+
+describe("whatsapp idempotency", () => {
+  function capture() {
+    const seen: Record<string, string>[] = [];
+    const fetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      seen.push(init?.headers as Record<string, string>);
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { c: new OmniDimension({ apiKey: "test-api-key-1234", fetch }) as any, seen };
+  }
+
+  it("sends the key on sendMessage and launchCampaign", async () => {
+    const { c, seen } = capture();
+    await c.whatsapp.sendMessage({ phone_number_id: 7, to: "+15551234567", type: "text" }, "send-1");
+    await c.whatsapp.launchCampaign(42, "launch-42");
+    expect(seen[0]["Idempotency-Key"]).toBe("send-1");
+    expect(seen[1]["Idempotency-Key"]).toBe("launch-42");
   });
 });

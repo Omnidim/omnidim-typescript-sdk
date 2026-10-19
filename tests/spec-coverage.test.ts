@@ -17,6 +17,8 @@ const DELIBERATE: Record<string, string> = {
   deleteSimulation: "simulations are undocumented and unstable",
   startSimulation: "simulations are undocumented and unstable",
   stopSimulation: "simulations are undocumented and unstable",
+  applyEnhancedPrompt: "simulations are undocumented and unstable",
+  generateAutoScenarios: "simulations are undocumented and unstable",
   enhancePrompt: "authoring helper, not a runtime call",
 };
 

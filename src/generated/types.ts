@@ -195,6 +195,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/integrations/custom-api": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a custom API integration
+         * @description Save a call to your own HTTP endpoint as an integration. Attach it to an agent with `attachAgentIntegration`, and the agent calls the endpoint during a call when the conversation needs it, then uses the response in its reply. Parameters marked `isLLMGenerated` are filled in by the agent from the conversation.
+         */
+        post: operations["createCustomApiIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a Cal.com integration
+         * @description Connect a Cal.com event type so an agent can check availability and book meetings during a call. Attach it to an agent with `attachAgentIntegration`.
+         */
+        post: operations["createCalIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * List an agent's integrations
+         * @description List the integrations attached to the agent. Stored credentials read `********`.
+         */
+        get: operations["listAgentIntegrations"];
+        put?: never;
+        /**
+         * Attach an integration to an agent
+         * @description Attach one of your integrations to the agent. The agent can use it on its next call. Integrations already attached stay as they are.
+         */
+        post: operations["attachAgentIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/integrations/{integration_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The ID of the integration to detach. */
+                integration_id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Detach an integration from an agent
+         * @description Remove the integration from the agent. The integration itself is kept and stays available to attach again.
+         */
+        delete: operations["detachAgentIntegration"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/{agent_id}/versions": {
         parameters: {
             query?: never;
@@ -1273,6 +1365,46 @@ export interface paths {
          * @description Generate prompt-improvement suggestions for a completed simulation.
          */
         post: operations["enhancePrompt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/simulations/{simulation_id}/apply-enhanced-prompt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply enhanced prompt
+         * @description Rewrite the agent's prompt sections from a completed simulation's suggestions. The agent's current sections are replaced, so save a version first if you may want them back. To review a proposed rewrite without applying it, call `enhancePrompt`. The applied text is generated again and can differ slightly from that preview.
+         */
+        post: operations["applyEnhancedPrompt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/{agent_id}/auto-scenarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate test scenarios
+         * @description Write test scenarios for an agent from its prompt. Each scenario has a name, the steps the simulated caller follows, and how the agent should respond. Nothing is saved: pass the ones you want to `createSimulation`.
+         */
+        post: operations["generateAutoScenarios"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2373,6 +2505,555 @@ export interface paths {
         get: operations["getWorkflowExecution"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List WhatsApp numbers
+         * @description The WhatsApp numbers your API key can see, oldest first. Use it to find
+         *     a number id, then pass that id to the other routes. Each number carries
+         *     `capabilities`, which says what it can send. Archived numbers are left
+         *     out.
+         */
+        get: operations["listWhatsappNumbers"];
+        put?: never;
+        /**
+         * Connect WhatsApp numbers
+         * @description Connects numbers from your own WhatsApp Business Account with your Meta
+         *     access token. List them first with
+         *     [Preview numbers](/docs/api-reference/whatsapp/previewWhatsappNumbers),
+         *     then pass the ids you want.
+         *
+         *     The token must never expire and must carry both WhatsApp permissions
+         *     (`whatsapp_business_management` and `whatsapp_business_messaging`). A
+         *     system user token does. Add `app_secret` to receive replies. Without
+         *     it the number can send but not receive.
+         *
+         *     Connecting a number again updates it: send a new `access_token` or
+         *     `app_secret` the same way to change either. One number failing does
+         *     not stop the others. It is listed in `failed` with the reason.
+         */
+        post: operations["importWhatsappNumbers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview numbers to connect
+         * @description Lists the numbers on your WhatsApp Business Account with their health,
+         *     and connects nothing. The access token is checked first, against the
+         *     same rules as connecting, so a preview that passes can connect.
+         *
+         *     Connect a number with `needs_migration` or `needs_registration` only
+         *     after fixing it in WhatsApp Manager, or its sends fail.
+         */
+        post: operations["previewWhatsappNumbers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a WhatsApp number
+         * @description One number, with its status, quality and messaging limit, and what it
+         *     can send. A number in another workspace answers `404`.
+         */
+        get: operations["getWhatsappNumber"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List templates
+         * @description The number's message templates, as last synced, oldest first. Pass
+         *     `status=approved` to see exactly the templates a send accepts. Sync the
+         *     list with `syncWhatsappTemplates` first if a template you expect is
+         *     missing.
+         */
+        get: operations["listWhatsappTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}/templates/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync templates
+         * @description Pull the number's templates and their review statuses from WhatsApp into
+         *     your list. Run it after you create or edit a template in Meta. It runs
+         *     at most once a minute per number: a second call inside that minute
+         *     answers `429`.
+         */
+        post: operations["syncWhatsappTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}/calling": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get calling settings
+         * @description Whether calling is on for this number and whether it can be turned on,
+         *     with the list of checks. A failing check does not fail the request: the
+         *     response stays `200` and names the check that blocks. Meta Cloud numbers
+         *     only. Calling must be included in your plan.
+         */
+        get: operations["getWhatsappCalling"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Turn calling on or off
+         * @description Turn calling on or off for a Meta Cloud number. A customer calls this
+         *     number; it does not place calls. Turning it on requires every blocking
+         *     check to pass, or the request answers `409`. Turning it off is always
+         *     allowed.
+         */
+        patch: operations["setWhatsappCalling"];
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List conversations
+         * @description A number's inbox, newest activity first. Poll it with `updated_since`
+         *     for changes since your last call, or page it with `cursor`. There are no
+         *     event webhooks, so polling is how an integration learns about new
+         *     messages.
+         */
+        get: operations["listWhatsappConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a conversation
+         * @description One conversation: who owns it, the 24-hour window, whether the customer
+         *     opted out, and the unread count. Poll it while a person is answering.
+         */
+        get: operations["getWhatsappConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/conversations/{conversation_id}/take_over": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take over a conversation
+         * @description Take the conversation from the agent, so it stops replying and your team
+         *     answers. Repeating it changes nothing. Hand it back with
+         *     `handBackWhatsappConversation` when the person is done.
+         */
+        post: operations["takeOverWhatsappConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/conversations/{conversation_id}/hand_back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand a conversation back
+         * @description Give the conversation back to the agent, and clear a pause. The agent
+         *     answers the customer's next message. Repeating it changes nothing.
+         */
+        post: operations["handBackWhatsappConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List messages
+         * @description One conversation's messages, newest first. Poll forward with `after`
+         *     (the id of the newest message you already have) to get only new ones.
+         *     Page backward through history with `cursor`. Do not pass both.
+         */
+        get: operations["listWhatsappMessages"];
+        put?: never;
+        /**
+         * Send a message
+         * @description Send one message through `phone_number_id` to a customer, in a text,
+         *     a template, an image or a document. Set `type` and the matching field.
+         *
+         *     Outside the 24-hour window, only a template goes through. A text, image
+         *     or document send is refused with `409 window_closed`. A template send
+         *     works any time and can start a new conversation.
+         *
+         *     The send does not take the conversation over, so the agent keeps
+         *     answering. Set `take_over: true` to stop the agent and answer yourself.
+         *
+         *     `Idempotency-Key` is required. The same key with the same body replays
+         *     the first answer instead of sending again.
+         */
+        post: operations["sendWhatsappMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/messages/{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a message
+         * @description One message with its `timeline`: the delivery and read steps, oldest
+         *     first. Poll it after a send to learn whether the message was delivered
+         *     and read. Also shows what the send cost once it is charged.
+         */
+        get: operations["getWhatsappMessage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload media
+         * @description Upload an image or a document, then send it by its `media_id` on
+         *     `sendWhatsappMessage`. Uploading costs nothing; only the send is
+         *     charged. The `media_id` works for 24 hours and only for the number and
+         *     type it was uploaded for.
+         *
+         *     Images can be JPEG, PNG or WebP up to 5 MB. Documents can be PDF, DOCX,
+         *     XLSX or plain text up to 16 MB. The file's type is read from its bytes,
+         *     not its name.
+         */
+        post: operations["uploadWhatsappMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}/opt_outs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List opt-outs
+         * @description Who opted out of messages from this number, oldest first. By default it
+         *     lists active opt-outs only.
+         */
+        get: operations["listWhatsappOptOuts"];
+        put?: never;
+        /**
+         * Block a customer
+         * @description Stop every message you start to this customer from this number, until
+         *     the block is lifted. The response is `201` when the block is new and
+         *     `200` when the customer was already blocked, in which case the entry is
+         *     returned unchanged.
+         */
+        post: operations["addWhatsappOptOut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}/opt_outs/{opt_out_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Lift a block
+         * @description Lift a block you added, or a marketing block made in WhatsApp. The entry
+         *     stays in the list with `active: false`. A customer's own STOP cannot be
+         *     lifted over the API: only the customer lifting it in WhatsApp, or
+         *     messaging you again, brings them back.
+         */
+        delete: operations["liftWhatsappOptOut"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List campaigns
+         * @description Your WhatsApp campaigns, oldest first. Filter by status or by number.
+         */
+        get: operations["listWhatsappCampaigns"];
+        put?: never;
+        /**
+         * Create a campaign
+         * @description Create a campaign as a draft. It sends nothing until you launch it. Add
+         *     contacts and launch it in the next calls. Only an approved template can
+         *     be used, so every campaign starts with one. Scheduling is not offered.
+         */
+        post: operations["createWhatsappCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/campaigns/{campaign_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a campaign
+         * @description One campaign with its counts and analytics: per-source figures and the
+         *     failed contacts grouped by reason. `delivery_rate` and `read_rate` are
+         *     null on a number that does not report receipts.
+         */
+        get: operations["getWhatsappCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/campaigns/{campaign_id}/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List campaign contacts
+         * @description Per-contact status for a campaign, oldest first. A contact that read the
+         *     message and then replied STOP counts as read and opted out.
+         */
+        get: operations["listWhatsappCampaignContacts"];
+        put?: never;
+        /**
+         * Add campaign contacts
+         * @description Add one contact, or up to 500 at once. On a draft they are stored for
+         *     launch. On a running campaign they are sent now. A contact already in
+         *     the campaign is skipped, so a retry is safe. Each contact needs a
+         *     `phone_number`; every other key is kept and can fill a template
+         *     parameter through `variable_mapping`.
+         */
+        post: operations["addWhatsappCampaignContacts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/campaigns/{campaign_id}/launch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Launch a campaign
+         * @description Start a draft campaign: every pending contact is queued once. Needs at
+         *     least one contact, unless the campaign's `data_source` is `webhook`. The
+         *     plan's monthly broadcast allowance and the wallet balance are checked
+         *     here. `Idempotency-Key` is required, so a retry does not start it twice.
+         */
+        post: operations["launchWhatsappCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/campaigns/{campaign_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause a campaign
+         * @description Stop sending until you resume. Only a running campaign can be paused. A
+         *     pause you make by hand is never resumed automatically.
+         */
+        post: operations["pauseWhatsappCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/campaigns/{campaign_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume a campaign
+         * @description Resume a paused campaign. Contacts still pending are sent; a contact
+         *     already sent is never sent again. The wallet and allowance are checked
+         *     again, so a resume can answer `402`.
+         */
+        post: operations["resumeWhatsappCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/campaigns/{campaign_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a campaign
+         * @description Stop a campaign for good. Contacts not yet sent are not sent. A completed
+         *     or already-canceled campaign cannot be canceled.
+         */
+        post: operations["cancelWhatsappCampaign"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3713,6 +4394,43 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * @description One query or body parameter of a custom API. With `isLLMGenerated`
+         *     true the agent fills the value from the conversation, guided by
+         *     `description`. With it false, the text in `description` is sent as a
+         *     fixed value.
+         */
+        CustomApiParam: {
+            /** @description The parameter name your endpoint expects. */
+            key: string;
+            /** @description What the agent should put here, or the fixed value when `isLLMGenerated` is false. */
+            description?: string;
+            /**
+             * @default string
+             * @enum {string}
+             */
+            type: "string" | "number" | "boolean" | "object" | "array";
+            /** @description Whether the agent must supply this parameter. */
+            required?: boolean;
+            /**
+             * @description Let the agent fill this value from the conversation.
+             * @default true
+             */
+            isLLMGenerated: boolean;
+            /** @description Nested fields of an `object` or `array` parameter. */
+            children?: components["schemas"]["CustomApiParam"][];
+        };
+        IntegrationCreated: {
+            success?: boolean;
+            message?: string;
+            /** @description Use it as `integration_id` to attach the integration to an agent. */
+            integration_id?: number;
+            integration?: components["schemas"]["Integration"];
+        };
+        IntegrationChanged: {
+            success?: boolean;
+            message?: string;
+        };
+        /**
          * @description One post-call action. `type` picks the channel; send the fields of
          *     that channel plus any of the shared ones. `type` is required when
          *     adding an action; an update sends only the fields it changes.
@@ -4318,8 +5036,761 @@ export interface components {
                 amount_usd?: number;
             };
         };
+        /**
+         * @description The error envelope for every WhatsApp route. Some errors add keys:
+         *     `fields` (the template parameters a send still needs), `ref` (a
+         *     500's support reference) and `failed` (on `import_failed`).
+         */
+        WhatsappError: {
+            /** @description Machine-readable category, such as `invalid_request`. */
+            error?: string;
+            /** @description Human-readable explanation. */
+            error_description?: string;
+            /** @description Stable, specific reason, such as `window_closed`. */
+            code?: string;
+            /** @description Correlates this response with the server log. Also sent as the `X-Request-Id` header. */
+            request_id?: string;
+            /** @description On a template send missing parameters (`missing_fields`), the field keys you still need. */
+            fields?: string[];
+            /** @description On a `500`, the reference to quote to support. */
+            ref?: string;
+            /** @description On `import_failed`, each number and why it could not be connected. */
+            failed?: components["schemas"]["WhatsappImportFailure"][];
+        };
+        WhatsappNumber: {
+            /** @example 412 */
+            id?: number;
+            /** @example +15551234567 */
+            phone_number?: string;
+            /**
+             * @description Who carries the number. `meta` is the WhatsApp Cloud API.
+             * @enum {string}
+             */
+            provider?: "meta" | "twilio" | "sensibot" | "interakt";
+            /** @description The label you gave the number. */
+            name?: string | null;
+            /**
+             * @description `active` can send. `restricted` is limited by WhatsApp.
+             *     `disconnected` is missing its credentials, so it cannot send.
+             * @enum {string}
+             */
+            status?: "active" | "restricted" | "disconnected";
+            /** @description WhatsApp's own restriction on the account, when there is one. */
+            account_restriction?: string | null;
+            /** @description The agent that answers this number, when one is attached. */
+            agent_id?: number | null;
+            /** @description WhatsApp's quality rating. Meta numbers only. */
+            quality_rating?: string | null;
+            /** @description How many customers you can start chats with in 24 hours. Meta numbers only. */
+            messaging_limit?: string | null;
+            capabilities?: components["schemas"]["WhatsappNumberCapabilities"];
+        };
+        WhatsappImportRequest: {
+            /** @description Your WhatsApp Business Account id, from WhatsApp Manager. */
+            waba_id: string;
+            /** @description A Meta access token that never expires, with both WhatsApp permissions. Stored, never returned. */
+            access_token: string;
+            /** @description Meta's ids for the numbers to connect, as Preview numbers lists them. */
+            phone_number_ids: string[];
+            /** @description Your Meta app's secret. Turns on replies. Stored, never returned. */
+            app_secret?: string;
+        };
+        WhatsappImportFailure: {
+            phone_number_id?: string;
+            /** @example This WhatsApp number is already connected to another account. Disconnect it there first, then import it again. Contact support if you cannot access that account. */
+            message?: string;
+        };
+        WhatsappPreviewNumber: {
+            /** @description Meta's id for the number. Pass it in `phone_number_ids`. */
+            phone_number_id?: string;
+            /** @example +1 555-123-4567 */
+            display_phone_number?: string;
+            /** @description The display name on WhatsApp. */
+            name?: string | null;
+            /** @description Meta's connection status, such as `CONNECTED` or `PENDING`. */
+            status?: string | null;
+            /** @description `AVAILABLE`, `LIMITED` or `BLOCKED`. */
+            can_send_message?: string | null;
+            quality_rating?: string | null;
+            name_status?: string | null;
+            code_verification_status?: string | null;
+            platform_type?: string | null;
+            is_on_biz_app?: boolean | null;
+            /** @description The number is on the WhatsApp Business app, not the Cloud API. Its sends fail until it moves. */
+            needs_migration?: boolean;
+            /** @description The number is verified but not registered with the Cloud API. Its sends fail until it is. */
+            needs_registration?: boolean;
+            /** @description A short reason when the number is not ready, otherwise empty. */
+            reason?: string;
+            /** @description Already connected to your account. Connecting again updates it. */
+            already_imported?: boolean;
+            /** @description Connected to another account, so connecting it is refused. */
+            connected_elsewhere?: boolean;
+        };
+        /** @description What this number can send, and how its delivery status is learned. */
+        WhatsappNumberCapabilities: {
+            /** @description The message types this number can send. Always includes `text`. */
+            types?: ("text" | "template" | "image" | "document")[];
+            /** @description Supports quoted replies, read receipts, typing and reactions. */
+            reply_to?: boolean;
+            /** @description Free-form sends are refused outside the 24-hour window. True on WhatsApp Cloud numbers. */
+            window_enforced?: boolean;
+            /**
+             * @description How sent status is learned. `push` is a webhook, `polled` is a periodic read, `none` is not at all.
+             * @enum {string}
+             */
+            delivery_status?: "push" | "polled" | "none";
+            /** @description Templates can be pulled from the provider with `syncWhatsappTemplates`. */
+            template_sync?: boolean;
+        };
+        WhatsappTemplate: {
+            id?: number;
+            name?: string;
+            /** @description Language code as WhatsApp returns it. */
+            language?: string | null;
+            /** @enum {string|null} */
+            category?: "UTILITY" | "MARKETING" | "AUTHENTICATION" | null;
+            /**
+             * @description Review status as the provider returns it, lower-cased. A send
+             *     accepts only `approved`.
+             */
+            status?: string | null;
+            /** @description Why WhatsApp rejected it, when it did. */
+            rejected_reason?: string | null;
+            body_preview?: string;
+            /** @description The template's header, or null when it has none. */
+            header?: {
+                /** @description Header format, such as `TEXT`, `IMAGE`, `VIDEO` or `DOCUMENT`. */
+                type?: string;
+                /** @description A media file is stored on the header. */
+                has_file?: boolean;
+            } | null;
+            /** @description The values you fill in when you send this template. */
+            fields?: components["schemas"]["WhatsappTemplateField"][];
+            buttons?: components["schemas"]["WhatsappTemplateButton"][];
+            /** @description When this template was last pulled from the provider. */
+            synced_at?: string | null;
+        };
+        /** @description One value a send must provide for this template. */
+        WhatsappTemplateField: {
+            /** @description The field name to send under `template.params`. */
+            key?: string;
+            /** @description A human name for the field. */
+            label?: string;
+            /**
+             * @description `text` is a body or text-header value. `url` is a URL button suffix.
+             * @enum {string}
+             */
+            kind?: "text" | "url";
+            required?: boolean;
+            example?: string | null;
+        };
+        /** @description One button on this template. Only the keys the button has are present. */
+        WhatsappTemplateButton: {
+            /** @description Button type, such as `URL`, `QUICK_REPLY` or `PHONE_NUMBER`. */
+            type?: string;
+            text?: string;
+            url?: string;
+            phone_number?: string;
+        };
+        WhatsappConversation: {
+            /**
+             * @description The conversation id, `{number id}-{customer phone digits}`.
+             * @example 412-15551234567
+             */
+            id?: string;
+            phone_number_id?: number;
+            /** @example +15551234567 */
+            customer_phone?: string;
+            /** @description The customer's WhatsApp profile name, when set. */
+            customer_name?: string | null;
+            /** @description The newest message in the conversation. */
+            last_message?: {
+                preview?: string;
+                /** @description The message type, such as `text`, `image` or `template`. */
+                type?: string;
+                /** @enum {string} */
+                sender?: "customer" | "agent" | "person";
+                timestamp?: string;
+                status?: components["schemas"]["WhatsappMessageStatus"];
+            };
+            last_message_at?: string | null;
+            /** @description Customer messages you have not read yet. */
+            unread_count?: number;
+            message_count?: number;
+            ownership?: components["schemas"]["WhatsappOwnership"];
+            /** @description Whether the 24-hour window is open. Null when the number does not enforce it. */
+            window_open?: boolean | null;
+            /** @description When the 24-hour window closes. Null when there is no window. */
+            window_expires_at?: string | null;
+            /** @description A failed outbound message is newer than the last successful one. */
+            has_failed?: boolean;
+            /** @description The customer has opted out of messages from this number. */
+            opted_out?: boolean;
+            /** @description The broadcast this conversation came from, when it did. */
+            campaign?: {
+                id?: number;
+                name?: string;
+            } | null;
+        };
+        /** @description Who is answering this conversation. */
+        WhatsappOwnership: {
+            /**
+             * @description `person` means a human took it over. `agent` means the AI answers.
+             * @enum {string}
+             */
+            owner?: "person" | "agent";
+            paused?: boolean;
+        };
+        /**
+         * @description `received` is an inbound customer message. The rest are outbound, in
+         *     order: `pending`, `sent`, `delivered`, `read`, or `failed`.
+         * @enum {string}
+         */
+        WhatsappMessageStatus: "pending" | "sent" | "delivered" | "read" | "received" | "failed";
+        WhatsappMessage: {
+            id?: number;
+            conversation_id?: string;
+            /** @description The message's id at WhatsApp, when there is one. */
+            wa_message_id?: string | null;
+            /** @enum {string} */
+            sender?: "customer" | "agent" | "person";
+            /**
+             * @description The message type: `text`, `image`, `video`, `audio`, `document`,
+             *     `template`, `reaction`, `interactive`, `location`, `contacts`,
+             *     `call` or `other`.
+             */
+            type?: string;
+            text?: string | null;
+            caption?: string | null;
+            profile_name?: string | null;
+            /** @description The workflow that sent it, when a workflow did. */
+            sent_by_workflow?: string | null;
+            timestamp?: string;
+            status?: components["schemas"]["WhatsappMessageStatus"];
+            /** @description The message this one quotes, when it quotes one. */
+            reply_to?: {
+                wa_message_id?: string;
+                preview?: string | null;
+                /** @enum {string|null} */
+                sender?: "customer" | "agent" | "person" | null;
+            } | null;
+            reactions?: {
+                emoji?: string;
+                /** @enum {string} */
+                sender?: "customer" | "agent" | "person";
+                timestamp?: string;
+            }[];
+            /** @description Media details, when the message carries a file. It holds no download link. */
+            media?: {
+                mime?: string | null;
+                filename?: string | null;
+                size?: number | null;
+                /** @enum {string} */
+                fetch_status?: "done" | "pending" | "failed";
+            } | null;
+            /** @description Voice note details, when the message is one. */
+            voice?: {
+                duration_seconds?: number | null;
+                transcript?: string | null;
+            } | null;
+            location?: {
+                lat?: number | null;
+                lng?: number | null;
+                name?: string | null;
+                address?: string | null;
+                map_url?: string;
+            } | null;
+            contacts?: {
+                name?: string | null;
+                phones?: string[];
+            }[] | null;
+            interactive?: {
+                title?: string | null;
+            } | null;
+            /** @description The template this message sent, when it is a template message. */
+            template?: {
+                id?: number;
+                name?: string;
+            } | null;
+            /** @description Why a send failed, present only when `status` is `failed`. */
+            failure?: {
+                /** @description The provider's failure code, when there is one. */
+                code?: string | null;
+                reason?: string | null;
+                /**
+                 * @description Whether sending the same message again may work. `false` when
+                 *     the message may already have been delivered.
+                 */
+                retryable?: boolean;
+            } | null;
+            /** @description What this send cost, when it has been charged. */
+            charged?: {
+                amount?: number;
+                currency?: string;
+            } | null;
+        };
+        WhatsappMessageDetail: components["schemas"]["WhatsappMessage"] & {
+            /** @description The delivery steps of this message, oldest first. */
+            timeline?: {
+                /** @enum {string} */
+                status?: "received" | "accepted" | "sent" | "delivered" | "read" | "failed";
+                at?: string | null;
+            }[];
+        };
+        /** @description An uploaded file, ready to send by its `media_id`. */
+        WhatsappMediaUpload: {
+            media_id?: string;
+            /** @enum {string} */
+            type?: "image" | "document";
+            mime?: string;
+            filename?: string;
+            size?: number;
+            /** @description When the `media_id` stops working. It lasts 24 hours. */
+            expires_at?: string;
+        };
+        WhatsappTemplateSyncResult: {
+            /** @description How many templates the provider listed. */
+            count?: number | null;
+            /** @description Templates the provider no longer lists but that a campaign still uses, so they were not deleted. */
+            kept?: string[];
+            synced_at?: string;
+        };
+        /** @description Whether calling is on for this number, and whether it can be turned on. */
+        WhatsappCallingSettings: {
+            /** @description Calling is included in your plan and your role. */
+            available?: boolean;
+            /** @enum {string} */
+            status?: "enabled" | "disabled" | "not_set";
+            /** @description Every blocking check passes, so calling can be turned on now. */
+            can_enable?: boolean;
+            checks?: components["schemas"]["WhatsappCallingCheck"][];
+            checked_at?: string;
+        };
+        /** @description One condition for turning calling on. */
+        WhatsappCallingCheck: {
+            /**
+             * @description The check's name, such as `needs_registration`, `replies_off`,
+             *     `no_agent`, `limit_below_2k`, `sip_enabled` or `quality_low`.
+             */
+            code?: string;
+            ok?: boolean;
+            /** @description When true, this check must pass before calling can be turned on. */
+            blocking?: boolean;
+            title?: string;
+            /** @description What to do to make it pass. */
+            fix?: string;
+            doc_url?: string;
+        };
+        WhatsappCallingUpdate: {
+            /** @example Calling turned on. */
+            message?: string;
+            /** @enum {string} */
+            status?: "enabled" | "disabled";
+            checks?: components["schemas"]["WhatsappCallingCheck"][];
+        };
+        WhatsappCampaign: {
+            id?: number;
+            name?: string;
+            /** @enum {string} */
+            status?: "draft" | "scheduled" | "in_progress" | "paused" | "completed" | "failed" | "cancelled";
+            /**
+             * @description Why it paused, or null. Only `human` waits for you; the rest resume on their own.
+             * @enum {string|null}
+             */
+            pause_reason?: "human" | "balance" | "channel_down" | "monthly_limit" | null;
+            /** @enum {string} */
+            campaign_mode?: "broadcast" | "broadcast_reply";
+            /** @enum {string} */
+            send_mode?: "review" | "on_arrival";
+            /** @enum {string} */
+            data_source?: "csv" | "webhook";
+            is_dynamic?: boolean;
+            phone_number_id?: number;
+            template?: {
+                id?: number;
+                name?: string;
+            } | null;
+            /** @description The agent that answers replies, when one is attached. */
+            agent_id?: number | null;
+            /** @description Template field to contact field or static text. */
+            variable_mapping?: {
+                [key: string]: unknown;
+            };
+            counts?: {
+                total?: number;
+                sent?: number;
+                delivered?: number;
+                read?: number;
+                replied?: number;
+                failed?: number;
+                skipped?: number;
+                opted_out?: number;
+            };
+            /** @description This number reports delivery and read receipts, so the rates are real. */
+            receipts_reported?: boolean;
+            /** @description Delivered as a percentage of sent. Null when receipts are not reported. */
+            delivery_rate?: number | null;
+            /** @description Read as a percentage of delivered. Null when receipts are not reported. */
+            read_rate?: number | null;
+            /** @description Replied as a percentage of sent. */
+            reply_rate?: number;
+            /** @description What the campaign cost so far. Null without billing access. */
+            spend?: {
+                amount?: number;
+                /** @example USD */
+                currency?: string;
+            } | null;
+            created_at?: string | null;
+        };
+        /** @description Added to `getWhatsappCampaign` only. */
+        WhatsappCampaignAnalytics: {
+            pending?: number;
+            /** @description Failed contacts, grouped by reason, biggest group first. */
+            failures?: {
+                /**
+                 * @description The failure reason, such as `window_closed`, `undeliverable`,
+                 *     `rate_limited`, `provider_rejected`, `opted_out`,
+                 *     `session_down`, `our_validation` or `missing_value`.
+                 */
+                category?: string;
+                count?: number;
+            }[];
+            /** @description The same figures split by `csv` and `webhook`. A source with no contacts is absent. */
+            by_source?: {
+                [key: string]: {
+                    total?: number;
+                    pending?: number;
+                    sent?: number;
+                    delivered?: number;
+                    read?: number;
+                    replied?: number;
+                    failed?: number;
+                    skipped?: number;
+                    opted_out?: number;
+                    delivery_rate?: number | null;
+                    read_rate?: number | null;
+                };
+            };
+        };
+        WhatsappCampaignContact: {
+            id?: number;
+            /** @example +15551234567 */
+            phone_number?: string;
+            name?: string | null;
+            /** @enum {string} */
+            data_source?: "csv" | "webhook";
+            /**
+             * @description A skipped contact has `status` `failed` and a `skipped_reason`.
+             * @enum {string}
+             */
+            status?: "pending" | "sent" | "delivered" | "read" | "replied" | "failed" | "opted_out";
+            /**
+             * @description Set when the contact was skipped because a person owns the conversation.
+             * @enum {string|null}
+             */
+            skipped_reason?: "human_handling" | null;
+            opted_out?: boolean;
+            wa_message_id?: string | null;
+            sent_at?: string | null;
+            delivered_at?: string | null;
+            read_at?: string | null;
+            failure?: {
+                code?: string | null;
+                reason?: string | null;
+            } | null;
+        };
+        /**
+         * @description One contact. `phone_number` is required. Any other key is kept on the
+         *     contact and can fill a template parameter through `variable_mapping`.
+         */
+        WhatsappCampaignContactInput: {
+            /** @description The customer's number in international format, such as `+15551234567`. */
+            phone_number: string;
+            /** @description A name for your team. `name` works too. */
+            contact_name?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description What happened to each contact you sent. */
+        WhatsappContactImportResult: {
+            imported?: number;
+            skipped_invalid?: number;
+            skipped_duplicate?: number;
+            total_submitted?: number;
+            /** @description One entry per contact that was accepted or already existed. */
+            contacts?: {
+                index?: number;
+                contact_id?: number;
+                duplicate?: boolean;
+            }[];
+            /** @description One entry per contact that was skipped. */
+            errors?: {
+                index?: number;
+                error?: string;
+            }[];
+        };
+        WhatsappOptOut: {
+            id?: number;
+            phone_number_id?: number;
+            /** @example +15551234567 */
+            customer?: string;
+            /**
+             * @description How the opt-out happened. `instructed_keyword` and
+             *     `template_stop_button` are the customer's own and only they can
+             *     lift them. `meta_marketing_optout` is a marketing choice made in
+             *     WhatsApp. `manual` is one you added.
+             * @enum {string}
+             */
+            source?: "instructed_keyword" | "template_stop_button" | "meta_marketing_optout" | "manual";
+            active?: boolean;
+            opted_out_at?: string | null;
+            /** @description When a lifted opt-out was lifted. */
+            opted_in_at?: string | null;
+            note?: string | null;
+        };
     };
     responses: {
+        /** @description A bad parameter or body. `code` says which, such as `invalid_parameter`, `invalid_json`, `invalid_limit` or `invalid_cursor`. */
+        WhatsappBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "invalid_request",
+                 *       "error_description": "limit must be a whole number from 1 to 100.",
+                 *       "code": "invalid_limit",
+                 *       "request_id": "req_4a1c7d9e2f60"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /** @description Missing or invalid API key. */
+        WhatsappUnauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "unauthorized",
+                 *       "error_description": "Missing or invalid API key",
+                 *       "code": "invalid_api_key",
+                 *       "request_id": "req_6e2b9d4f1a38"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description `feature_not_enabled` when your plan or role cannot use WhatsApp,
+         *     `permission_denied` when the key's user cannot make changes, or
+         *     `service_unavailable` when the account is on hold.
+         */
+        WhatsappForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "forbidden",
+                 *       "error_description": "You do not have permission to make changes to WhatsApp.",
+                 *       "code": "permission_denied",
+                 *       "request_id": "req_9f2c1a4b7d3e"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description No number, conversation, message, template, media upload, agent,
+         *     campaign, contact or opt-out with that id in your workspace. `code`
+         *     says which. Another workspace's id gives the same answer.
+         */
+        WhatsappNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "not_found",
+                 *       "error_description": "WhatsApp number not found.",
+                 *       "code": "number_not_found",
+                 *       "request_id": "req_2c8e7a1d9b40"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description The request cannot run in the current state. `code` says which:
+         *     `not_supported` (this number cannot do it), `window_closed` (the
+         *     24-hour window needs a template), `opted_out`, `invalid_transition`
+         *     (a campaign), `idempotency_key_reused`, `customer_opt_out`, or
+         *     `sync_in_progress`.
+         */
+        WhatsappConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "conflict",
+                 *       "error_description": "It has been more than 24 hours since this customer last wrote or called, so WhatsApp only allows an approved template. Send a template instead.",
+                 *       "code": "window_closed",
+                 *       "request_id": "req_7b3d1f8a2c95"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description `insufficient_balance` (top up the wallet) or `monthly_limit_reached`
+         *     (the plan's broadcast allowance is used up).
+         */
+        WhatsappPaymentRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "payment_required",
+                 *       "error_description": "Insufficient balance to send a WhatsApp message. Top up your balance and try again.",
+                 *       "code": "insufficient_balance",
+                 *       "request_id": "req_1d4f7a2c9e63"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description `rate_limited`: this number's templates were synced less than a
+         *     minute ago. `Retry-After` says how long to wait.
+         */
+        WhatsappTooManyRequests: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "too_many_requests",
+                 *       "error_description": "Templates for this number were synced less than a minute ago. Try again in 42 seconds.",
+                 *       "code": "rate_limited",
+                 *       "request_id": "req_8e5b2c7a1f40"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description A provider problem: `send_failed` (the message reached nothing),
+         *     `template_sync_failed` (the template list is unchanged),
+         *     `upstream_error` (a calling change), as `502`.
+         */
+        WhatsappUpstream: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "bad_gateway",
+                 *       "error_description": "The message could not be handed to WhatsApp. Nothing was sent or charged.",
+                 *       "code": "send_failed",
+                 *       "request_id": "req_3a9c6e1d8b52"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description `channel_down`: WhatsApp is not connected for this number, nothing was
+         *     sent or charged. `temporarily_unavailable`: template sync is briefly
+         *     unavailable. Both carry `Retry-After`.
+         */
+        WhatsappUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "service_unavailable",
+                 *       "error_description": "WhatsApp is not connected for this number right now. Nothing was sent or charged.",
+                 *       "code": "channel_down",
+                 *       "request_id": "req_5c2f8a4d7e19"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /**
+         * @description `missing_fields` (`waba_id` or `access_token`), `invalid_json` (the
+         *     body is not a JSON object), `invalid_parameter` (`phone_number_ids`),
+         *     `token_invalid`, `token_expires`, `token_missing_permissions`,
+         *     `invalid_request` (the account has no numbers, or Meta did not say which
+         *     app the token belongs to), or `import_failed` (no number connected;
+         *     `failed` says why for each).
+         */
+        WhatsappImportBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "invalid_request",
+                 *       "error_description": "This token expires on 27 Nov. Generate a new one set to never expire.",
+                 *       "code": "token_expires",
+                 *       "request_id": "req_5b8e2d1c7a94"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /** @description `upstream_error`: Meta could not be reached or refused the request. Nothing was connected. */
+        WhatsappMetaUnreachable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "server_error",
+                 *       "error_description": "Couldn't reach Meta to check this token. Please try again shortly.",
+                 *       "code": "upstream_error",
+                 *       "request_id": "req_2f7a9c4e1b63"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
+        /** @description Something went wrong on our side. Quote `ref` to support. */
+        WhatsappServerError: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "server_error",
+                 *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference 9a1f3e8b02c4.",
+                 *       "ref": "9a1f3e8b02c4",
+                 *       "code": "server_error",
+                 *       "request_id": "req_9a1f3e8b02c4"
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappError"];
+            };
+        };
         /** @description A bad parameter or body. `code` says which, such as `invalid_json`, `invalid_parameter`, `missing_fields` or `no_options`. */
         WorkflowBadRequest: {
             headers: {
@@ -4406,6 +5877,31 @@ export interface components {
         WorkflowId: number;
         /** @description A node type from `listWorkflowNodeTypes`, such as `whatsapp`. */
         WorkflowNodeTypeName: string;
+        /**
+         * @description Id of a WhatsApp number in your workspace, from
+         *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+         *     A number in another workspace answers `404`.
+         */
+        WhatsappNumberId: number;
+        /**
+         * @description A conversation id: the number id, a dash, then the customer's phone
+         *     digits, such as `412-919876543210`. From
+         *     [listWhatsappConversations](/docs/api-reference/whatsapp/listWhatsappConversations).
+         */
+        WhatsappConversationId: string;
+        /** @description Id of a message, from `listWhatsappMessages` or a send response. */
+        WhatsappMessageId: number;
+        /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+        WhatsappCampaignId: number;
+        /** @description Id of an active opt-out entry, from `listWhatsappOptOuts`. */
+        WhatsappOptOutId: number;
+        /**
+         * @description A unique string you choose, up to 255 characters. Required on this
+         *     route. The same key with the same body replays the first answer for
+         *     24 hours instead of acting twice. A different body with the same key
+         *     answers `409`.
+         */
+        WhatsappIdempotencyKey: string;
     };
     requestBodies: never;
     headers: never;
@@ -5452,6 +6948,345 @@ export interface operations {
                         integrations?: components["schemas"]["Integration"][];
                     };
                 };
+            };
+        };
+    };
+    createCustomApiIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "name": "Order status",
+                 *       "description": "Look up an order's delivery status by order number.",
+                 *       "url": "https://api.acme-corp.io/orders/status",
+                 *       "method": "GET",
+                 *       "headers": [
+                 *         {
+                 *           "key": "Authorization",
+                 *           "value": "Bearer YOUR_TOKEN"
+                 *         }
+                 *       ],
+                 *       "query_params": [
+                 *         {
+                 *           "key": "order_number",
+                 *           "description": "The order number the caller reads out",
+                 *           "type": "string",
+                 *           "required": true,
+                 *           "isLLMGenerated": true
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
+                    /** @description A name for the integration. Must be unique in your workspace. */
+                    name: string;
+                    /**
+                     * @description What the endpoint does. The agent reads this to decide
+                     *     when to call it, so say what it returns and when it is useful.
+                     */
+                    description?: string;
+                    /** Format: uri */
+                    url: string;
+                    /** @enum {string} */
+                    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+                    /** @description Fixed headers sent on every request. */
+                    headers?: {
+                        key: string;
+                        value: string;
+                    }[];
+                    /** @description Query string parameters. */
+                    query_params?: components["schemas"]["CustomApiParam"][];
+                    /** @description Request body fields, sent as JSON. */
+                    body_params?: components["schemas"]["CustomApiParam"][];
+                    /**
+                     * @description Seconds to wait for your endpoint before the agent moves on.
+                     * @default 10
+                     */
+                    request_timeout?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The integration was created. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCreated"];
+                };
+            };
+            /**
+             * @description The integration was not created: a required field is missing, the
+             *     name is already used in your workspace, or a value is the hidden
+             *     `********` copied from a listing.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example invalid_request */
+                        error?: string;
+                        /** @example An integration with this name already exists in your organization */
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot make changes to integrations. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createCalIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
+                    /** @description A name for the integration. Must be unique in your workspace. */
+                    name: string;
+                    /** @description Your Cal.com API key. */
+                    cal_api_key: string;
+                    /** @description The Cal.com event type id to book. */
+                    cal_id: string;
+                    /** @description IANA time zone for the bookings, such as `America/New_York`. */
+                    cal_timezone: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The integration was created. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCreated"];
+                };
+            };
+            /**
+             * @description The integration was not created: a required field is missing, the
+             *     name is already used in your workspace, or the API key is the
+             *     hidden `********` copied from a listing.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example invalid_request */
+                        error?: string;
+                        /** @example An integration with this name already exists in your organization */
+                        error_description?: string;
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot make changes to integrations. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAgentIntegrations: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The agent's integrations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success?: boolean;
+                        integrations?: ({
+                            id?: number;
+                            name?: string;
+                            /** @example custom_api */
+                            type?: string;
+                            is_active?: boolean;
+                        } & {
+                            [key: string]: unknown;
+                        })[];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agent not found or access denied. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    attachAgentIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
+                    /** @description The integration's id, from `listIntegrations` or a create response. */
+                    integration_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The integration was attached. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationChanged"];
+                };
+            };
+            /** @description `integration_id` is missing. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot make changes to integrations. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agent or integration not found, or not yours. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    detachAgentIntegration: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+                /** @description The ID of the integration to detach. */
+                integration_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The integration was detached. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationChanged"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot make changes to integrations. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agent not found, or the integration is not attached to it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -11598,6 +13433,148 @@ export interface operations {
             };
         };
     };
+    applyEnhancedPrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                simulation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The agent's prompt sections were replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "message": "Enhanced prompt applied to agent successfully",
+                     *       "agent_id": 123
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        message?: string;
+                        /** @description The agent whose prompt changed. */
+                        agent_id?: number;
+                    };
+                };
+            };
+            /**
+             * @description The simulation has no prompt suggestions yet. They are written when
+             *     the simulation completes.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Simulation not found or access denied. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    generateAutoScenarios: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the agent. */
+                agent_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "number_of_scenarios": 5
+                 *     }
+                 */
+                "application/json": {
+                    /** @description How many scenarios to write. */
+                    number_of_scenarios: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The generated scenarios. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "scenarios": [
+                     *         {
+                     *           "name": "Reschedule an appointment",
+                     *           "description": "Ask to move tomorrow's appointment to Friday afternoon.",
+                     *           "expected_result": "The agent confirms the new slot and repeats the date and time."
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        scenarios?: {
+                            name?: string;
+                            /** @description The steps the simulated caller follows. */
+                            description?: string;
+                            /** @description How the agent should respond. */
+                            expected_result?: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description `number_of_scenarios` is missing. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The API key's user cannot run simulations. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Agent not found or access denied. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listChildOrganizations: {
         parameters: {
             query?: never;
@@ -15891,6 +17868,1302 @@ export interface operations {
             401: components["responses"]["WorkflowUnauthorized"];
             403: components["responses"]["WorkflowForbidden"];
             404: components["responses"]["WorkflowNotFound"];
+        };
+    };
+    listWhatsappNumbers: {
+        parameters: {
+            query?: {
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. Omit it on the first request and pass it back unchanged. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of numbers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappNumber"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    importWhatsappNumbers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "waba_id": "102938475610293",
+                 *       "access_token": "EAAG...",
+                 *       "phone_number_ids": [
+                 *         "106540352242922"
+                 *       ],
+                 *       "app_secret": "3f9c..."
+                 *     }
+                 */
+                "application/json": components["schemas"]["WhatsappImportRequest"];
+            };
+        };
+        responses: {
+            /** @description The connected numbers, and any that failed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: (components["schemas"]["WhatsappNumber"] & {
+                            /** @description This request turned replies on. It is `false` when you did not send `app_secret`, even if replies were already on for the number. */
+                            receiving?: boolean;
+                            /** @description Why replies could not be turned on, when they could not. */
+                            receiving_error?: string | null;
+                        })[];
+                        failed?: components["schemas"]["WhatsappImportFailure"][];
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappImportBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            500: components["responses"]["WhatsappServerError"];
+            502: components["responses"]["WhatsappMetaUnreachable"];
+        };
+    };
+    previewWhatsappNumbers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Your WhatsApp Business Account id, from WhatsApp Manager. */
+                    waba_id: string;
+                    /** @description A Meta access token that never expires, with both WhatsApp permissions. */
+                    access_token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The numbers on the account. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappPreviewNumber"][];
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappImportBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            500: components["responses"]["WhatsappServerError"];
+            502: components["responses"]["WhatsappMetaUnreachable"];
+        };
+    };
+    getWhatsappNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The number. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappNumber"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    listWhatsappTemplates: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Show only templates with this review status, such as `approved`,
+                 *     `pending` or `rejected`. Lower-case; omit it for all.
+                 */
+                status?: string;
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of templates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappTemplate"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    syncWhatsappTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The templates were synced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappTemplateSyncResult"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /**
+             * @description `not_supported`: this number cannot sync templates.
+             *     `sync_in_progress`: a sync of this number is already running.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            429: components["responses"]["WhatsappTooManyRequests"];
+            500: components["responses"]["WhatsappServerError"];
+            502: components["responses"]["WhatsappUpstream"];
+            503: components["responses"]["WhatsappUnavailable"];
+        };
+    };
+    getWhatsappCalling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The calling state and checks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCallingSettings"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /** @description `not_supported`: this number is not a Meta Cloud WhatsApp number. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    setWhatsappCalling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "enabled": true
+                 *     }
+                 */
+                "application/json": {
+                    /** @description `true` to turn calling on, `false` to turn it off. */
+                    enabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The new calling state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCallingUpdate"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /**
+             * @description `not_supported`: this number is not a Meta Cloud number.
+             *     `calling_refused`: a blocking check did not pass, so calling stays
+             *     off.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+            502: components["responses"]["WhatsappUpstream"];
+        };
+    };
+    listWhatsappConversations: {
+        parameters: {
+            query?: {
+                /** @description `needs_person` is a person-owned or paused conversation. `window_closed` is one you can only reach with a template. */
+                filter?: "all" | "unread" | "needs_person" | "agent" | "failed" | "window_closed" | "campaign_replies";
+                /** @description Search the customer's name, phone number and message text. */
+                q?: string;
+                /**
+                 * @description An ISO 8601 date and time, such as `2026-10-01T09:00:00+00:00`. Returns
+                 *     conversations with a change at or after it. No offset means UTC.
+                 */
+                updated_since?: string;
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of conversations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappConversation"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    getWhatsappConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description A conversation id: the number id, a dash, then the customer's phone
+                 *     digits, such as `412-919876543210`. From
+                 *     [listWhatsappConversations](/docs/api-reference/whatsapp/listWhatsappConversations).
+                 */
+                conversation_id: components["parameters"]["WhatsappConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappConversation"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    takeOverWhatsappConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description A conversation id: the number id, a dash, then the customer's phone
+                 *     digits, such as `412-919876543210`. From
+                 *     [listWhatsappConversations](/docs/api-reference/whatsapp/listWhatsappConversations).
+                 */
+                conversation_id: components["parameters"]["WhatsappConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversation, now owned by a person. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappConversation"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    handBackWhatsappConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description A conversation id: the number id, a dash, then the customer's phone
+                 *     digits, such as `412-919876543210`. From
+                 *     [listWhatsappConversations](/docs/api-reference/whatsapp/listWhatsappConversations).
+                 */
+                conversation_id: components["parameters"]["WhatsappConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversation, now owned by the agent again. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappConversation"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    listWhatsappMessages: {
+        parameters: {
+            query: {
+                /** @description The conversation to read. */
+                conversation_id: string;
+                /** @description Return messages newer than this message id. `next_cursor` is null in this mode. */
+                after?: number;
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. Do not combine it with `after`. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of messages. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappMessage"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    sendWhatsappMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description A unique string you choose, up to 255 characters. Required on this
+                 *     route. The same key with the same body replays the first answer for
+                 *     24 hours instead of acting twice. A different body with the same key
+                 *     answers `409`.
+                 */
+                "Idempotency-Key": components["parameters"]["WhatsappIdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The number to send from. */
+                    phone_number_id: number;
+                    /** @description The customer's number in international format, such as `+15551234567`. */
+                    to: string;
+                    /** @enum {string} */
+                    type: "text" | "template" | "image" | "document";
+                    /** @description Required when `type` is `text`. */
+                    text?: string;
+                    /** @description Required when `type` is `template`. */
+                    template?: {
+                        /** @description An approved template on this number, from `listWhatsappTemplates`. */
+                        id: number;
+                        /**
+                         * @description One value per field in the template's `fields`. Keys are
+                         *     those field keys. String, number or null values.
+                         */
+                        params?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                    /** @description Required when `type` is `image` or `document`. */
+                    media?: {
+                        /** @description The `media_id` from `uploadWhatsappMedia`, uploaded within the last 24 hours. */
+                        media_id: string;
+                        caption?: string;
+                    };
+                    /** @description A message id in the same conversation to quote. Not allowed with a template. */
+                    reply_to?: number;
+                    /**
+                     * @description Stop the agent answering this conversation and let a person run it.
+                     * @default false
+                     */
+                    take_over?: boolean;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description The message was accepted. A provider failure that still created the
+             *     row also returns `201`, with `status: "failed"` and a `failure`
+             *     reason.
+             */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappMessageDetail"];
+                };
+            };
+            /**
+             * @description A bad body or a missing `Idempotency-Key`. `code` says which:
+             *     `idempotency_key_missing`, `invalid_idempotency_key`,
+             *     `invalid_json`, `invalid_parameter`, `missing_fields` (the response
+             *     `fields` lists what a template still needs), `bad_reply_target` or
+             *     `template_header_missing`.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            401: components["responses"]["WhatsappUnauthorized"];
+            402: components["responses"]["WhatsappPaymentRequired"];
+            403: components["responses"]["WhatsappForbidden"];
+            /** @description `number_not_found`, `template_not_found` or `media_not_found`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            /**
+             * @description `not_supported` (this number cannot send that type), `window_closed`
+             *     (send a template instead), `opted_out`, or `idempotency_key_reused`
+             *     (the same key with a different body).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+            502: components["responses"]["WhatsappUpstream"];
+            503: components["responses"]["WhatsappUnavailable"];
+        };
+    };
+    getWhatsappMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of a message, from `listWhatsappMessages` or a send response. */
+                message_id: components["parameters"]["WhatsappMessageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The message. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappMessageDetail"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    uploadWhatsappMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @description The number that will send the file. */
+                    phone_number_id: number;
+                    /** @enum {string} */
+                    type: "image" | "document";
+                    /**
+                     * Format: binary
+                     * @description The file to upload.
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The uploaded file. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappMediaUpload"];
+                };
+            };
+            /**
+             * @description `invalid_parameter`, or a refused file: `empty_file`,
+             *     `file_too_large` or `unsupported_file`.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /** @description `not_supported`: this number cannot send that type. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    listWhatsappOptOuts: {
+        parameters: {
+            query?: {
+                /** @description `true` for active only, `false` for lifted only, `all` for both. */
+                active?: true | false | "all";
+                /** @description Find one customer by any spelling of their number. */
+                customer?: string;
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of opt-outs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappOptOut"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    addWhatsappOptOut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "customer": "+15551234567",
+                 *       "note": "Asked to stop on the call."
+                 *     }
+                 */
+                "application/json": {
+                    /** @description The customer's number in international format, such as `+15551234567`. */
+                    customer: string;
+                    /** @description A note for your team. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The customer was already blocked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappOptOut"];
+                };
+            };
+            /** @description The block was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappOptOut"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    liftWhatsappOptOut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+                /** @description Id of an active opt-out entry, from `listWhatsappOptOuts`. */
+                opt_out_id: components["parameters"]["WhatsappOptOutId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The block was lifted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappOptOut"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            /** @description `number_not_found`, or `opt_out_not_found` when there is no active block with that id on this number. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            /** @description `customer_opt_out`: the customer opted out themselves, so only they can opt back in. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    listWhatsappCampaigns: {
+        parameters: {
+            query?: {
+                /** @description Show only campaigns in this state. */
+                status?: "draft" | "scheduled" | "in_progress" | "paused" | "completed" | "failed" | "cancelled";
+                /** @description Show only campaigns on this number. */
+                phone_number_id?: number;
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of campaigns. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappCampaign"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    createWhatsappCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "name": "October promo",
+                 *       "phone_number_id": 412,
+                 *       "template_id": 3676,
+                 *       "campaign_mode": "broadcast"
+                 *     }
+                 */
+                "application/json": {
+                    name: string;
+                    phone_number_id: number;
+                    /** @description An approved template on that number. */
+                    template_id: number;
+                    /**
+                     * @description `broadcast_reply` lets the agent answer replies. It needs an agent.
+                     * @default broadcast
+                     * @enum {string}
+                     */
+                    campaign_mode?: "broadcast" | "broadcast_reply";
+                    /** @description The agent that answers replies. */
+                    agent_id?: number;
+                    /**
+                     * @default csv
+                     * @enum {string}
+                     */
+                    data_source?: "csv" | "webhook";
+                    /** @default false */
+                    is_dynamic?: boolean;
+                    /** @description Template field to contact field or static text. */
+                    variable_mapping?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The draft campaign. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCampaign"];
+                };
+            };
+            /**
+             * @description `invalid_parameter`, `invalid_json`, `not_supported` (a scheduling
+             *     field), or `invalid_request` (a `broadcast_reply` campaign with no
+             *     agent).
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            /** @description `number_not_found`, `template_not_found` or `agent_not_found`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    getWhatsappCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+                campaign_id: components["parameters"]["WhatsappCampaignId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The campaign with analytics. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCampaign"] & {
+                        analytics?: components["schemas"]["WhatsappCampaignAnalytics"];
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    listWhatsappCampaignContacts: {
+        parameters: {
+            query?: {
+                /** @description Show only contacts in this state. */
+                status?: "pending" | "sent" | "delivered" | "read" | "replied" | "failed" | "skipped" | "opted_out";
+                /** @description Rows per page. */
+                limit?: number;
+                /** @description The `next_cursor` from the previous page. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+                campaign_id: components["parameters"]["WhatsappCampaignId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of contacts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["WhatsappCampaignContact"][];
+                        has_more?: boolean;
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    addWhatsappCampaignContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+                campaign_id: components["parameters"]["WhatsappCampaignId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example [
+                 *       {
+                 *         "phone_number": "+15551234567",
+                 *         "contact_name": "Demo User"
+                 *       },
+                 *       {
+                 *         "phone_number": "+15557654321",
+                 *         "contact_name": "Second User"
+                 *       }
+                 *     ]
+                 */
+                "application/json": components["schemas"]["WhatsappCampaignContactInput"] | components["schemas"]["WhatsappCampaignContactInput"][];
+            };
+        };
+        responses: {
+            /** @description What happened to each contact. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappContactImportResult"];
+                };
+            };
+            /** @description `invalid_json`: the body is not one contact object or an array of 1 to 500. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /** @description `invalid_transition`: the campaign is paused, completed, failed or canceled, and takes no new contacts. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    launchWhatsappCampaign: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description A unique string you choose, up to 255 characters. Required on this
+                 *     route. The same key with the same body replays the first answer for
+                 *     24 hours instead of acting twice. A different body with the same key
+                 *     answers `409`.
+                 */
+                "Idempotency-Key": components["parameters"]["WhatsappIdempotencyKey"];
+            };
+            path: {
+                /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+                campaign_id: components["parameters"]["WhatsappCampaignId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The campaign, with the number of contacts queued. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCampaign"] & {
+                        enqueued?: number;
+                    };
+                };
+            };
+            /** @description `idempotency_key_missing` or `invalid_idempotency_key`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            401: components["responses"]["WhatsappUnauthorized"];
+            402: components["responses"]["WhatsappPaymentRequired"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /**
+             * @description `invalid_transition` (not a draft), `no_contacts` (nothing to send),
+             *     or `idempotency_key_reused`.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    pauseWhatsappCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+                campaign_id: components["parameters"]["WhatsappCampaignId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The paused campaign. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCampaign"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /** @description `invalid_transition`: only an in-progress campaign can be paused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    resumeWhatsappCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+                campaign_id: components["parameters"]["WhatsappCampaignId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The resumed campaign. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCampaign"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            402: components["responses"]["WhatsappPaymentRequired"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /** @description `invalid_transition`: only a paused campaign can be resumed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+        };
+    };
+    cancelWhatsappCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of a WhatsApp campaign, from `listWhatsappCampaigns`. */
+                campaign_id: components["parameters"]["WhatsappCampaignId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The canceled campaign. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappCampaign"];
+                };
+            };
+            400: components["responses"]["WhatsappBadRequest"];
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /** @description `invalid_transition`: the campaign is completed or already canceled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
         };
     };
 }
