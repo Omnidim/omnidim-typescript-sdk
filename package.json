@@ -43,7 +43,7 @@
   "bugs": {
     "url": "https://github.com/Omnidim/omnidim-typescript-sdk/issues"
   },
-  "author": "OmniDimension <support@omnidim.io>",
+  "author": "Alok Ranjan <alok@omnidim.io> (https://alokranjan.me)",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

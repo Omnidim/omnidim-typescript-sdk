@@ -115,4 +115,4 @@ import type { Agent, AccountBalance, Call, Voice, AgentVersion } from "@omnidim-
 
 ## License
 
-[MIT](LICENSE)
+MIT, see [LICENSE](LICENSE). Built by [Alok Ranjan](https://alokranjan.me/).
