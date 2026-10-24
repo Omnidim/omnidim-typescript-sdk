@@ -107,12 +107,15 @@ export class HttpClient {
         signal: controller.signal,
       });
     } catch (err) {
-      const aborted = controller.signal.aborted;
+      const callerAborted = options.signal?.aborted;
+      const timedOut = controller.signal.aborted && !callerAborted;
       throw new OmniDimensionError(
         0,
-        aborted
-          ? `Request to ${method} ${path} timed out after ${this.timeout}ms`
-          : `Network error on ${method} ${path}: ${(err as Error).message}`,
+        callerAborted
+          ? `Request to ${method} ${path} was aborted`
+          : timedOut
+            ? `Request to ${method} ${path} timed out after ${this.timeout}ms`
+            : `Network error on ${method} ${path}: ${(err as Error).message}`,
       );
     } finally {
       clearTimeout(timer);
