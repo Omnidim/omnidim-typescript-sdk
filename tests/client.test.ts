@@ -237,4 +237,27 @@ describe("errors", () => {
     expect(err).toBeInstanceOf(OmniDimensionError);
     expect((err as OmniDimensionError).message).toMatch(/timed out/);
   });
+
+  it("distinguishes caller abort from request timeout", async () => {
+    const fetch = vi.fn((_url: string, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new DOMException("aborted", "AbortError")),
+        );
+      });
+    }) as unknown as typeof fetch;
+    const abortController = new AbortController();
+    const c = new HttpClient({
+      apiKey: "test-api-key-1234",
+      fetch,
+      timeout: 10_000,
+    });
+    const promise = c.request("GET", "/agents", { signal: abortController.signal })
+      .catch((e: unknown) => e);
+    abortController.abort();
+    const err = await promise;
+    expect(err).toBeInstanceOf(OmniDimensionError);
+    expect((err as OmniDimensionError).message).toMatch(/was aborted/);
+    expect((err as OmniDimensionError).message).not.toMatch(/timed out/);
+  });
 });
