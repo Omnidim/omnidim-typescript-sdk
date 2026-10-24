@@ -4999,7 +4999,7 @@ export interface components {
                  * @description Start of the next billing period, ISO 8601 UTC. Present only
                  *     while the subscription is `active`; `null` on a canceled or
                  *     past-due subscription, where the period end is not a renewal.
-                 * @example 2026-10-15T09:31:00Z
+                 * @example 2026-10-15T09:31:00.000Z
                  */
                 renews_at?: string | null;
             };
@@ -15817,8 +15817,8 @@ export interface operations {
                                 };
                             };
                             /**
-                             * @description Fields this step accepts but never requires, such
-                             *     as `return_url` on a `redirect` step.
+                             * @description Fields this step accepts but never requires.
+                             *     Fields it always requires are in `required`.
                              */
                             optional?: string[];
                             /**
@@ -16167,13 +16167,13 @@ export interface operations {
                     job_position?: string;
                     /**
                      * Format: uri
-                     * @description Optional on a `redirect` step. The page in your own app
-                     *     where your client's browser comes back after verifying.
-                     *     Must be `https` with a host, no `#fragment` and no
-                     *     credentials, up to 2,000 characters. Anything else is
-                     *     refused with `400 invalid_request`. Result parameters such
-                     *     as `status` are added to it. Leave it out and your client
-                     *     returns to their own dashboard.
+                     * @description Required on a `redirect` step such as `verify-aadhaar`.
+                     *     Other steps ignore it. The page in your own app where
+                     *     your client's browser lands after verifying. Must be
+                     *     `https` with a host, no `#fragment` and no credentials,
+                     *     up to 2,000 characters. Missing, blank or invalid is
+                     *     refused with `400 invalid_request`. The provider adds its
+                     *     own result parameters to it.
                      * @example https://app.example.com/kyc/done
                      */
                     return_url?: string;
