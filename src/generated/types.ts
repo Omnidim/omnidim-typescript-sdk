@@ -1030,6 +1030,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/phone_number/auto_renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Switch auto-renew on a phone number
+         * @description Turn auto-renew off or back on for a number bought from the number shop.
+         *     With auto-renew off, the number is not charged again: it keeps working
+         *     until the end of the period already paid for and is then released. Turn
+         *     it back on before that date and it renews as normal. Sending the value
+         *     the number already has changes nothing and still succeeds.
+         */
+        post: operations["setPhoneNumberAutoRenew"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/phone_number/attach": {
         parameters: {
             query?: never;
@@ -3959,8 +3983,19 @@ export interface components {
             retry_schedule_hours?: number;
             /** @description Total retries already performed. */
             retry_count?: number;
-            /** @description Maximum retries allowed per contact. */
+            /** @description Maximum retries allowed per contact. With `retry_steps`, this is the number of steps. */
             retry_limit?: number;
+            /**
+             * @description One delay per retry, in order: retry 1 waits for the first step,
+             *     retry 2 for the second, and so on. Empty when the campaign uses the
+             *     single schedule in `auto_retry_schedule`.
+             */
+            retry_steps?: {
+                /** @description How long to wait, in `unit`. `0` retries right away. */
+                delay?: number;
+                /** @enum {string} */
+                unit?: "minutes" | "hours" | "days";
+            }[];
             /** @description Whether contacts can request a reschedule mid-call. */
             enabled_reschedule_call?: boolean;
             /** @description Maximum number of calls running in parallel. */
@@ -4999,7 +5034,7 @@ export interface components {
                  * @description Start of the next billing period, ISO 8601 UTC. Present only
                  *     while the subscription is `active`; `null` on a canceled or
                  *     past-due subscription, where the period end is not a renewal.
-                 * @example 2026-10-15T09:31:00Z
+                 * @example 2026-10-15T09:31:00.000Z
                  */
                 renews_at?: string | null;
             };
@@ -8932,10 +8967,41 @@ export interface operations {
                         retry_schedule_hours?: number;
                         /**
                          * @description Retry attempts, 1 to 10. To disable retries omit it and
-                         *     leave `auto_retry` false; never send `0`.
+                         *     leave `auto_retry` false; never send `0`. Ignored when
+                         *     `retry_steps` is set.
                          * @default 1
                          */
                         retry_limit?: number;
+                        /**
+                         * @description A different delay for each retry, in order: retry 1
+                         *     waits for the first step, retry 2 for the second, and
+                         *     so on. When set, it replaces `auto_retry_schedule`,
+                         *     `retry_schedule_days`, `retry_schedule_hours` and
+                         *     `retry_limit`: a contact gets one retry per step. Each
+                         *     delay is at most 30 days. A retry that falls outside
+                         *     the campaign's daily calling hours waits until they
+                         *     open again.
+                         * @example [
+                         *       {
+                         *         "delay": 1,
+                         *         "unit": "hours"
+                         *       },
+                         *       {
+                         *         "delay": 3,
+                         *         "unit": "hours"
+                         *       },
+                         *       {
+                         *         "delay": 1,
+                         *         "unit": "days"
+                         *       }
+                         *     ]
+                         */
+                        retry_steps?: {
+                            /** @description How long to wait, in `unit`. `0` retries right away. */
+                            delay: number;
+                            /** @enum {string} */
+                            unit: "minutes" | "hours" | "days";
+                        }[];
                     };
                 };
             };
@@ -9132,6 +9198,7 @@ export interface operations {
                      *         "retry_schedule_hours": 0,
                      *         "retry_count": 0,
                      *         "retry_limit": 1,
+                     *         "retry_steps": [],
                      *         "enabled_reschedule_call": false,
                      *         "concurrent_call_limit": 1,
                      *         "enable_daily_hard_stop": false,
@@ -10853,6 +10920,156 @@ export interface operations {
                      * @example {
                      *       "error": "release_failed",
                      *       "error_description": "The number could not be released. Please try again or contact support."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    setPhoneNumberAutoRenew: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "phone_number": "+15551234567",
+                 *       "auto_renew": false
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * @description The number to switch.
+                     * @example +15551234567
+                     */
+                    phone_number: string;
+                    /**
+                     * @description `false` stops renewal, `true` turns it back on. Must be a JSON boolean: a string such as `"false"`, a number, or a missing value is refused.
+                     * @example false
+                     */
+                    auto_renew: boolean;
+                    /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                    user_id?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The switch is set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "phone_number": "+15551234567",
+                     *       "auto_renew": false
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        phone_number?: string;
+                        /** @description The value the number now has. */
+                        auto_renew?: boolean;
+                    };
+                };
+            };
+            /** @description `phone_number` is missing, or `auto_renew` is not `true` or `false`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "auto_renew must be true or false."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or the account holds no such number (`number_not_found`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "number_not_found",
+                     *       "error_description": "No such number on this user."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The number was not bought from the number shop, for example a number
+             *     imported from Twilio, Exotel, or a SIP trunk. Only shop numbers renew.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_renewable",
+                     *       "error_description": "Auto renew applies only to a number bought from the shop."
                      *     }
                      */
                     "application/json": components["schemas"]["SessionError"];
@@ -15817,8 +16034,8 @@ export interface operations {
                                 };
                             };
                             /**
-                             * @description Fields this step accepts but never requires, such
-                             *     as `return_url` on a `redirect` step.
+                             * @description Fields this step accepts but never requires.
+                             *     Fields it always requires are in `required`.
                              */
                             optional?: string[];
                             /**
@@ -16167,13 +16384,13 @@ export interface operations {
                     job_position?: string;
                     /**
                      * Format: uri
-                     * @description Optional on a `redirect` step. The page in your own app
-                     *     where your client's browser comes back after verifying.
-                     *     Must be `https` with a host, no `#fragment` and no
-                     *     credentials, up to 2,000 characters. Anything else is
-                     *     refused with `400 invalid_request`. Result parameters such
-                     *     as `status` are added to it. Leave it out and your client
-                     *     returns to their own dashboard.
+                     * @description Required on a `redirect` step such as `verify-aadhaar`.
+                     *     Other steps ignore it. The page in your own app where
+                     *     your client's browser lands after verifying. Must be
+                     *     `https` with a host, no `#fragment` and no credentials,
+                     *     up to 2,000 characters. Missing, blank or invalid is
+                     *     refused with `400 invalid_request`. The provider adds its
+                     *     own result parameters to it.
                      * @example https://app.example.com/kyc/done
                      */
                     return_url?: string;
