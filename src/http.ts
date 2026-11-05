@@ -157,11 +157,18 @@ export class HttpClient {
         response.status,
         extractErrorMessage(parsed, response),
         parsed,
+        extractRequestId(parsed, response),
       );
     }
 
     return parsed as T;
   }
+}
+
+function extractRequestId(body: unknown, response: Response): string | undefined {
+  const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const id = response.headers.get("X-Request-Id") ?? record["request_id"] ?? record["ref"];
+  return typeof id === "string" && id ? id : undefined;
 }
 
 function extractErrorMessage(body: unknown, response: Response): string {

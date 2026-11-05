@@ -5,8 +5,12 @@ export class OmniDimensionError extends Error {
   /** Parsed JSON error body, when the response had one. */
   readonly body: unknown;
 
-  constructor(status: number, message: string, body?: unknown) {
-    super(message);
+  /** The server's id for this request. Quote it to support. Never made up here. */
+  readonly requestId: string | undefined;
+
+  constructor(status: number, message: string, body?: unknown, requestId?: string) {
+    super(requestId ? `${message} (request id: ${requestId})` : message);
+    this.requestId = requestId;
     this.name = "OmniDimensionError";
     this.status = status;
     this.body = body;
