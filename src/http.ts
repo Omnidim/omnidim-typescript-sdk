@@ -1,4 +1,10 @@
+import { readFileSync } from "node:fs";
 import { OmniDimensionError } from "./errors.js";
+
+// package.json sits one level above both src/ and build/.
+const { version: SDK_VERSION } = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 export const DEFAULT_BASE_URL = "https://backend.omnidim.io/api/v1";
 
@@ -80,6 +86,8 @@ export class HttpClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
       Accept: "application/json",
+      // nginx logs count API traffic by SDK and version from this header.
+      "User-Agent": `OmniDimension-js-sdk/${SDK_VERSION}`,
       ...this.defaultHeaders,
       ...options.headers,
     };

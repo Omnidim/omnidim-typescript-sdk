@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Every request sends `User-Agent: OmniDimension-js-sdk/<version>`. Set `defaultHeaders` to override it.
+
 ## [0.8.0] - 2026-10-17
 
 ### Added

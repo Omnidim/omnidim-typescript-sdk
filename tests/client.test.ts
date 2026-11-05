@@ -238,3 +238,22 @@ describe("errors", () => {
     expect((err as OmniDimensionError).message).toMatch(/timed out/);
   });
 });
+
+describe("user agent", () => {
+  it("identifies the SDK and version on every request", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await new HttpClient({ apiKey: "test-api-key-1234", fetch }).request("GET", "/agents");
+    const headers = calls[0]!.init.headers as Record<string, string>;
+    expect(headers["User-Agent"]).toMatch(/^OmniDimension-js-sdk\/\d+\.\d+\.\d+/);
+  });
+
+  it("lets defaultHeaders override it", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await new HttpClient({
+      apiKey: "test-api-key-1234",
+      fetch,
+      defaultHeaders: { "User-Agent": "mine" },
+    }).request("GET", "/agents");
+    expect((calls[0]!.init.headers as Record<string, string>)["User-Agent"]).toBe("mine");
+  });
+});
