@@ -9,6 +9,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Every request sends `User-Agent: OmniDimension-js-sdk/<version>`. Set `defaultHeaders` to override it.
+- Every request also sends `X-OmniDimension-Lang`, `-Runtime`, `-Runtime-Version`, `-OS` and `-Arch`. See "What the SDK sends" in the README.
+- `OmniDimensionError.requestId` holds the server's request id (from `X-Request-Id`, or `request_id` or `ref` in the body), and the error message ends with `(request id: ...)`.
 
 ## [0.8.0] - 2026-10-17
 
