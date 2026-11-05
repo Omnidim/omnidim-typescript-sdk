@@ -238,3 +238,73 @@ describe("errors", () => {
     expect((err as OmniDimensionError).message).toMatch(/timed out/);
   });
 });
+
+describe("user agent", () => {
+  it("identifies the SDK and version on every request", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await new HttpClient({ apiKey: "test-api-key-1234", fetch }).request("GET", "/agents");
+    const headers = calls[0]!.init.headers as Record<string, string>;
+    expect(headers["User-Agent"]).toMatch(/^OmniDimension-js-sdk\/\d+\.\d+\.\d+/);
+  });
+
+  it("lets defaultHeaders override it", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await new HttpClient({
+      apiKey: "test-api-key-1234",
+      fetch,
+      defaultHeaders: { "User-Agent": "mine" },
+    }).request("GET", "/agents");
+    expect((calls[0]!.init.headers as Record<string, string>)["User-Agent"]).toBe("mine");
+  });
+});
+
+describe("client info headers", () => {
+  it("sends language, runtime, OS and arch, and no retry count", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await new HttpClient({ apiKey: "test-api-key-1234", fetch }).request("GET", "/agents");
+    const h = calls[0]!.init.headers as Record<string, string>;
+    expect(h["X-OmniDimension-Lang"]).toBe("js");
+    expect(h["X-OmniDimension-Runtime"]).toBe("node");
+    expect(h["X-OmniDimension-Runtime-Version"]).toBe(process.versions.node);
+    expect(h["X-OmniDimension-OS"]).toMatch(/^(linux|darwin|windows)$/);
+    expect(h["X-OmniDimension-Arch"]).toMatch(/^(x64|arm64)$/);
+    expect(h["X-OmniDimension-Retry-Count"]).toBeUndefined();
+  });
+
+  it("lets defaultHeaders override them", async () => {
+    const { fetch, calls } = fakeFetch({});
+    await new HttpClient({
+      apiKey: "test-api-key-1234",
+      fetch,
+      defaultHeaders: { "X-OmniDimension-Lang": "x" },
+    }).request("GET", "/agents");
+    expect((calls[0]!.init.headers as Record<string, string>)["X-OmniDimension-Lang"]).toBe("x");
+  });
+});
+
+describe("request id on errors", () => {
+  async function fail(headers: Record<string, string>, body: unknown) {
+    const fn = (async () =>
+      new Response(JSON.stringify(body), { status: 500, headers })) as unknown as typeof fetch;
+    return new HttpClient({ apiKey: "test-api-key-1234", fetch: fn })
+      .request("GET", "/agents")
+      .then(() => undefined, (e: OmniDimensionError) => e);
+  }
+
+  it("reads the X-Request-Id header", async () => {
+    const e = (await fail({ "X-Request-Id": "abc" }, { error: "bad" }))!;
+    expect(e.requestId).toBe("abc");
+    expect(e.message).toContain("(request id: abc)");
+  });
+
+  it("reads request_id then ref from the body", async () => {
+    expect((await fail({}, { error: "bad", request_id: "r1" }))!.requestId).toBe("r1");
+    expect((await fail({}, { error: "bad", ref: "f9" }))!.requestId).toBe("f9");
+  });
+
+  it("stays undefined and leaves the message alone when the server sends none", async () => {
+    const e = (await fail({}, { error: "bad" }))!;
+    expect(e.requestId).toBeUndefined();
+    expect(e.message).toBe("bad");
+  });
+});

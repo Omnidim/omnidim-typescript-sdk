@@ -92,6 +92,21 @@ new OmniDimension({
 });
 ```
 
+## What the SDK sends
+
+Every request carries these headers so we can see which SDK versions and platforms use the API. They name no machine, user or path. Pass `defaultHeaders` to override any of them.
+
+| Header | Meaning | Example |
+|---|---|---|
+| `User-Agent` | SDK name and version | `OmniDimension-js-sdk/0.8.0` |
+| `X-OmniDimension-Lang` | SDK language | `js` |
+| `X-OmniDimension-Runtime` | JavaScript runtime | `node`, `bun`, `deno` |
+| `X-OmniDimension-Runtime-Version` | Runtime version | `20.11.1` |
+| `X-OmniDimension-OS` | Operating system | `linux`, `darwin`, `windows` |
+| `X-OmniDimension-Arch` | CPU type | `x64`, `arm64` |
+
+When the server sends a request id, `OmniDimensionError.requestId` holds it and the error message ends with `(request id: ...)`. Quote it when you contact support.
+
 ## Types
 
 Schema types are exported for use in your own code:

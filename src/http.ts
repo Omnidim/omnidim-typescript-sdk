@@ -1,4 +1,24 @@
+import { readFileSync } from "node:fs";
 import { OmniDimensionError } from "./errors.js";
+
+// package.json sits one level above both src/ and build/.
+const { version: SDK_VERSION } = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
+// Computed once. Only language, runtime, OS and CPU type: nothing that names the machine or user.
+const runtime = process.versions.bun
+  ? { name: "bun", version: process.versions.bun }
+  : process.versions.deno
+    ? { name: "deno", version: process.versions.deno }
+    : { name: "node", version: process.versions.node };
+const CLIENT_INFO: Record<string, string> = {
+  "X-OmniDimension-Lang": "js",
+  "X-OmniDimension-Runtime": runtime.name,
+  "X-OmniDimension-Runtime-Version": runtime.version,
+  "X-OmniDimension-OS": process.platform === "win32" ? "windows" : process.platform,
+  "X-OmniDimension-Arch": process.arch,
+};
 
 export const DEFAULT_BASE_URL = "https://backend.omnidim.io/api/v1";
 
@@ -80,6 +100,9 @@ export class HttpClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
       Accept: "application/json",
+      // nginx logs count API traffic by SDK and version from this header.
+      "User-Agent": `OmniDimension-js-sdk/${SDK_VERSION}`,
+      ...CLIENT_INFO,
       ...this.defaultHeaders,
       ...options.headers,
     };
@@ -134,11 +157,18 @@ export class HttpClient {
         response.status,
         extractErrorMessage(parsed, response),
         parsed,
+        extractRequestId(parsed, response),
       );
     }
 
     return parsed as T;
   }
+}
+
+function extractRequestId(body: unknown, response: Response): string | undefined {
+  const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const id = response.headers.get("X-Request-Id") ?? record["request_id"] ?? record["ref"];
+  return typeof id === "string" && id ? id : undefined;
 }
 
 function extractErrorMessage(body: unknown, response: Response): string {
