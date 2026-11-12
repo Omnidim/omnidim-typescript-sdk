@@ -751,6 +751,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calls/bulk_call/{bulk_call_id}/rotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change rotation settings
+         * @description Change how a campaign uses its number pool. Send only the fields you
+         *     want to change. At least one field is required.
+         *
+         *     This works while the campaign status is `draft`, `scheduled`,
+         *     `in_progress`, `waiting`, `paused`, `auto_paused` or `retry_scheduled`.
+         *     Any other status is refused with `Cannot edit rotation for status:
+         *     <status>`. To change which numbers are in the pool, use the numbers
+         *     endpoints.
+         */
+        put: operations["setBulkCallRotation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/calls/bulk_call/{bulk_call_id}/manual_retry": {
         parameters: {
             query?: never;
@@ -767,6 +794,24 @@ export interface paths {
          *     Use it after a campaign finishes with more no-answers than you expected,
          *     or when the reason was on your side (a bad window, a number that was
          *     having a bad day). Retried contacts keep their original variables.
+         *
+         *     The retry is refused in these cases:
+         *
+         *     - The campaign status is not `completed`. The error is
+         *       `Cannot retry calls. Current status: <status>`.
+         *     - Auto retry is on and some contacts are still `Pending` or
+         *       `In Progress`. The error is `Cannot retry while calls are still in
+         *       progress and auto retry is enabled`.
+         *     - A value in `failure_reasons` is not one of the allowed statuses. The
+         *       error is `Invalid failure reason(s)` and lists the allowed values.
+         *     - No contact matches. The error is `No failed calls found to retry
+         *       matching criteria`.
+         *
+         *     Each contact is retried from its latest call only. When the campaign has
+         *     `skip_known_invalid_numbers` on, contacts whose last call ended with the
+         *     carrier saying the number does not exist are not retried. This endpoint
+         *     retries calls that did not connect. It does not retry connected calls
+         *     with no conversation.
          */
         post: operations["retryBulkCall"];
         delete?: never;
@@ -1024,6 +1069,30 @@ export interface paths {
          *     released.
          */
         post: operations["releasePhoneNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/phone_number/auto_renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Switch auto-renew on a phone number
+         * @description Turn auto-renew off or back on for a number bought from the number shop.
+         *     With auto-renew off, the number is not charged again: it keeps working
+         *     until the end of the period already paid for and is then released. Turn
+         *     it back on before that date and it renews as normal. Sending the value
+         *     the number already has changes nothing and still succeeds.
+         */
+        post: operations["setPhoneNumberAutoRenew"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3807,6 +3876,18 @@ export interface components {
             call_request_id?: {
                 [key: string]: unknown;
             };
+            /** @description Variables the call was given, such as the bulk-call contact's `custom_variables`. Left out when the list uses `include_details=false`. */
+            custom_variables?: {
+                [key: string]: unknown;
+            };
+            /** @description Metadata sent with the call request, such as a bulk-call contact's `metadata`. Not shown to the agent. Left out when the list uses `include_details=false`. */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** @description ID of the bulk-call campaign that placed the call. Null when the call is not from a campaign. Returned by Get call log only. */
+            bulk_call_id?: number | null;
+            /** @description Name of the bulk-call campaign that placed the call. Null when the call is not from a campaign. Returned by Get call log only. */
+            bulk_call_name?: string | null;
         };
         /** @description A bulk-call campaign. */
         BulkCallSummary: {
@@ -3959,8 +4040,26 @@ export interface components {
             retry_schedule_hours?: number;
             /** @description Total retries already performed. */
             retry_count?: number;
-            /** @description Maximum retries allowed per contact. */
+            /** @description Maximum retries allowed per contact. With `retry_steps`, this is the number of steps. */
             retry_limit?: number;
+            /**
+             * @description One delay per retry, in order: retry 1 waits for the first step,
+             *     retry 2 for the second, and so on. Empty when the campaign uses the
+             *     single schedule in `auto_retry_schedule`.
+             */
+            retry_steps?: {
+                /** @description How long to wait, in `unit`. `0` retries right away. */
+                delay?: number;
+                /** @enum {string} */
+                unit?: "minutes" | "hours" | "days";
+                /**
+                 * @description Time of day, `HH:MM` in `daily_stop_timezone` (the
+                 *     campaign's `timezone` when `enable_daily_hard_stop` is
+                 *     off), on a `days` step only. Absent when the step has no
+                 *     time.
+                 */
+                at?: string;
+            }[];
             /** @description Whether contacts can request a reschedule mid-call. */
             enabled_reschedule_call?: boolean;
             /** @description Maximum number of calls running in parallel. */
@@ -4000,6 +4099,17 @@ export interface components {
             rotation_health_threshold?: number;
             /** @description Fallback behavior when no healthy number is available: `pause` or `continue_best`. */
             rotation_fallback?: string;
+            /** @description Whether a repeat call to the same person goes out from a different pool number than the one that called them last. */
+            call_back_from_different_number?: boolean;
+            /** @description Whether contacts whose number the carrier called invalid in the last 14 days are skipped. */
+            skip_known_invalid_numbers?: boolean;
+            /**
+             * @description Which connected calls with no conversation are also retried. `off` retries none.
+             * @enum {string}
+             */
+            retry_unanswered?: "off" | "no_reply" | "no_reply_or_short" | "model";
+            /** @description Under `no_reply_or_short`, a call this long or shorter (in seconds) counts as unanswered. */
+            retry_unanswered_max_seconds?: number;
             /** @description ID of the number assignment currently dispatching calls. Null when idle. */
             current_number_assignment_id?: number | null;
             /** @description Number of phone numbers configured in the rotation pool. */
@@ -4351,6 +4461,22 @@ export interface components {
                  * @enum {string}
                  */
                 object_name?: "Lead" | "Contact" | "Account" | "Opportunity" | "Case" | "Task" | "Product";
+                /**
+                 * @description `upsert` finds the record by the caller's number and updates
+                 *     it or creates it. `create` creates a new record every call.
+                 *     Defaults to `create`.
+                 * @enum {string}
+                 */
+                action?: "create" | "upsert";
+                /**
+                 * @description `upsert` only: the phone field the caller's number is looked up in. Defaults to `Phone`.
+                 * @example Phone
+                 */
+                match_field?: string;
+                /** @description Log the call on the record, with the summary and recording link. Defaults to false. */
+                log_call?: boolean;
+                /** @description Add the call summary as a note on the record. Defaults to false. */
+                add_note?: boolean;
             };
             hubspot?: components["schemas"]["PostCallActionCommon"] & {
                 /** @description Required. The id of your HubSpot integration. */
@@ -4489,6 +4615,22 @@ export interface components {
             /** @description `zoho_bigin` only: create a contact when no contact matches. Defaults to true. */
             create_contact?: boolean;
             /**
+             * @description `salesforce` only: `upsert` finds the record by the caller's number
+             *     and updates it or creates it. `create` creates a new record every
+             *     call. Defaults to `create`.
+             * @enum {string}
+             */
+            action?: "create" | "upsert";
+            /**
+             * @description `salesforce` only, with `upsert`: the phone field the caller's number is looked up in. Defaults to `Phone`.
+             * @example Phone
+             */
+            match_field?: string;
+            /** @description `salesforce` only: log the call on the record, with the summary and recording link. Defaults to false. */
+            log_call?: boolean;
+            /** @description `salesforce` only: add the call summary as a note on the record. Defaults to false. */
+            add_note?: boolean;
+            /**
              * @description `email` only, required: the addresses to notify.
              * @example [
              *       "support@acme-corp.io"
@@ -4579,6 +4721,10 @@ export interface components {
             create_call_log?: boolean;
             update_contact?: boolean;
             create_contact?: boolean;
+            action?: string | null;
+            match_field?: string | null;
+            log_call?: boolean;
+            add_note?: boolean;
             include?: string[];
             extracted_variables?: components["schemas"]["ExtractedVariable"][];
             trigger_call_statuses?: string[];
@@ -4999,7 +5145,7 @@ export interface components {
                  * @description Start of the next billing period, ISO 8601 UTC. Present only
                  *     while the subscription is `active`; `null` on a canceled or
                  *     past-due subscription, where the period end is not a renewal.
-                 * @example 2026-10-15T09:31:00Z
+                 * @example 2026-10-15T09:31:00.000Z
                  */
                 renews_at?: string | null;
             };
@@ -8142,8 +8288,15 @@ export interface operations {
                 agentid?: number;
                 /** @description Filter by call outcome. */
                 call_status?: "completed" | "busy" | "failed" | "no-answer";
-                /** @description Filter by bulk-call campaign ID. */
+                /** @description Filter by bulk-call campaign ID. Takes one ID. */
                 bulk_call_id?: number;
+                /**
+                 * @description Set to `false` for a lighter list. Each row then leaves out
+                 *     `call_conversation`, `sentiment_analysis_details`, `llm_prompt`,
+                 *     `voice_insides`, `custom_variables` and `metadata`. Fetch those for
+                 *     one call with Get call log.
+                 */
+                include_details?: boolean;
             };
             header?: never;
             path?: never;
@@ -8852,7 +9005,22 @@ export interface operations {
                          * @enum {string}
                          */
                         fallback?: "pause" | "continue_best";
+                        /**
+                         * @description When on, a repeat call to the same person goes out from
+                         *     a different number than the one that called them last.
+                         *     Needs two or more numbers in the pool.
+                         * @default false
+                         */
+                        call_back_from_different_number?: boolean;
                     };
+                    /**
+                     * @description When on, a contact is not dialed if the carrier said its
+                     *     number does not exist, in any campaign of your organization
+                     *     in the last 14 days. That contact shows as a failed call
+                     *     with the reason `Invalid number` and is never retried.
+                     * @default false
+                     */
+                    skip_known_invalid_numbers?: boolean;
                     /**
                      * @description A dynamic campaign stays alive accepting contacts via the
                      *     add-contact webhooks, and `contact_list` becomes optional.
@@ -8932,10 +9100,82 @@ export interface operations {
                         retry_schedule_hours?: number;
                         /**
                          * @description Retry attempts, 1 to 10. To disable retries omit it and
-                         *     leave `auto_retry` false; never send `0`.
+                         *     leave `auto_retry` false; never send `0`. Ignored when
+                         *     `retry_steps` is set.
                          * @default 1
                          */
                         retry_limit?: number;
+                        /**
+                         * @description A different delay for each retry, in order: retry 1
+                         *     waits for the first step, retry 2 for the second, and
+                         *     so on. When set, it replaces `auto_retry_schedule`,
+                         *     `retry_schedule_days`, `retry_schedule_hours` and
+                         *     `retry_limit`: a contact gets one retry per step. Each
+                         *     delay is at most 30 days. A retry that falls outside
+                         *     the campaign's daily calling hours waits until they
+                         *     open again.
+                         *
+                         *     A `days` step can also name a time of day with `at`:
+                         *     `{"delay": 1, "unit": "days", "at": "10:00"}` is 10:00
+                         *     the next day, and `{"delay": 0, "unit": "days", "at":
+                         *     "16:00"}` the same day at 16:00. The date and time are
+                         *     read in the calling window's timezone,
+                         *     `daily_stop_timezone`; a campaign without a window
+                         *     (`enable_daily_hard_stop` off) uses its `timezone`.
+                         *     Each retry counts from the try before it; a time that
+                         *     has already passed moves to the next day.
+                         * @example [
+                         *       {
+                         *         "delay": 1,
+                         *         "unit": "hours"
+                         *       },
+                         *       {
+                         *         "delay": 3,
+                         *         "unit": "hours"
+                         *       },
+                         *       {
+                         *         "delay": 1,
+                         *         "unit": "days",
+                         *         "at": "10:00"
+                         *       },
+                         *       {
+                         *         "delay": 0,
+                         *         "unit": "days",
+                         *         "at": "16:00"
+                         *       }
+                         *     ]
+                         */
+                        retry_steps?: {
+                            /** @description How long to wait, in `unit`. `0` retries right away. */
+                            delay: number;
+                            /** @enum {string} */
+                            unit: "minutes" | "hours" | "days";
+                            /**
+                             * @description Time of day, `HH:MM` (24-hour) in
+                             *     `daily_stop_timezone`, or in `timezone` when
+                             *     `enable_daily_hard_stop` is off. Only on a
+                             *     `days` step; `delay: 0` means the same day.
+                             */
+                            at?: string;
+                        }[];
+                        /**
+                         * @description Also retry calls that connected but got no conversation.
+                         *     `no_reply`: the contact never spoke. `no_reply_or_short`:
+                         *     the contact never spoke, or the call lasted at most
+                         *     `retry_unanswered_max_seconds`. `model`: the contact
+                         *     never spoke, or post-call analysis read the transcript
+                         *     and found no real conversation. Retries follow the same
+                         *     schedule or steps as failed calls.
+                         * @default off
+                         * @enum {string}
+                         */
+                        retry_unanswered?: "off" | "no_reply" | "no_reply_or_short" | "model";
+                        /**
+                         * @description Under `no_reply_or_short`, a call this long or shorter
+                         *     (in seconds) counts as unanswered.
+                         * @default 10
+                         */
+                        retry_unanswered_max_seconds?: number;
                     };
                 };
             };
@@ -8960,7 +9200,13 @@ export interface operations {
                      *       "id": 314,
                      *       "is_scheduled": false,
                      *       "is_dynamic": false,
-                     *       "current_status": "in_progress"
+                     *       "current_status": "in_progress",
+                     *       "filtering_stats": {
+                     *         "total_contacts": 2,
+                     *         "filtered_contacts": 2,
+                     *         "skipped_contacts": 0,
+                     *         "filtered_percentage": 100
+                     *       }
                      *     }
                      */
                     "application/json": {
@@ -8971,6 +9217,17 @@ export interface operations {
                         is_scheduled?: boolean;
                         is_dynamic?: boolean;
                         current_status?: string;
+                        /** @description How many of the contacts you sent passed `call_conditions` and how many were skipped. The two add up to the contacts you sent. */
+                        filtering_stats?: {
+                            /** @description Contacts you sent. */
+                            total_contacts?: number;
+                            /** @description Contacts that passed `call_conditions` and are queued to dial. */
+                            filtered_contacts?: number;
+                            /** @description Contacts kept as `Skipped` because they did not pass `call_conditions`. */
+                            skipped_contacts?: number;
+                            /** @description Percent of the contacts you sent that passed `call_conditions`, rounded to a whole number. */
+                            filtered_percentage?: number;
+                        };
                         /**
                          * @description Present only when a contact carried `__post_call_actions`.
                          *     Bulk campaigns do not honor it: the key is removed from
@@ -9028,6 +9285,13 @@ export interface operations {
                     metadata?: {
                         [key: string]: unknown;
                     };
+                    /**
+                     * @description The number that called this person last. With
+                     *     `call_back_from_different_number` on, the call goes out
+                     *     from another number in the pool.
+                     * @example +15557654321
+                     */
+                    previous_from_number?: string;
                 };
             };
         };
@@ -9132,6 +9396,7 @@ export interface operations {
                      *         "retry_schedule_hours": 0,
                      *         "retry_count": 0,
                      *         "retry_limit": 1,
+                     *         "retry_steps": [],
                      *         "enabled_reschedule_call": false,
                      *         "concurrent_call_limit": 1,
                      *         "enable_daily_hard_stop": false,
@@ -9401,7 +9666,7 @@ export interface operations {
                      *             "time_of_call": "2026-08-26 14:46:21",
                      *             "duration_seconds": 9,
                      *             "duration_minutes": 0,
-                     *             "recording_url": "https://backend.omnidim.io/api/v1/recording/50585?token=9d35be29",
+                     *             "recording_url": "https://omnidim.io/api/v1/recording/50585?token=9d35be29",
                      *             "call_status": "completed",
                      *             "sentiment_score": "",
                      *             "extracted_variables": {},
@@ -9635,6 +9900,13 @@ export interface operations {
                         metadata?: {
                             [key: string]: unknown;
                         };
+                        /**
+                         * @description The number that called this person last. With
+                         *     `call_back_from_different_number` on, the call goes
+                         *     out from another number in the pool.
+                         * @example +15557654321
+                         */
+                        previous_from_number?: string;
                     }[];
                 };
             };
@@ -9787,6 +10059,75 @@ export interface operations {
             };
         };
     };
+    setBulkCallRotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the bulk call campaign. */
+                bulk_call_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    user_id?: components["schemas"]["ClientUserId"];
+                    /**
+                     * @description When to move to the next number: every `calls_per_number`
+                     *     calls, on low health score, both, or never.
+                     * @enum {string}
+                     */
+                    strategy?: "fixed_count" | "cpr_threshold" | "both" | "none";
+                    /** @description Calls before moving on. Used by `fixed_count` and `both`. */
+                    calls_per_number?: number;
+                    /**
+                     * @description Health score below which a number is rotated away from.
+                     *     Used by `cpr_threshold` and `both`.
+                     */
+                    health_threshold?: number;
+                    /**
+                     * @description When every number is unhealthy: `pause` the campaign, or
+                     *     `continue_best` with the healthiest one.
+                     * @enum {string}
+                     */
+                    fallback?: "pause" | "continue_best";
+                    /**
+                     * @description When on, a repeat call to the same person goes out from a
+                     *     different number than the one that called them last. Needs
+                     *     two or more numbers in the pool. Must be `true` or `false`.
+                     */
+                    call_back_from_different_number?: boolean;
+                    /**
+                     * @description When on, a contact is not dialed if the carrier said its
+                     *     number does not exist, in any campaign of your organization
+                     *     in the last 14 days. Must be `true` or `false`.
+                     */
+                    skip_known_invalid_numbers?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Rotation settings updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "success",
+                     *       "message": "Rotation settings updated"
+                     *     }
+                     */
+                    "application/json": {
+                        status?: string;
+                        message?: string;
+                    };
+                };
+            };
+        };
+    };
     retryBulkCall: {
         parameters: {
             query?: never;
@@ -9813,7 +10154,7 @@ export interface operations {
                      *     `specific`; for example `no-answer` and `busy`. Ignored when
                      *     `retry_strategy` is `all`.
                      */
-                    failure_reasons?: string[];
+                    failure_reasons?: ("failed" | "Failed" | "no-answer" | "No Answer" | "busy" | "Busy" | "cancelled" | "canceled" | "voicemail_detected")[];
                 };
             };
         };
@@ -10853,6 +11194,156 @@ export interface operations {
                      * @example {
                      *       "error": "release_failed",
                      *       "error_description": "The number could not be released. Please try again or contact support."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "server_error",
+                     *       "error_description": "Something went wrong on our side. Please try again shortly, or contact support with reference a1b2c3d4e5f6.",
+                     *       "ref": "a1b2c3d4e5f6"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"] & {
+                        /** @description Reference to quote to support. */
+                        ref?: string;
+                    };
+                };
+            };
+        };
+    };
+    setPhoneNumberAutoRenew: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "phone_number": "+15551234567",
+                 *       "auto_renew": false
+                 *     }
+                 */
+                "application/json": {
+                    /**
+                     * @description The number to switch.
+                     * @example +15551234567
+                     */
+                    phone_number: string;
+                    /**
+                     * @description `false` stops renewal, `true` turns it back on. Must be a JSON boolean: a string such as `"false"`, a number, or a missing value is refused.
+                     * @example false
+                     */
+                    auto_renew: boolean;
+                    /** @description Reseller accounts only: the client to act on. Omit it to act on your own account. */
+                    user_id?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The switch is set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "phone_number": "+15551234567",
+                     *       "auto_renew": false
+                     *     }
+                     */
+                    "application/json": {
+                        success?: boolean;
+                        phone_number?: string;
+                        /** @description The value the number now has. */
+                        auto_renew?: boolean;
+                    };
+                };
+            };
+            /** @description `phone_number` is missing, or `auto_renew` is not `true` or `false`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "auto_renew must be true or false."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description A `user_id` was sent by a key that is not a reseller admin, or
+             *     the named client's account is currently unavailable.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "Access denied. Only reseller accounts can use this endpoint."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The `user_id` did not name one of your clients (`not_found`),
+             *     or the account holds no such number (`number_not_found`).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "number_not_found",
+                     *       "error_description": "No such number on this user."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The number was not bought from the number shop, for example a number
+             *     imported from Twilio, Exotel, or a SIP trunk. Only shop numbers renew.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "not_renewable",
+                     *       "error_description": "Auto renew applies only to a number bought from the shop."
                      *     }
                      */
                     "application/json": components["schemas"]["SessionError"];
@@ -15817,8 +16308,8 @@ export interface operations {
                                 };
                             };
                             /**
-                             * @description Fields this step accepts but never requires, such
-                             *     as `return_url` on a `redirect` step.
+                             * @description Fields this step accepts but never requires.
+                             *     Fields it always requires are in `required`.
                              */
                             optional?: string[];
                             /**
@@ -16167,13 +16658,13 @@ export interface operations {
                     job_position?: string;
                     /**
                      * Format: uri
-                     * @description Optional on a `redirect` step. The page in your own app
-                     *     where your client's browser comes back after verifying.
-                     *     Must be `https` with a host, no `#fragment` and no
-                     *     credentials, up to 2,000 characters. Anything else is
-                     *     refused with `400 invalid_request`. Result parameters such
-                     *     as `status` are added to it. Leave it out and your client
-                     *     returns to their own dashboard.
+                     * @description Required on a `redirect` step such as `verify-aadhaar`.
+                     *     Other steps ignore it. The page in your own app where
+                     *     your client's browser lands after verifying. Must be
+                     *     `https` with a host, no `#fragment` and no credentials,
+                     *     up to 2,000 characters. Missing, blank or invalid is
+                     *     refused with `400 invalid_request`. The provider adds its
+                     *     own result parameters to it.
                      * @example https://app.example.com/kyc/done
                      */
                     return_url?: string;
@@ -16539,7 +17030,7 @@ export interface operations {
                      *           "gender": "female",
                      *           "status": "ready",
                      *           "voice_id": "8a1c2f5e-3b7d-4c9a-9f21-2e6b0d4a7c88",
-                     *           "sample_url": "https://backend.omnidim.io/api/v1/voices/412/sample",
+                     *           "sample_url": "https://omnidim.io/api/v1/voices/412/sample",
                      *           "error": null,
                      *           "created_at": "2026-10-12T15:18:07.424509",
                      *           "ready_at": "2026-10-12T15:18:31.009881"
