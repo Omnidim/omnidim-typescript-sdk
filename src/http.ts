@@ -101,7 +101,7 @@ export class HttpClient {
       Authorization: `Bearer ${this.apiKey}`,
       Accept: "application/json",
       // nginx logs count API traffic by SDK and version from this header.
-      "User-Agent": `OmniDimension-js-sdk/${SDK_VERSION}`,
+      "User-Agent": `omnidim-typescript-sdk/${SDK_VERSION}`,
       ...CLIENT_INFO,
       ...this.defaultHeaders,
       ...options.headers,

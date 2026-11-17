@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect, vi } from "vitest";
 import OmniDimension, { OmniDimensionError } from "../src/index.js";
 import { HttpClient } from "../src/http.js";
+
+const pkg = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 interface Captured {
   url: string;
@@ -244,7 +249,8 @@ describe("user agent", () => {
     const { fetch, calls } = fakeFetch({});
     await new HttpClient({ apiKey: "test-api-key-1234", fetch }).request("GET", "/agents");
     const headers = calls[0]!.init.headers as Record<string, string>;
-    expect(headers["User-Agent"]).toMatch(/^OmniDimension-js-sdk\/\d+\.\d+\.\d+/);
+    // The backend labels API traffic by this exact name.
+    expect(headers["User-Agent"]).toBe(`omnidim-typescript-sdk/${pkg.version}`);
   });
 
   it("lets defaultHeaders override it", async () => {
