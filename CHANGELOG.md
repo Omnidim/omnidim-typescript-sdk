@@ -6,8 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-17
+
 ### Added
 
+- `client.whatsapp` covers the WhatsApp API: numbers, templates, calling, conversations and hand-over, messages, media upload, opt-outs, and campaigns.
 - Every request sends `User-Agent: omnidim-typescript-sdk/<version>`. Set `defaultHeaders` to override it.
 - Every request also sends `X-OmniDimension-Lang`, `-Runtime`, `-Runtime-Version`, `-OS` and `-Arch`. See "What the SDK sends" in the README.
 - `OmniDimensionError.requestId` holds the server's request id (from `X-Request-Id`, or `request_id` or `ref` in the body), and the error message ends with `(request id: ...)`.
