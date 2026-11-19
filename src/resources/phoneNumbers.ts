@@ -52,4 +52,9 @@ export class PhoneNumbers {
   release(body: BodyOf<"releasePhoneNumber">) {
     return this.http.request<ResultOf<"releasePhoneNumber">>("POST", "/phone_number/release", { body });
   }
+
+  /** Switch auto-renew on or off for a purchased number. */
+  setAutoRenew(body: BodyOf<"setPhoneNumberAutoRenew">) {
+    return this.http.request<ResultOf<"setPhoneNumberAutoRenew">>("POST", "/phone_number/auto_renew", { body });
+  }
 }
