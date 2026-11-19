@@ -131,4 +131,13 @@ export class BulkCalls {
       { body },
     );
   }
+
+  /** Change how the campaign rotates its numbers. Only the settings you send change. */
+  setRotation(bulkCallId: number | string, body: BodyOf<"setBulkCallRotation">) {
+    return this.http.request<ResultOf<"setBulkCallRotation">>(
+      "PUT",
+      `/calls/bulk_call/${bulkCallId}/rotation`,
+      { body },
+    );
+  }
 }

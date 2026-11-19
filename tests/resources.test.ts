@@ -62,6 +62,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
     "PUT",
     "/calls/bulk_call/7/numbers/3",
   ],
+  ["bulkCalls.setRotation", (c) => c.bulkCalls.setRotation(ID, B), "PUT", "/calls/bulk_call/7/rotation"],
   ["knowledgeBase.list", (c) => c.knowledgeBase.list(), "GET", "/knowledge_base/list"],
   ["knowledgeBase.canUpload", (c) => c.knowledgeBase.canUpload(B), "POST", "/knowledge_base/can_upload"],
   ["knowledgeBase.upload", (c) => c.knowledgeBase.upload(B), "POST", "/knowledge_base/create"],
@@ -77,6 +78,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
   ["phoneNumbers.search", (c) => c.phoneNumbers.search(), "GET", "/phone_number/search"],
   ["phoneNumbers.purchase", (c) => c.phoneNumbers.purchase(B), "POST", "/phone_number/purchase"],
   ["phoneNumbers.release", (c) => c.phoneNumbers.release(B), "POST", "/phone_number/release"],
+  ["phoneNumbers.setAutoRenew", (c) => c.phoneNumbers.setAutoRenew(B), "POST", "/phone_number/auto_renew"],
   ["providers.listLLMs", (c) => c.providers.listLLMs(), "GET", "/providers/llms"],
   ["providers.listVoices", (c) => c.providers.listVoices(), "GET", "/providers/voices"],
   ["providers.listSTT", (c) => c.providers.listSTT(), "GET", "/providers/stt"],
@@ -187,7 +189,7 @@ const cases: [string, (c: any) => Promise<unknown>, string, string][] = [
 
 describe("resource routing", () => {
   it("covers all resource methods", () => {
-    expect(cases).toHaveLength(136);
+    expect(cases).toHaveLength(138);
   });
 
   for (const [name, call, method, path] of cases) {
