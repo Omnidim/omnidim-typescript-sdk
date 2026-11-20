@@ -50,22 +50,23 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.token.outputs.token }}
-          commit-message: "chore: regenerate types from updated OpenAPI spec"
+          # A fix: title ships the new types as a patch release.
+          commit-message: "fix: refresh types from the updated API spec"
           branch: chore/regen-types
           delete-branch: true
-          title: "chore: regenerate types from updated OpenAPI spec"
+          title: "fix: refresh types from the updated API spec"
           body: |
             The upstream OpenAPI spec changed. This PR regenerates
             `src/generated/types.ts` and updates the spec hash in `.spec.yml`.
 
-            Review the type diff, and bump the version and CHANGELOG if the
-            public surface changed.
+            Merging adds this to the next release PR as a patch. A new
+            method is a `feat:` PR of its own.
 
             This PR sets itself to auto-merge. It lands when the required
             checks pass and not otherwise: a new operation with no method
             fails `tests/spec-coverage.test.ts`, and a type that stops
-            compiling fails the typecheck. Publishing is still a `v*` tag by
-            hand, so nothing reaches npm without a person.
+            compiling fails the typecheck. Nothing reaches npm until an
+            approver merges the release PR.
 
       # A types-only refresh changes nothing a person has to decide on. The
       # cases that would (a new operation with no method, a type that no

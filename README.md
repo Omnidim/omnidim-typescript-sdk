@@ -98,7 +98,7 @@ Every request carries these headers so we can see which SDK versions and platfor
 
 | Header | Meaning | Example |
 |---|---|---|
-| `User-Agent` | SDK name and version | `omnidim-typescript-sdk/0.9.0` |
+| `User-Agent` | SDK name and version | `omnidim-typescript-sdk/<version>` |
 | `X-OmniDimension-Lang` | SDK language | `js` |
 | `X-OmniDimension-Runtime` | JavaScript runtime | `node`, `bun`, `deno` |
 | `X-OmniDimension-Runtime-Version` | Runtime version | `20.11.1` |
