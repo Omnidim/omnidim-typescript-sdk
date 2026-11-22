@@ -1,6 +1,6 @@
 # @omnidim-ai/sdk
 
-Official JavaScript and TypeScript SDK for the [OmniDimension](https://omnidim.io) voice-AI REST API. Manage agents, dispatch calls, run bulk campaigns, knowledge bases, and phone numbers from Node.js.
+Official JavaScript and TypeScript SDK for the [OmniDimension](https://omnidim.io) voice-AI REST API. Build voice AI agents, dispatch calls, run bulk call campaigns, build workflows, and manage knowledge bases, phone numbers, and WhatsApp from Node.js.
 
 ## Install
 
@@ -41,6 +41,9 @@ The client exposes one accessor per API area:
 | `client.phoneNumbers` | List numbers, attach, detach, import from Twilio/Exotel/SIP |
 | `client.providers` | List LLM, voice, STT, TTS providers; voice details |
 | `client.integrations` | List, create (custom API, Cal.com), attach to and detach from agents |
+| `client.voices` | Create, list, update, and delete cloned voices; read and regenerate voice samples |
+| `client.workflows` | List, create, edit, validate, publish, activate, test workflows; read executions |
+| `client.whatsapp` | WhatsApp numbers, templates, conversations, messages, and calling |
 | `client.reseller` | Partner operations (requires partner-level credentials) |
 
 Every method returns a promise that resolves to the parsed JSON response, typed from the spec.
