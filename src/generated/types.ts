@@ -15,18 +15,15 @@ export interface paths {
         put?: never;
         /**
          * Create session
-         * @description Create a voice Session: a short-lived, single-conversation
-         *     reservation that lets a client hold a live voice chat with your
-         *     agent. This is step 1 of 2. Creating the Session does not start any
-         *     audio on its own; it returns a `ws_url` that a client then connects
-         *     to over WebSocket to actually talk.
+         * @description Create a short-lived voice session and get a `ws_url` for one conversation.
          *
-         *     Call this endpoint from your server with your API key, and return
-         *     only the `ws_url` to your client. The API key must never reach the
-         *     browser. The `ws_url` is the only thing the client needs, and it is
-         *     safe to hand out because it is single-use and expires. For how to
-         *     connect and talk, see "Connect the client and talk" below the
-         *     request details.
+         *     This is step 1 of 2. Creating the session starts no audio. The client then
+         *     connects to `ws_url` over WebSocket to talk.
+         *
+         *     Call this endpoint from your server with your API key. Return only `ws_url`
+         *     to your client, and never the API key. The `ws_url` is single-use and
+         *     expires, so it is safe to hand to your client. For how to connect and talk,
+         *     see "Connect the client and talk" below the request details.
          */
         post: operations["createSession"];
         delete?: never;
@@ -66,23 +63,19 @@ export interface paths {
         put?: never;
         /**
          * Create agent
-         * @description Create a new agent with the provided configuration. The full
-         *     config supports transcriber, model, voice, web search, transfer,
-         *     end-call conditions, post-call actions (email, webhook, Omni CRM,
-         *     Cloud WhatsApp, or a workflow),
-         *     ambient background track, initial ringing sound, and multilingual support.
+         * @description Create an agent from a name and a context. Every other setting is optional.
          *
-         *     Leave out `model`, `transcriber` and `voice` unless you need a specific
-         *     one: the agent then gets your organization's default language model,
-         *     transcriber and voice, which always work. To choose one, pick from the
-         *     LLM, STT and TTS providers lists, which show only the models your
-         *     organization can use. Any other model is refused with a message naming
-         *     the default to use instead.
+         *     Optional settings: transcriber, model, voice, web search, transfer,
+         *     end-call conditions, post-call actions (email, webhook, Omni CRM, Cloud
+         *     WhatsApp, or a workflow), ambient background track, initial ringing
+         *     sound and multilingual support.
          *
-         *     > **Voicemail detection is an access-gated feature** that we turn on per
-         *     account. If it isn't enabled for yours yet,
-         *     [request access](https://omnidim.io/contact-us?reason=product&lock=1)
-         *     before configuring the `voicemail` object.
+         *     Leave out `model`, `transcriber` and `voice` to get your organization's
+         *     defaults, which always work. To pick one, use the LLM, STT or TTS provider
+         *     list: it shows only the models your organization can use. Any other model is
+         *     refused, and the error names the default to use.
+         *
+         *     > **Voicemail detection is turned on per account.** If it is off for yours, ask OmniDimension support to turn it on before you configure the `voicemail` object.
          */
         post: operations["createAgent"];
         delete?: never;
@@ -103,16 +96,24 @@ export interface paths {
         };
         /**
          * Get agent
-         * @description Get details of a specific agent by ID. The response also includes a `can_publish` boolean showing whether [version history](/docs/api-reference/agents/listAgentVersions) is turned on for the agent's organization.
+         * @description Get one agent by ID.
+         *
+         *     The response includes `can_publish`: whether [version
+         *     history](/docs/api-reference/agents/listAgentVersions) is on for the agent's
+         *     organization.
+         *
+         *     The response uses stored field names, such as `context_title` and
+         *     `voice_external_id`. `updateAgent` takes the names in its own request
+         *     body instead, such as `context_breakdown[].title` and `voice.voice_id`.
          */
         get: operations["getAgent"];
         /**
          * Update agent
-         * @description Update an existing agent. Send only the fields you want to change.
+         * @description Update an agent. Send only the fields you want to change.
          *
-         *     `post_call_actions` replaces the agent's email, webhook, Omni CRM, Cloud WhatsApp and workflow actions as one set, but only when you send at least one of those types. Google Sheets, Slack, Salesforce, HubSpot and Zoho Bigin actions are replaced only when their key is sent, and kept otherwise. If a sent action gives a variable key a new prompt, kept actions that use the same key take the new prompt too. To add, change or remove one action without touching the others, use `/agents/{agent_id}/post-call-actions`.
+         *     `post_call_actions` replaces the agent's email, webhook, Omni CRM, Cloud WhatsApp and workflow actions as one set, but only if you send at least one of those types. Google Sheets, Slack, Salesforce, HubSpot and Zoho Bigin actions are replaced only when you send their key. Other actions are kept. If a sent action gives a variable key a new prompt, kept actions with the same key take that prompt too. To change one action alone, use `/agents/{agent_id}/post-call-actions`.
          *
-         *     > **Voicemail detection is an access-gated feature** that we turn on per account. If it isn't enabled for yours yet, [request access](https://omnidim.io/contact-us?reason=product&lock=1) before configuring the `voicemail` object below.
+         *     > **Voicemail detection is turned on per account.** If it is off for yours, ask OmniDimension support to turn it on before you configure the `voicemail` object.
          */
         put: operations["updateAgent"];
         post?: never;
@@ -144,7 +145,11 @@ export interface paths {
         put?: never;
         /**
          * Add a post-call action
-         * @description Add one post-call action to the agent. The agent's other actions are not changed. Send an `Idempotency-Key` header to make a retry safe: the same key and body return the action the first request added.
+         * @description Add one post-call action to an agent.
+         *
+         *     The agent's other actions stay as they are. Send an `Idempotency-Key` header
+         *     to retry safely: the same key and body return the action the first request
+         *     added.
          */
         post: operations["addPostCallAction"];
         delete?: never;
@@ -191,7 +196,14 @@ export interface paths {
         };
         /**
          * List integrations
-         * @description List the integrations connected to your workspace, with each one's `id` and `integration_type`. Stored credentials (tokens, secrets, passwords, API keys, and the values of a custom API's headers and parameters) are never returned: they read `********`. When you create an integration, send the real values: `********` is refused. Accounts that sign in with OAuth (Google Sheets, Slack, HubSpot, Salesforce, Zoho Bigin) are connected in the dashboard.
+         * @description List your workspace integrations, with each one's `id` and
+         *     `integration_type`.
+         *
+         *     Stored credentials (tokens, secrets, passwords, API keys, and the values of
+         *     a custom API's headers and parameters) are never returned. They read
+         *     `********`. When you create an integration, send the real values: `********`
+         *     is refused. Accounts that sign in with OAuth (Google Sheets, Slack, HubSpot,
+         *     Salesforce, Zoho Bigin) are connected in the dashboard.
          */
         get: operations["listIntegrations"];
         put?: never;
@@ -213,7 +225,12 @@ export interface paths {
         put?: never;
         /**
          * Create a custom API integration
-         * @description Save a call to your own HTTP endpoint as an integration. Attach it to an agent with `attachAgentIntegration`, and the agent calls the endpoint during a call when the conversation needs it, then uses the response in its reply. Parameters marked `isLLMGenerated` are filled in by the agent from the conversation.
+         * @description Save a call to your own HTTP endpoint as an integration.
+         *
+         *     Attach it to an agent with `attachAgentIntegration`. The agent calls the
+         *     endpoint during a call when the conversation needs it, then uses the
+         *     response in its reply. The agent fills parameters marked `isLLMGenerated`
+         *     from the conversation.
          */
         post: operations["createCustomApiIntegration"];
         delete?: never;
@@ -233,7 +250,10 @@ export interface paths {
         put?: never;
         /**
          * Create a Cal.com integration
-         * @description Connect a Cal.com event type so an agent can check availability and book meetings during a call. Attach it to an agent with `attachAgentIntegration`.
+         * @description Connect a Cal.com event type as an integration.
+         *
+         *     Attach it to an agent with `attachAgentIntegration`. The agent can then
+         *     check availability and book meetings during a call.
          */
         post: operations["createCalIntegration"];
         delete?: never;
@@ -260,7 +280,10 @@ export interface paths {
         put?: never;
         /**
          * Attach an integration to an agent
-         * @description Attach one of your integrations to the agent. The agent can use it on its next call. Integrations already attached stay as they are.
+         * @description Attach an integration to an agent.
+         *
+         *     The agent can use it on its next call. Integrations already attached stay as
+         *     they are.
          */
         post: operations["attachAgentIntegration"];
         delete?: never;
@@ -306,7 +329,7 @@ export interface paths {
         };
         /**
          * List agent versions
-         * @description List an agent's saved versions, newest first. Includes manual (named) versions, automatic versions, and system backups taken before a restore.
+         * @description List an agent's saved versions, newest first. Includes manual (named) versions and system backups taken before a restore. Nothing is saved automatically.
          */
         get: operations["listAgentVersions"];
         put?: never;
@@ -364,7 +387,12 @@ export interface paths {
         };
         /**
          * Diff an agent version
-         * @description Get a record-level diff for this version. By default it shows what changed in this version compared with the version before it. Use `against=current` to compare with the agent's live config (what restoring this version would change), or `against=<number>` to compare with another version.
+         * @description Get a record-level diff for one agent version.
+         *
+         *     By default it compares this version with the one before it. Use
+         *     `against=current` to compare with the live config, which shows what
+         *     restoring this version would change. Use `against=<number>` to compare with
+         *     another version.
          */
         get: operations["diffAgentVersion"];
         put?: never;
@@ -391,7 +419,12 @@ export interface paths {
         put?: never;
         /**
          * Restore an agent version
-         * @description Restore a version onto the live agent. Your current setup is saved first as a backup version, so restoring is undoable. Configuration is brought back; any knowledge files or integrations that were deleted since this version was saved can't be re-linked, and are reported in `skipped`.
+         * @description Restore a version onto the live agent.
+         *
+         *     Your current setup is saved first as a backup version, so restoring is
+         *     undoable. Configuration comes back. Knowledge files or integrations deleted
+         *     since this version was saved can't be re-linked. They are reported in
+         *     `skipped`.
          */
         post: operations["restoreAgentVersion"];
         delete?: never;
@@ -411,8 +444,9 @@ export interface paths {
         put?: never;
         /**
          * Dispatch call
-         * @description Initiate a call to a phone number using a specified agent. The
-         *     phone number must include a country code with a leading plus.
+         * @description Start a call to a phone number with an agent.
+         *
+         *     The phone number must include a country code with a leading plus.
          */
         post: operations["dispatchCall"];
         delete?: never;
@@ -431,8 +465,45 @@ export interface paths {
         /**
          * List call logs
          * @description Retrieve call logs with pagination and optional filtering.
+         *
+         *     With `summary=day`, returns per-day counts for one agent instead of
+         *     call rows: how calls were started, how many were dialed with their own
+         *     post-call actions, and what each delivery channel did. Use it to
+         *     compare a good day with a bad day before reading single calls.
+         *     `agentid`, `date_from` and `date_to` are required, for at most 31 days
+         *     and 20,000 calls. A range that is too large or too slow returns `400`
+         *     asking for fewer days.
          */
         get: operations["listCallLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calls/logs/{call_log_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get call events
+         * @description What happened on one call, step by step: what the caller and the agent
+         *     said, how long the agent took to reply, the tools it ran, transfers,
+         *     voicemail, language switches, interruptions, errors, and how the call
+         *     ended.
+         *
+         *     Use it to find out why a call went the way it did: why it hung up, why
+         *     a transfer failed, or where the agent was slow.
+         *
+         *     Calls older than 30 days have no timeline. For those,
+         *     `timeline_available` is `false` and `turns` holds the transcript only.
+         */
+        get: operations["getCallEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -450,7 +521,7 @@ export interface paths {
         };
         /**
          * Get call log
-         * @description Detailed information about a specific call (duration, status, transcript, sentiment, extracted variables).
+         * @description Detailed information about a specific call (duration, status, transcript, sentiment, extracted variables, and `post_call_override`: the post-call actions it was dialed with, which replace the agent's own for that call).
          */
         get: operations["getCallLog"];
         put?: never;
@@ -492,15 +563,15 @@ export interface paths {
         put?: never;
         /**
          * Create bulk call
-         * @description Create a new bulk-call campaign. Only name, phone_number_id and a
-         *     contact_list are needed to dial a list now; every other field adds
-         *     one behavior on top (drafts, rotation, filtering, scheduling,
-         *     retries, dynamic feeding).
+         * @description Create a bulk-call campaign.
          *
-         *     The guide below the field reference walks the whole journey: the
-         *     first campaign and its response, each behavior with a working
-         *     request, every refusal message with its fix, and the endpoints that
-         *     operate a campaign once it runs.
+         *     Only `name`, `phone_number_id` and a `contact_list` are needed to dial a
+         *     list now. Every other field adds one behavior: drafts, rotation, filtering,
+         *     scheduling, retries or dynamic feeding.
+         *
+         *     The guide below the field reference shows each behavior with a working
+         *     request, every refusal message with its fix, and the endpoints that operate
+         *     a running campaign.
          */
         post: operations["createBulkCall"];
         delete?: never;
@@ -520,13 +591,12 @@ export interface paths {
         put?: never;
         /**
          * Add contact to dynamic campaign
-         * @description Push a single contact into a dynamic bulk-call campaign in real
-         *     time. Dynamic campaigns are created from the dashboard (Bulk Call
-         *     > Create New Campaign > Dynamic Campaign) and stay alive waiting
-         *     for contacts, so this webhook is how you feed them from a CRM,
-         *     form, or automation platform. The contact is queued immediately,
-         *     and the campaign starts calling it as soon as it is within
-         *     operating hours.
+         * @description Push one contact into a dynamic bulk-call campaign.
+         *
+         *     Dynamic campaigns are created from the dashboard (Bulk Call > Create New
+         *     Campaign > Dynamic Campaign) and wait for contacts. Use this webhook to feed
+         *     them from a CRM, form or automation platform. The contact is queued at once.
+         *     The campaign calls it as soon as it is within operating hours.
          */
         post: operations["addBulkCallContact"];
         delete?: never;
@@ -572,13 +642,17 @@ export interface paths {
         };
         /**
          * Bulk call results
-         * @description Per-contact results for a campaign: what happened on each call, the
-         *     variables you sent with that contact, and a pointer to the recording.
+         * @description List per-contact results for a campaign.
+         *
+         *     Each row has what happened on the call, the variables you sent, and
+         *     `call.recording_id`.
          *
          *     ## Paging
          *
-         *     There is one rule. Call it with no `cursor`, then keep passing back the
-         *     `next_cursor` you were handed until it comes back `null`.
+         *     Call with no `cursor`. Then pass back the `next_cursor` you were given until
+         *     it is `null`. Rows come oldest first. `pagesize` defaults to 30 and goes up
+         *     to 150. Cursors are opaque, so never build one. No contact is skipped or
+         *     returned twice, even while the campaign dials.
          *
          *     ```
          *     cursor = None
@@ -589,17 +663,10 @@ export interface paths {
          *         if not cursor: break
          *     ```
          *
-         *     Each call returns a page of rows, oldest first: `pagesize` goes up to
-         *     150 and defaults to 30. Cursors are opaque, so pass back the string you
-         *     were given and never build one. No contact is skipped or returned
-         *     twice, even while the campaign is still dialing.
-         *
          *     ## Transcripts are not in the row
          *
-         *     Each row carries `call.recording_id`, not the conversation. Transcripts
-         *     reach 212 KB, so carrying them here would make one page tens of
-         *     megabytes. Fetch the one you want from
-         *     `GET /calls/logs/{recording_id}`.
+         *     Transcripts reach 212 KB, so rows carry only `call.recording_id`. Fetch the
+         *     transcript from `GET /calls/logs/{recording_id}`.
          */
         get: operations["listBulkCallLines"];
         put?: never;
@@ -629,13 +696,14 @@ export interface paths {
         put?: never;
         /**
          * Add number to rotation pool
-         * @description Add one of your numbers to the campaign's rotation pool. Works while the
-         *     campaign is running, which is how you bring in a fresh number when the
-         *     pool is running out of healthy ones.
+         * @description Add one of your numbers to the campaign's rotation pool.
          *
-         *     The number must belong to you and must not already be in the pool. A
-         *     number with no agent attached gets this campaign's agent attached
-         *     automatically; a number attached to a **different** agent is refused.
+         *     It works while the campaign runs, so use it to bring in a fresh number when
+         *     healthy ones run low.
+         *
+         *     The number must be yours and not already in the pool. A number with no agent
+         *     gets this campaign's agent attached. A number attached to a **different**
+         *     agent is refused.
          */
         post: operations["addBulkCallNumber"];
         delete?: never;
@@ -656,16 +724,13 @@ export interface paths {
          * Pause or resume a pool number
          * @description Stop or resume dialing from one number in the pool.
          *
-         *     Pausing is what you want when a number starts going bad mid-campaign:
-         *     dialing moves to the next number in sequence and the paused number keeps
-         *     its history and counters. The last active number of a running campaign
-         *     cannot be paused, since the campaign would have nothing to dial from.
+         *     Pause a number that goes bad mid-campaign. Dialing moves to the next number,
+         *     and the paused number keeps its history and counters. You cannot pause the
+         *     last active number of a running campaign.
          *
-         *     Send the state you want rather than a toggle, so retrying the same
-         *     request is harmless.
+         *     Send the state you want, not a toggle, so a retry is harmless.
          *
-         *     `assignment_id` is the number's id **within this campaign's pool**, from
-         *     List rotation pool. It is not the `phone_number_id`.
+         *     `assignment_id` is the number's id **within this campaign's pool**, from List rotation pool. It is not the `phone_number_id`.
          */
         put: operations["setBulkCallNumberActive"];
         post?: never;
@@ -689,18 +754,14 @@ export interface paths {
          * @description Add up to 1000 contacts to a campaign in one request.
          *
          *     This is the batch form of Add contact to dynamic campaign. Prefer it
-         *     whenever you have more than a handful: one request of 500 contacts is
-         *     far cheaper than 500 requests, on your side and ours.
+         *     whenever you have more than a handful of contacts.
          *
-         *     Repeated numbers are kept, not merged. If the same number appears twice
-         *     with different variables, it is called twice, because two rows for one
-         *     number usually means two real reasons to call.
+         *     Repeated numbers are kept, not merged. The same number with different
+         *     variables is called twice.
          *
-         *     Rows that fail validation are reported in `rejected` and the rest are
-         *     still added, so a single bad number does not lose the batch. A row that
-         *     is missing a column the campaign's `call_conditions` need is reported in
-         *     `rejected`; the condition values themselves are not evaluated on this
-         *     route.
+         *     Rows that fail validation are reported in `rejected`, and the rest are still
+         *     added. A row missing a column that the campaign's `call_conditions` need is
+         *     also rejected. The condition values are not evaluated on this route.
          */
         post: operations["addBulkCallContacts"];
         delete?: never;
@@ -744,11 +805,11 @@ export interface paths {
         get?: never;
         /**
          * Change concurrency
-         * @description Change how many calls the campaign places at once, including while it is
-         *     running. Raise it to finish sooner, lower it if your team cannot keep up
-         *     with transfers or your numbers are being answered less.
+         * @description Change how many calls the campaign places at once, even while it runs.
          *
-         *     The ceiling is your account's concurrency limit.
+         *     Raise it to finish sooner. Lower it if your team cannot keep up with
+         *     transfers or fewer calls are answered. The ceiling is your account's
+         *     concurrency limit.
          */
         put: operations["setBulkCallConcurrency"];
         post?: never;
@@ -768,14 +829,14 @@ export interface paths {
         get?: never;
         /**
          * Change rotation settings
-         * @description Change how a campaign uses its number pool. Send only the fields you
-         *     want to change. At least one field is required.
+         * @description Change how a campaign uses its number pool.
          *
-         *     This works while the campaign status is `draft`, `scheduled`,
-         *     `in_progress`, `waiting`, `paused`, `auto_paused` or `retry_scheduled`.
-         *     Any other status is refused with `Cannot edit rotation for status:
-         *     <status>`. To change which numbers are in the pool, use the numbers
-         *     endpoints.
+         *     Send only the fields you want to change. At least one field is required.
+         *
+         *     It works while the status is `draft`, `scheduled`, `in_progress`, `waiting`,
+         *     `paused`, `auto_paused` or `retry_scheduled`. Any other status is refused
+         *     with `Cannot edit rotation for status: <status>`. To change which numbers
+         *     are in the pool, use the numbers endpoints.
          */
         put: operations["setBulkCallRotation"];
         post?: never;
@@ -796,29 +857,22 @@ export interface paths {
         put?: never;
         /**
          * Retry contacts that did not connect
-         * @description Re-queue contacts that did not connect, without creating a new campaign.
+         * @description Re-queue contacts that did not connect, without a new campaign.
          *
-         *     Use it after a campaign finishes with more no-answers than you expected,
-         *     or when the reason was on your side (a bad window, a number that was
-         *     having a bad day). Retried contacts keep their original variables.
+         *     Use it after a campaign finishes with more no-answers than expected, or when
+         *     the cause was on your side. Retried contacts keep their original variables.
          *
          *     The retry is refused in these cases:
          *
-         *     - The campaign status is not `completed`. The error is
-         *       `Cannot retry calls. Current status: <status>`.
-         *     - Auto retry is on and some contacts are still `Pending` or
-         *       `In Progress`. The error is `Cannot retry while calls are still in
-         *       progress and auto retry is enabled`.
-         *     - A value in `failure_reasons` is not one of the allowed statuses. The
-         *       error is `Invalid failure reason(s)` and lists the allowed values.
-         *     - No contact matches. The error is `No failed calls found to retry
-         *       matching criteria`.
+         *     - The status is not `completed`. The error is `Cannot retry calls. Current status: <status>`.
+         *     - Auto retry is on and some contacts are still `Pending` or `In Progress`. The error is `Cannot retry while calls are still in progress and auto retry is enabled`.
+         *     - A value in `failure_reasons` is not an allowed status. The error is `Invalid failure reason(s)` and lists the allowed values.
+         *     - No contact matches. The error is `No failed calls found to retry matching criteria`.
          *
-         *     Each contact is retried from its latest call only. When the campaign has
+         *     Each contact is retried from its latest call only. With
          *     `skip_known_invalid_numbers` on, contacts whose last call ended with the
-         *     carrier saying the number does not exist are not retried. This endpoint
-         *     retries calls that did not connect. It does not retry connected calls
-         *     with no conversation.
+         *     carrier saying the number does not exist are skipped. Connected calls with
+         *     no conversation are not retried.
          */
         post: operations["retryBulkCall"];
         delete?: never;
@@ -837,9 +891,9 @@ export interface paths {
         get?: never;
         /**
          * Set calling hours
-         * @description Restrict a campaign to a daily calling window, in the campaign's
-         *     timezone. Outside the window the campaign holds rather than finishing,
-         *     and resumes the next day.
+         * @description Limit a campaign to a daily calling window in its timezone.
+         *
+         *     Outside the window the campaign holds, then resumes the next day.
          */
         put: operations["setBulkCallDailyTimeControl"];
         post?: never;
@@ -1010,6 +1064,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/phone_number/released": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List released phone numbers
+         * @description Phone numbers your organization lost in the last days, newest first,
+         *     and why: the renewal failed because your balance did not cover it,
+         *     auto renew was off when the paid period ended, or it was released on
+         *     request. Use it when a number is missing from List phone numbers.
+         */
+        get: operations["listReleasedPhoneNumbers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/phone_number/search": {
         parameters: {
             query?: never;
@@ -1019,15 +1096,15 @@ export interface paths {
         };
         /**
          * Search available phone numbers
-         * @description Search the OmniDimension number shop for phone numbers available to buy
-         *     in a region. Price and validity are flat per region, so every result
-         *     shows the same `monthly_rental_usd` and `validity_days`, and that is the
-         *     exact amount a purchase will charge.
+         * @description Search the OmniDimension number shop for numbers you can buy in a region.
          *
-         *     A region can have more than one carrier, each stocking different
-         *     number series. Pass the `carrier` you want; the response names the
-         *     carrier its results came from, and that is the carrier a purchase has
-         *     to pass.
+         *     Price and validity are flat per region. Every result shows the same
+         *     `monthly_rental_usd` and `validity_days`, and a purchase charges exactly
+         *     that.
+         *
+         *     A region can have several carriers, each with different number series. Pass
+         *     the `carrier` you want. The response names the carrier its results came
+         *     from, and a purchase must pass that carrier.
          */
         get: operations["searchPhoneNumbers"];
         put?: never;
@@ -1049,8 +1126,9 @@ export interface paths {
         put?: never;
         /**
          * Purchase a phone number
-         * @description Buy a phone number from the OmniDimension number shop. The monthly
-         *     rental comes out of your wallet and the number is added to your
+         * @description Buy a phone number from the OmniDimension number shop.
+         *
+         *     The monthly rental comes out of your wallet. The number is added to your
          *     account, ready to attach to an agent.
          */
         post: operations["purchasePhoneNumber"];
@@ -1071,9 +1149,10 @@ export interface paths {
         put?: never;
         /**
          * Release a phone number
-         * @description Give up a phone number and stop its rental, so it is not charged at the
-         *     next renewal. Only a number currently allocated to the account can be
-         *     released.
+         * @description Release a phone number and stop its rental.
+         *
+         *     It is not charged at the next renewal. Only a number currently allocated to
+         *     the account can be released.
          */
         post: operations["releasePhoneNumber"];
         delete?: never;
@@ -1093,11 +1172,12 @@ export interface paths {
         put?: never;
         /**
          * Switch auto-renew on a phone number
-         * @description Turn auto-renew off or back on for a number bought from the number shop.
-         *     With auto-renew off, the number is not charged again: it keeps working
-         *     until the end of the period already paid for and is then released. Turn
-         *     it back on before that date and it renews as normal. Sending the value
-         *     the number already has changes nothing and still succeeds.
+         * @description Turn auto-renew on or off for a number bought from the number shop.
+         *
+         *     With auto-renew off, the number is not charged again. It works until the end
+         *     of the period already paid for, then it is released. Turn auto-renew on
+         *     before that date and the number renews as normal. Sending the value the
+         *     number already has changes nothing and still succeeds.
          */
         post: operations["setPhoneNumberAutoRenew"];
         delete?: never;
@@ -1117,9 +1197,10 @@ export interface paths {
         put?: never;
         /**
          * Attach phone number to agent
-         * @description Attach a phone number to an existing agent. Without `user_id`, use any
-         *     number and agent your key can manage. With `user_id`, the number and the
-         *     agent must both belong to that client.
+         * @description Attach a phone number to an existing agent.
+         *
+         *     Without `user_id`, use any number and agent your key can manage. With
+         *     `user_id`, both must belong to that client.
          */
         post: operations["attachPhoneNumber"];
         delete?: never;
@@ -1139,9 +1220,10 @@ export interface paths {
         put?: never;
         /**
          * Detach phone number
-         * @description Detach a phone number from its agent. Without `user_id`, use any number
-         *     your key can manage. With `user_id`, the number must belong to that
-         *     client.
+         * @description Detach a phone number from its agent.
+         *
+         *     Without `user_id`, use any number your key can manage. With `user_id`, the
+         *     number must belong to that client.
          */
         post: operations["detachPhoneNumber"];
         delete?: never;
@@ -1239,10 +1321,15 @@ export interface paths {
         };
         /**
          * List voices
-         * @description Retrieve voices with filtering and pagination support. ElevenLabs
-         *     and Cartesia support advanced filtering by name, language, accent,
-         *     and gender.
-         *     Other providers support basic pagination only.
+         * @description List the voices your organization can use, with filters and pagination.
+         *
+         *     Use `provider=featured` for OmniDimension voices in the order the dashboard
+         *     shows them.
+         *
+         *     Each voice keeps its own `service`: save it as the agent's voice provider. A
+         *     provider your organization cannot use returns a 400. Cartesia and ElevenLabs
+         *     support filtering by name, language, accent and gender. Other providers
+         *     support pagination only.
          */
         get: operations["listVoices"];
         put?: never;
@@ -1333,160 +1420,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/simulations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List simulations
-         * @description Retrieve simulations with pagination.
-         */
-        get: operations["listSimulations"];
-        put?: never;
-        /**
-         * Create simulation
-         * @description Create a new test simulation with scenarios.
-         */
-        post: operations["createSimulation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/simulations/{simulation_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        /**
-         * Get simulation
-         * @description Detailed simulation information.
-         */
-        get: operations["getSimulation"];
-        /**
-         * Update simulation
-         * @description Update an existing simulation. Pass the full `scenarios` array (existing entries you want to keep plus any changes).
-         */
-        put: operations["updateSimulation"];
-        post?: never;
-        /**
-         * Delete simulation
-         * @description Permanently delete a simulation.
-         */
-        delete: operations["deleteSimulation"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/simulations/{simulation_id}/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Start simulation
-         * @description Begin running a simulation. Optionally update scenarios at start time (same shape as Update simulation).
-         */
-        post: operations["startSimulation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/simulations/{simulation_id}/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Stop simulation
-         * @description Stop a running simulation.
-         */
-        post: operations["stopSimulation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/simulations/{simulation_id}/enhance-prompt": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Enhance prompt
-         * @description Generate prompt-improvement suggestions for a completed simulation.
-         */
-        post: operations["enhancePrompt"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/simulations/{simulation_id}/apply-enhanced-prompt": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Apply enhanced prompt
-         * @description Rewrite the agent's prompt sections from a completed simulation's suggestions. The agent's current sections are replaced, so save a version first if you may want them back. To review a proposed rewrite without applying it, call `enhancePrompt`. The applied text is generated again and can differ slightly from that preview.
-         */
-        post: operations["applyEnhancedPrompt"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/agents/{agent_id}/auto-scenarios": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Generate test scenarios
-         * @description Write test scenarios for an agent from its prompt. Each scenario has a name, the steps the simulated caller follows, and how the agent should respond. Nothing is saved: pass the ones you want to `createSimulation`.
-         */
-        post: operations["generateAutoScenarios"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/reseller/organizations": {
         parameters: {
             query?: never;
@@ -1496,10 +1429,11 @@ export interface paths {
         };
         /**
          * List child organizations
-         * @description List all child organizations and their users under the reseller
-         *     account. Returns each organization's balance, cost-per-minute
-         *     rate, and concurrency limit, plus the dashboard menu access
-         *     flags scoped to your reseller's permissions for every user.
+         * @description List your child organizations with their users.
+         *
+         *     Each organization shows its balance, cost-per-minute rate, and concurrency
+         *     limit. Each user shows the dashboard menu access flags, limited to your
+         *     reseller's permissions.
          */
         get: operations["listChildOrganizations"];
         put?: never;
@@ -1544,8 +1478,9 @@ export interface paths {
         /**
          * Update user access control
          * @description Enable or disable dashboard menu access flags for a child user.
-         *     Only the flags you pass are changed. Flags outside your
-         *     reseller's permissions are silently ignored.
+         *
+         *     Only the flags you pass change. Flags outside your reseller's permissions
+         *     are silently ignored.
          */
         post: operations["setUserAccessControl"];
         delete?: never;
@@ -1563,24 +1498,18 @@ export interface paths {
         };
         /**
          * Get brand identity
-         * @description Read your brand and your custom email server settings. The brand
-         *     is what your client organizations see: your brand name on their
-         *     emails, and spoken in their verification calls. Your own emails
-         *     do not change.
+         * @description Read your brand and custom email server settings.
          *
-         *     Who may call: a key whose user is the owner or an admin of a
-         *     reseller organization. Any other user gets `403`.
+         *     Your client organizations see the brand: your brand name on their emails and
+         *     in their verification calls. Your own emails do not change.
          *
-         *     The response always has the same shape. `has_identity` is `false`
-         *     and `identity` is `{}` until the first save. `smtp` never contains
-         *     the password. `can_use_brand_identity` is `false` for an account
-         *     that cannot hold a brand (for example one that already holds
-         *     another organization's configuration). Such an account can read
-         *     but every write returns `403`.
+         *     Who may call: a key whose user is the owner or an admin of a reseller
+         *     organization. Any other user gets `403`.
          *
-         *     Errors: `401` for a missing or invalid key. `403` when the user is
-         *     not the owner or an admin of the organization. `500` for a server
-         *     error.
+         *     `has_identity` is `false` and `identity` is `{}` until the first save. `smtp` never contains the password. `can_use_brand_identity` is `false` for an account that cannot hold a brand, such as one that already holds another organization's configuration. That account can read, but every write returns `403`.
+         *
+         *     Errors: `401` for a missing or invalid key. `403` when the user is not the
+         *     owner or an admin. `500` for a server error.
          */
         get: operations["getResellerIdentity"];
         put?: never;
@@ -1602,30 +1531,24 @@ export interface paths {
         put?: never;
         /**
          * Save brand identity
-         * @description Set the brand your client organizations see: your brand name and
-         *     company name on their emails, and your brand name spoken in their
-         *     verification calls. The first save creates the brand. Later saves
-         *     change only the fields you send. Your own emails do not change.
+         * @description Set the brand your client organizations see.
          *
-         *     Who may call: a key whose user is the owner or an admin of a
-         *     reseller organization that can hold a brand. Any other user, and
-         *     any account that already holds another organization's
-         *     configuration, gets `403`.
+         *     The first save creates the brand. Later saves change only the fields you
+         *     send. Your own emails do not change.
          *
-         *     `platform_name` and `company_name` are 1 to 60 characters of plain
-         *     text. On the first save, a name you leave out is taken from your
-         *     organization name. `primary_color` is a hex colour such as
-         *     `#1976d2`. `real_email` is the sender and reply-to address on your
-         *     clients' emails.
+         *     Who may call: a key whose user is the owner or an admin of a reseller
+         *     organization that can hold a brand. Any other user gets `403`. An account
+         *     that already holds another organization's configuration also gets `403`.
          *
-         *     The response is the full brand state, the same object that
-         *     `GET /reseller/identity` returns.
+         *     `platform_name` and `company_name` are 1 to 60 characters of plain text. On the first save, a name you leave out is taken from your organization name. `primary_color` is a hex color such as `#1976d2`. `real_email` is the sender and reply-to address on your clients' emails.
          *
-         *     Errors: `400 invalid_request` for a name that is empty, longer than
-         *     60 characters or not plain text, a `primary_color` that is not a
-         *     hex value, or a `real_email` that is not an email address. The
-         *     `error_description` says which. `401` for a missing or invalid key.
-         *     `403 forbidden` when the user is not the owner or an admin, or the
+         *     The response is the full brand state, the same object `GET
+         *     /reseller/identity` returns.
+         *
+         *     Errors: `400 invalid_request` for an empty, too long or non-plain-text name,
+         *     a `primary_color` that is not hex, or a `real_email` that is not an email
+         *     address. The `error_description` says which. `401` for a missing or invalid
+         *     key. `403 forbidden` when the user is not the owner or an admin, or the
          *     account cannot hold a brand. `500 server_error` for a server error.
          */
         post: operations["saveResellerIdentity"];
@@ -1646,31 +1569,27 @@ export interface paths {
         put?: never;
         /**
          * Save custom email server
-         * @description Send your clients' emails through your own email server, so they
-         *     come from your domain. The server is checked with a live login
-         *     before anything is saved. If the login fails, nothing changes and
-         *     the response is `400` with the reason. Save your brand first.
+         * @description Send your clients' emails through your own email server.
          *
-         *     Who may call: a key whose user is the owner or an admin of a
-         *     reseller organization that can hold a brand and use a custom email
-         *     server. Any other user gets `403`.
+         *     Emails then come from your domain. The server gets a live login check before
+         *     anything is saved. If the login fails, nothing changes and the response is
+         *     `400` with the reason. Save your brand first.
          *
-         *     `host` and `port` are required. `encryption` is `starttls` (the
-         *     default), `ssl` or `none`. If you leave `password` blank and a
-         *     server is already saved, the saved password is used. The password
-         *     is never returned.
+         *     Who may call: a key whose user is the owner or an admin of a reseller
+         *     organization that can hold a brand and use a custom email server. Any other
+         *     user gets `403`.
          *
-         *     The response is the full brand state, the same object that
-         *     `GET /reseller/identity` returns, with `smtp.active` set to `true`.
-         *     Use `POST /reseller/identity/smtp/test` to check a server without
-         *     saving it, and `POST /reseller/identity/smtp/disable` to stop
-         *     using it.
+         *     `host` and `port` are required. `encryption` is `starttls` (the default), `ssl` or `none`. If you leave `password` blank and a server is already saved, the saved password is used. The password is never returned.
          *
-         *     Errors: `400 invalid_request` when no brand is saved yet, when
-         *     `host` or `port` is missing, when `encryption` is not one of the
-         *     three values, or when the login fails. `401` for a missing or
-         *     invalid key. `403 forbidden` when the user is not the owner or an
-         *     admin, or the account cannot hold a brand or use a custom email
+         *     The response is the full brand state, the same object `GET
+         *     /reseller/identity` returns, with `smtp.active` set to `true`. To check a
+         *     server without saving it, use `POST /reseller/identity/smtp/test`. To stop
+         *     using it, use `POST /reseller/identity/smtp/disable`.
+         *
+         *     Errors: `400 invalid_request` when no brand is saved, `host` or `port` is
+         *     missing, `encryption` is not one of the three values, or the login fails.
+         *     `401` for a missing or invalid key. `403 forbidden` when the user is not the
+         *     owner or an admin, or the account cannot hold a brand or use a custom email
          *     server. `500 server_error` for a server error.
          */
         post: operations["saveResellerIdentitySmtp"];
@@ -1691,22 +1610,22 @@ export interface paths {
         put?: never;
         /**
          * Test custom email server
-         * @description Check that a login to an email server works. Nothing is saved and
-         *     nothing changes for your clients. Use it before
-         *     `POST /reseller/identity/smtp/save`.
+         * @description Check that a login to an email server works, without saving it.
          *
-         *     Send the same body as the save call. If you leave `password`
-         *     blank, the saved password is used. A brand must be saved first.
+         *     Nothing changes for your clients. Use it before `POST
+         *     /reseller/identity/smtp/save`.
          *
-         *     Who may call: a key whose user is the owner or an admin of a
-         *     reseller organization that can hold a brand and use a custom email
-         *     server. Any other user gets `403`.
+         *     Send the same body as the save call. If you leave `password` blank, the
+         *     saved password is used. Save a brand first.
          *
-         *     Errors: `400 invalid_request` when no brand is saved yet, when
-         *     `host` or `port` is missing, or when the login fails. The
-         *     `error_description` gives the reason. `401` for a missing or
-         *     invalid key. `403 forbidden` when the user is not the owner or an
-         *     admin, or the account cannot hold a brand or use a custom email
+         *     Who may call: a key whose user is the owner or an admin of a reseller
+         *     organization that can hold a brand and use a custom email server. Any other
+         *     user gets `403`.
+         *
+         *     Errors: `400 invalid_request` when no brand is saved, `host` or `port` is
+         *     missing, or the login fails. The `error_description` gives the reason. `401`
+         *     for a missing or invalid key. `403 forbidden` when the user is not the owner
+         *     or an admin, or the account cannot hold a brand or use a custom email
          *     server. `500 server_error` for a server error.
          */
         post: operations["testResellerIdentitySmtp"];
@@ -1728,21 +1647,22 @@ export interface paths {
         /**
          * Disable custom email server
          * @description Stop sending your clients' emails through your own email server.
-         *     Their emails go back to the default sender. The saved server and its
-         *     login are kept, so you can switch it on again with
-         *     `POST /reseller/identity/smtp/save`. Your brand is not changed.
          *
-         *     Send no body. Who may call: a key whose user is the owner or an
-         *     admin of a reseller organization that can hold a brand and use a
-         *     custom email server. Any other user gets `403`.
+         *     Their emails go back to the default sender. The saved server and its login
+         *     are kept, so you can switch it on again with `POST
+         *     /reseller/identity/smtp/save`. Your brand does not change.
          *
-         *     The response is the full brand state, the same object that
-         *     `GET /reseller/identity` returns, with `smtp.active` set to `false`.
+         *     Send no body. Who may call: a key whose user is the owner or an admin of a
+         *     reseller organization that can hold a brand and use a custom email server.
+         *     Any other user gets `403`.
          *
-         *     Errors: `400 invalid_request` when no brand is saved yet. `401` for
-         *     a missing or invalid key. `403 forbidden` when the user is not the
-         *     owner or an admin, or the account cannot hold a brand or use a
-         *     custom email server. `500 server_error` for a server error.
+         *     The response is the full brand state, the same object `GET
+         *     /reseller/identity` returns, with `smtp.active` set to `false`.
+         *
+         *     Errors: `400 invalid_request` when no brand is saved. `401` for a missing or
+         *     invalid key. `403 forbidden` when the user is not the owner or an admin, or
+         *     the account cannot hold a brand or use a custom email server. `500
+         *     server_error` for a server error.
          */
         post: operations["disableResellerIdentitySmtp"];
         delete?: never;
@@ -1762,42 +1682,36 @@ export interface paths {
         put?: never;
         /**
          * Block or restore a client
-         * @description Block a client, or restore one you blocked. Nothing is deleted, so
-         *     the client's agents, numbers, campaigns and history stay as they
-         *     are and a restore brings the client back as it was.
+         * @description Block a client, or restore one you blocked.
          *
-         *     Name the target with exactly one of `user_id` (one user) or
-         *     `organization_id` (every user in a client organization). Both
-         *     must be your direct clients.
+         *     Nothing is deleted. The client's agents, numbers, campaigns and history
+         *     stay, and a restore brings the client back as it was.
          *
-         *     Block (`blocked: true`): the client is signed out and its API keys
-         *     stop working at once. Users that are already blocked by their own
-         *     organization admin, or whose account has expired, are left as they
-         *     are. The owner of a client organization can only be blocked
-         *     together with the whole organization: send `organization_id`.
+         *     Send exactly one of `user_id` (one user) or `organization_id` (every user in
+         *     a client organization). Both must be your direct clients.
          *
-         *     Restore (`blocked: false`): lifts only the blocks you made, and
-         *     clears an expiry date that passed while the client was blocked.
-         *     Restoring a user you did not block returns `409`.
+         *     Block (`blocked: true`): the client is signed out and its API keys stop
+         *     working at once. Users already blocked by their own organization admin, or
+         *     whose account expired, are left as they are. To block the owner of a client
+         *     organization, send `organization_id` so the whole organization is blocked.
          *
-         *     `detach_numbers` (only with `organization_id` and `blocked: true`)
-         *     also detaches the organization's phone numbers from their agents,
-         *     so nothing answers on them. The response lists what was detached
-         *     in `detached_numbers`, so you can attach them again.
+         *     Restore (`blocked: false`): lifts only the blocks you made, and clears an
+         *     expiry date that passed while the client was blocked. Restoring a user you
+         *     did not block returns `409`.
+         *
+         *     `detach_numbers` (only with `organization_id` and `blocked: true`) also detaches the organization's phone numbers from their agents, so nothing answers on them. The response lists them in `detached_numbers`, so you can attach them again.
          *
          *     Who may call: a reseller key. Any other key gets `403`.
          *
-         *     Errors: `400 invalid_request` when `blocked` or `detach_numbers`
-         *     is not a JSON boolean, when `user_id` and `organization_id` are
-         *     both sent or both missing, when an id is not an integer, or when
-         *     `detach_numbers` is used without `organization_id` or with
-         *     `blocked: false`. `401` for a missing or invalid key.
-         *     `403 forbidden` when the key is not a reseller's, or when you block a
-         *     user who owns a client organization by `user_id`. `404 not_found`
-         *     when the user or organization is not your client. A client that
-         *     belongs to someone else gives the same answer as one that does
-         *     not exist. `409 conflict` when you restore a user you did not
-         *     block.
+         *     Errors: `400 invalid_request` when `blocked` or `detach_numbers` is not a
+         *     JSON boolean, `user_id` and `organization_id` are both sent or both missing,
+         *     an id is not an integer, or `detach_numbers` is used without
+         *     `organization_id` or with `blocked: false`. `401` for a missing or invalid
+         *     key. `403 forbidden` when the key is not a reseller's, or when you block a
+         *     client organization's owner by `user_id`. `404 not_found` when the user or
+         *     organization is not your client. A client that belongs to someone else gives
+         *     the same answer as one that does not exist. `409 conflict` when you restore
+         *     a user you did not block.
          */
         post: operations["setClientAccess"];
         delete?: never;
@@ -1815,21 +1729,22 @@ export interface paths {
         };
         /**
          * Get usage across your clients
-         * @description Your whole book for one period: each client's minutes, calls, spend
-         *     and the margin you made on it, your totals, how long your balance
-         *     will last, and your recurring revenue.
+         * @description Get usage, spend and margin across all your clients for one period.
+         *
+         *     The response has each client's minutes, calls, spend and margin, your
+         *     totals, how long your balance will last, and your recurring revenue.
          *
          *     Pass `month`, or `date_from` and `date_to`. With neither, you get the
          *     current month. Days are counted in your account's timezone, which the
          *     response returns. A range can span at most 366 days.
          *
-         *     All amounts are in US dollars. Revenue and margin count credit sales
-         *     to your clients in the period. Usage counts what your clients spent
-         *     their credit on. Burn and runway always look at the last 30 days, so
-         *     they do not move with the period you pick.
+         *     All amounts are in US dollars. Revenue and margin count credit sales to your
+         *     clients in the period. Usage counts what your clients spent their credit on.
+         *     Burn and runway always use the last 30 days, so the period does not change
+         *     them.
          *
-         *     Who may call: the reseller account owner or an admin. Any other key
-         *     gets `403`.
+         *     Who may call: the reseller account owner or an admin. Any other key gets
+         *     `403`.
          */
         get: operations["getResellerUsage"];
         put?: never;
@@ -1849,18 +1764,19 @@ export interface paths {
         };
         /**
          * Get one client's usage
-         * @description One client's statement for a period: its spend by type, its calls
-         *     broken down by day, agent, campaign, number and direction, the numbers
-         *     and channels it bought, and the margin you made on it.
+         * @description Get one client's usage statement for a period.
          *
-         *     Takes the same `month`, or `date_from` and `date_to`, as
-         *     `GET /reseller/usage`. All amounts are in US dollars, at the rates
-         *     you set for the client. Minutes are billable minutes. Each breakdown
-         *     lists the biggest spend first, and `by_day` runs oldest first.
+         *     The statement has the client's spend by type, its calls by day, agent,
+         *     campaign, number and direction, the numbers and channels it bought, and your
+         *     margin on it.
          *
-         *     Who may call: the reseller account owner or an admin. A client that is
-         *     not one of your direct clients gets `404`, the same answer as one that
-         *     does not exist.
+         *     Takes the same `month`, or `date_from` and `date_to`, as `GET
+         *     /reseller/usage`. Amounts are in US dollars at the rates you set for the
+         *     client. Minutes are billable minutes. Each breakdown lists the biggest spend
+         *     first, and `by_day` runs oldest first.
+         *
+         *     Who may call: the reseller account owner or an admin. A client that is not
+         *     your direct client gets `404`, the same answer as one that does not exist.
          */
         get: operations["getResellerClientUsage"];
         put?: never;
@@ -1880,18 +1796,18 @@ export interface paths {
         };
         /**
          * Preview releasing a client
-         * @description What releasing a client would do, changing nothing. Call it before
-         *     `POST /reseller/clients/release` to confirm the amounts and the
-         *     numbers that come back.
+         * @description Preview what releasing a client would do, changing nothing.
          *
-         *     Returns the client's balance and the share of it that returns to
-         *     you, each of its numbers and whether it transfers back to you, its
-         *     users, and `has_live_subscription`. A release is refused while
-         *     `has_live_subscription` is true.
+         *     Call it before `POST /reseller/clients/release` to confirm the amounts and
+         *     the numbers that come back.
          *
-         *     Who may call: a reseller key. Any other key gets `403`. A client that
-         *     is not one of your direct clients gets `404`, the same answer as one
-         *     that does not exist.
+         *     The response has the client's balance and the share that returns to you,
+         *     each number and whether it transfers back to you, the client's users, and
+         *     `has_live_subscription`. A release is refused while `has_live_subscription`
+         *     is true.
+         *
+         *     Who may call: a reseller key. Any other key gets `403`. A client that is not
+         *     your direct client gets `404`, the same answer as one that does not exist.
          */
         get: operations["previewClientRelease"];
         put?: never;
@@ -1913,22 +1829,22 @@ export interface paths {
         put?: never;
         /**
          * Release a client
-         * @description End your relationship with one direct client, for good. One-way:
-         *     unlike blocking, a release cannot be undone.
+         * @description End your relationship with one direct client, for good.
          *
-         *     It reverts the balance you funded, detaches the client's numbers,
-         *     takes back the ones you bought, unlinks the organization, and retires
-         *     its logins so the same email can sign up fresh. The client
-         *     organization stays as history.
+         *     This is one-way. Unlike blocking, a release cannot be undone.
+         *
+         *     It reverts the balance you funded, detaches the client's numbers, takes back
+         *     the ones you bought, unlinks the organization, and retires its logins so the
+         *     same email can sign up fresh. The client organization stays as history.
          *
          *     Preview it first with `GET /reseller/clients/release-preview`.
          *
-         *     Who may call: a reseller key. Any other key gets `403`. A client that
-         *     is not one of your direct clients gets `404`.
+         *     Who may call: a reseller key. Any other key gets `403`. A client that is not
+         *     your direct client gets `404`.
          *
-         *     Errors: `409 conflict` while the client has a live subscription, which
-         *     must be cancelled first. `500 server_error` if the balance moved while
-         *     releasing; nothing is changed, so try again.
+         *     Errors: `409 conflict` while the client has a live subscription. Cancel it
+         *     first. `500 server_error` if the balance moved during the release. Nothing
+         *     changes, so try again.
          */
         post: operations["releaseClient"];
         delete?: never;
@@ -1948,8 +1864,9 @@ export interface paths {
         put?: never;
         /**
          * Update user expiry
-         * @description Set or remove the expiry date on a child user. The user must
-         *     belong to a child organization of your reseller.
+         * @description Set or remove the expiry date on a child user.
+         *
+         *     The user must belong to a child organization of your reseller.
          */
         post: operations["setUserExpiry"];
         delete?: never;
@@ -1970,9 +1887,10 @@ export interface paths {
         /**
          * Issue a client API key
          * @description Issue a named API key for a user in one of your client organizations.
-         *     The secret is in this response only, so store it now. No listing shows
-         *     it again. To rotate a key, issue a new one, switch the integration to
-         *     it, then revoke the old one.
+         *
+         *     The secret is in this response only, so store it now. No listing shows it
+         *     again. To rotate a key, issue a new one, switch the integration to it, then
+         *     revoke the old one.
          */
         post: operations["issueChildApiKey"];
         delete?: never;
@@ -1992,11 +1910,12 @@ export interface paths {
         put?: never;
         /**
          * Revoke a client API key
-         * @description Revoke one of a client user's API keys. The key stops working on the
-         *     next request. Pass the key's `api_key_id`, or `0` for the
-         *     default key every account gets at signup. Revoking a key that is
-         *     already revoked succeeds. `GET /reseller/organizations` lists each
-         *     user's active keys by `id` and `name`.
+         * @description Revoke one API key of a client user.
+         *
+         *     The key stops working on the next request. Pass the key's `api_key_id`, or
+         *     `0` for the default key every account gets at signup. Revoking a key that is
+         *     already revoked succeeds. `GET /reseller/organizations` lists each user's
+         *     active keys by `id` and `name`.
          */
         post: operations["revokeChildApiKey"];
         delete?: never;
@@ -2017,17 +1936,16 @@ export interface paths {
         /**
          * Set child concurrency limit
          * @description Set the maximum number of simultaneous calls a client can run.
-         *     `new_limit` is the absolute figure you want, not a change to the
-         *     current one.
          *
-         *     Assigning is free: any figure is accepted, nothing is deducted from
-         *     you, and this call never fails for lack of capacity.
+         *     `new_limit` is the absolute figure you want, not a change to the current one.
          *
-         *     It does not create capacity, though. Your own concurrent call limit is
-         *     the ceiling for your whole account family at dial time, so what you set
-         *     here is a per-client cap, and your own limit is the capacity those caps
-         *     compete for. Assign a client more than you hold and the extra simply
-         *     cannot be dialed.
+         *     Assigning is free. Any figure is accepted, nothing is deducted from you, and
+         *     the call never fails for lack of capacity.
+         *
+         *     It does not create capacity. Your own concurrent call limit is the ceiling
+         *     for your whole account family at dial time, so each figure you set is a
+         *     per-client cap. Assign a client more than you hold and the extra cannot be
+         *     dialed.
          */
         post: operations["setChildConcurrency"];
         delete?: never;
@@ -2047,10 +1965,11 @@ export interface paths {
         put?: never;
         /**
          * Calculate credit operation
-         * @description Preview the cost of a transfer or revert without moving any
-         *     credits. Use this to confirm amounts before calling the
-         *     transfer or revert endpoints. The response shape differs
-         *     between forward transfers and reverts. See the examples.
+         * @description Preview the cost of a transfer or revert without moving any credits.
+         *
+         *     Use it to confirm amounts before calling the transfer or revert endpoints.
+         *     The response shape differs between forward transfers and reverts. See the
+         *     examples.
          */
         post: operations["calculateCreditOperation"];
         delete?: never;
@@ -2070,15 +1989,14 @@ export interface paths {
         put?: never;
         /**
          * Transfer credits to a child
-         * @description Transfer minutes from your balance to a client, at the rate you set.
+         * @description Transfer minutes from your balance to a client at the rate you set.
          *
-         *     Two different amounts move: your balance is debited at your own rate,
-         *     and the client is credited at `cost_per_min`. The gap between them is
-         *     your margin, so a `cost_per_min` below your own rate is refused as a
-         *     loss rather than silently costing you money on every call.
+         *     Two amounts move. Your balance is debited at your own rate, and the client
+         *     is credited at `cost_per_min`. The gap is your margin. A `cost_per_min`
+         *     below your own rate is refused as a loss.
          *
-         *     The target organization must be a direct child of your reseller. Use
-         *     the calculate endpoint first to preview both amounts.
+         *     The target organization must be your direct child. Use the calculate
+         *     endpoint first to preview both amounts.
          */
         post: operations["transferCreditsToChild"];
         delete?: never;
@@ -2121,9 +2039,9 @@ export interface paths {
         };
         /**
          * Credit transfer logs
-         * @description Paginated history of all credit transfers and reverts for the
-         *     reseller account. Returns reverse-chronological order by
-         *     default. Date filters are inclusive.
+         * @description List credit transfers and reverts for your reseller account.
+         *
+         *     Results are paginated, newest first by default. Date filters are inclusive.
          */
         get: operations["getResellerCreditLogs"];
         put?: never;
@@ -2143,14 +2061,15 @@ export interface paths {
         };
         /**
          * Get KYC status
-         * @description Get the identity verification status of a client for every carrier it
-         *     can verify on. Use `next_step` to know which step to call next, so
-         *     you drive the whole flow off one poll instead of hardcoding the
-         *     sequence.
+         * @description Get a client's identity verification status for every carrier it can verify
+         *     on.
          *
-         *     Verification is per carrier, not per region: a client verified on one
-         *     carrier of a region still has to verify on the other before it can
-         *     buy there. A region with one carrier returns exactly one entry.
+         *     Use `next_step` to know which call comes next, so one poll drives the whole
+         *     flow.
+         *
+         *     Verification is per carrier, not per region. A client verified on one
+         *     carrier of a region still has to verify on the other before it can buy
+         *     there. A region with one carrier returns one entry.
          */
         get: operations["getResellerKycStatus"];
         put?: never;
@@ -2170,15 +2089,16 @@ export interface paths {
         };
         /**
          * Get KYC requirements for a region
-         * @description Get the ordered list of verification steps for a carrier and the
-         *     fields each step needs, so your integration can build a verification
-         *     form without hardcoding the sequence.
+         * @description Get the ordered verification steps for a carrier and the fields each step
+         *     needs.
          *
-         *     Carriers in the same region do not share a step list. One verifies
-         *     contact details with an OTP pair and ends in a preview-then-accept;
-         *     another has no OTP step at all and verifies Aadhaar by sending the
-         *     client to a verification page in a browser. Read this endpoint per carrier,
-         *     branch on each step's `method`, and one integration drives both.
+         *     Use it to build a verification form without hardcoding the sequence.
+         *
+         *     Carriers in the same region do not share a step list. One verifies contact
+         *     details with an OTP pair and ends in a preview-then-accept. Another has no
+         *     OTP step and verifies Aadhaar by sending the client to a verification page
+         *     in a browser. Read this endpoint per carrier and branch on each step's
+         *     `method`.
          */
         get: operations["getResellerKycRequirements"];
         put?: never;
@@ -2200,17 +2120,124 @@ export interface paths {
         put?: never;
         /**
          * Submit a KYC verification step
-         * @description Run one step of a client's identity verification. One endpoint handles
-         *     every step: the `step` path parameter names the step, and the body
-         *     carries `user_id`, `region`, `carrier`, and whatever that step needs.
-         *     The example below is the `register` step on `carrier-1`.
+         * @description Run one step of a client's identity verification.
          *
-         *     Which steps exist, which fields they need, and how each one is
-         *     performed are all per carrier. Read them from the requirements
-         *     operation for the carrier you are on, follow `next_step`, and branch
-         *     on `method`.
+         *     One endpoint handles every step. The `step` path parameter names the step.
+         *     The body carries `user_id`, `region`, `carrier`, and whatever that step
+         *     needs. The example below is the `register` step on `carrier-1`.
+         *
+         *     Steps, their fields and how each runs are per carrier. Read them from the
+         *     requirements operation for your carrier, follow `next_step`, and branch on
+         *     `method`.
          */
         post: operations["submitResellerKycStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get plan and add-ons
+         * @description Read your organization's plan: its status and renewal or expiry date,
+         *     your concurrency add-ons, your concurrency limit, which plan features
+         *     you have, and the phone numbers that renew in the next 14 days with
+         *     whether your balance covers each renewal. It also says when your
+         *     organization was created, whether it is paid, and how many calls it
+         *     made in the last 7 and 30 days.
+         *
+         *     Your balance and rates are on Get account balance.
+         *
+         *     The API key's user needs Billing access in your organization. If
+         *     you get a `403`, an administrator can grant it when Billing is
+         *     enabled for your organization. When it is not, contact support.
+         */
+        get: operations["getPlanAndAddons"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/referrals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get referrals
+         * @description Your referral link, how many people joined through it, how many
+         *     rewards you earned, and your most recent referrals with the status of
+         *     each reward. A reward on hold says so in `status_text`.
+         *
+         *     `program_available` is `false` when referral rewards are not offered
+         *     to your account.
+         */
+        get: operations["getReferrals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List support cases
+         * @description The support cases you filed, newest first, as your ticket page lists
+         *     them: case number, title, type, status, when it was created and
+         *     resolved, and when the last public message was posted. Read one
+         *     case's messages with Get support case.
+         *
+         *     Cases belong to the person who filed them, so you see your own cases,
+         *     not your colleagues'. There is no `user_id` parameter: sending one
+         *     returns `400`, and a reseller reads a client's cases with the client's
+         *     own API key. A white-label account gets an empty list.
+         */
+        get: operations["listSupportCases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/support/cases/{case_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get support case
+         * @description One support case you filed, with its public thread: the messages you
+         *     and support exchanged, as your ticket page shows them. Internal notes
+         *     are never included. A case you didn't file returns `404`, and so does
+         *     any case for a white-label account. `user_id` is not accepted (`400`).
+         */
+        get: operations["getSupportCase"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2226,28 +2253,87 @@ export interface paths {
         };
         /**
          * Get account balance
-         * @description Read your organization's wallet: the remaining balance, the minutes
-         *     it buys at your rates, your plan, your concurrency headroom, and
-         *     whether auto-recharge will refill it.
+         * @description Read your organization's wallet balance, plan and auto-recharge state.
          *
-         *     Use it before a campaign, or on a schedule, so you find out you are
-         *     low on credit from this endpoint rather than from a call failing
-         *     with `402 payment_required`.
+         *     The response also has the minutes the balance buys at your rates and your
+         *     concurrency headroom.
          *
-         *     The response always describes the organization the API key belongs
-         *     to. There is no parameter for reading another account; resellers
-         *     read a client's figures through the Reseller endpoints.
+         *     Call it before a campaign, or on a schedule, so you learn about low credit
+         *     here and not from a call failing with `402 payment_required`.
          *
-         *     A balance at or below zero does not always mean calls will stop. An
-         *     organization on usage-based billing (`plan.is_usage_based`) keeps
-         *     placing calls and is metered to its payment method instead, so check
-         *     that flag before treating a zero balance as a stop condition.
+         *     The response always describes the organization the API key belongs to. There
+         *     is no parameter for another account. Resellers read a client's figures
+         *     through the Reseller endpoints.
          *
-         *     The API key's user needs Billing access in your organization. If
-         *     you get a `403`, an administrator can grant it when Billing is
-         *     enabled for your organization; when it is not, contact support.
+         *     A balance at or below zero does not always stop calls. An organization on
+         *     usage-based billing (`plan.is_usage_based`) keeps placing calls and is
+         *     metered to its payment method. Check that flag before treating zero as a
+         *     stop condition.
+         *
+         *     The API key's user needs Billing access in your organization. If you get a
+         *     `403`, an administrator can grant it when Billing is enabled for your
+         *     organization. When it is not, contact support.
          */
         get: operations["getAccountBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List payments
+         * @description The payments you made, newest first: balance top-ups and subscription
+         *     payments, what each was for, the amount and currency, its status, the
+         *     subscription period, and why a failed one was refused.
+         *
+         *     Use it to answer "did my payment go through?" or "why was my card
+         *     declined?". It lists the payments the API key's user made, as the
+         *     billing page shows them. Card details are never included.
+         *
+         *     The API key's user needs Billing access in your organization.
+         */
+        get: operations["listPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/balance/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get balance history
+         * @description Every change to your organization's balance, newest first: each call
+         *     charge, recharge, phone number purchase or renewal, subscription
+         *     credit, reward and adjustment, with the signed amount and the balance
+         *     right after it.
+         *
+         *     Use it to find out where credit went, or when a top-up landed. The
+         *     dashboard's usage statement shows the same entries as totals per day
+         *     and per kind.
+         *
+         *     Days are in your account's time zone. Without dates you get the last 31
+         *     days; a range covers at most 31 days. The API key's user needs Billing
+         *     access in your organization.
+         */
+        get: operations["getBalanceHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2265,28 +2351,30 @@ export interface paths {
         };
         /**
          * List cloned voices
-         * @description Your cloned voices, oldest first, one cursor page at a time. Call it with
-         *     no `cursor`, then pass back the `next_cursor` you were handed until it is
+         * @description List your cloned voices, oldest first, one cursor page at a time.
+         *
+         *     Call it with no `cursor`. Then pass back each `next_cursor` until it is
          *     `null`.
          *
-         *     Once a voice is `ready`, its `voice_id` is the provider voice id to put
-         *     in an agent's `voice.voice_id` with `voice.provider: cartesia`.
+         *     When a voice is `ready`, put its `voice_id` in an agent's `voice.voice_id`
+         *     with `voice.provider: cartesia`.
          */
         get: operations["listClonedVoices"];
         put?: never;
         /**
          * Create a cloned voice
-         * @description Clone a voice from an audio sample. The sample must be Base64 encoded and
-         *     1 KB to 25 MB. MP3, WAV and WebM are accepted; a non-audio body is
-         *     refused.
+         * @description Clone a voice from a Base64 audio sample.
          *
-         *     Creation is asynchronous. This call returns `202` at once with
-         *     `status: processing`. Poll `GET /voices/{voice_id}` until `status` is
-         *     `ready` or `failed`, then use the `voice_id` in an agent's `voice` config with
+         *     The sample must be 1 KB to 25 MB. MP3, WAV and WebM are accepted. A
+         *     non-audio body is refused.
+         *
+         *     Creation is asynchronous. The call returns `202` at once with `status:
+         *     processing`. Poll `GET /voices/{voice_id}` until `status` is `ready` or
+         *     `failed`. Then use `voice_id` in an agent's `voice` config with
          *     `voice.provider: cartesia`.
          *
-         *     You must send `consent: true`: you confirm you have the right to clone
-         *     this voice. The attestation is recorded against the clone.
+         *     Send `consent: true` to confirm you have the right to clone this voice. The
+         *     attestation is recorded against the clone.
          *
          *     Limits apply per user: 5 clones an hour, 20 a day, and 200 stored
          *     (processing plus ready). A request over a limit is refused with `429`.
@@ -2336,9 +2424,11 @@ export interface paths {
         };
         /**
          * Play a cloned voice sample
-         * @description Stream the generated mp3 sample of a cloned voice. Only the owner can
-         *     fetch it. `404` (`sample_not_ready`) when no sample exists yet. The
-         *     request needs your API key in the `Authorization` header.
+         * @description Stream the generated mp3 sample of a cloned voice.
+         *
+         *     Only the owner can fetch it. Send your API key in the `Authorization`
+         *     header. If no sample exists yet, the call returns `404`
+         *     (`sample_not_ready`).
          */
         get: operations["getClonedVoiceSample"];
         put?: never;
@@ -2362,7 +2452,11 @@ export interface paths {
         };
         /**
          * List workflow node types
-         * @description Search the node types a workflow can use, such as `whatsapp`, `voice_ai` or `conditional`. Call it first when you do not know which node to add. Then call `getWorkflowNodeType` for the settings of one type.
+         * @description Search the node types a workflow can use.
+         *
+         *     Examples are `whatsapp`, `voice_ai` and `conditional`. Call it first when
+         *     you do not know which node to add. Then call `getWorkflowNodeType` for one
+         *     type's settings.
          */
         get: operations["listWorkflowNodeTypes"];
         put?: never;
@@ -2382,7 +2476,11 @@ export interface paths {
         };
         /**
          * Get a workflow node type
-         * @description The settings one node type reads, with their types, required flags and outputs. Call it before you add or edit a node, because its `fields` are the keys of the node's `config`. Use `detail=full` only when you need help text and examples.
+         * @description Get the settings one node type reads.
+         *
+         *     Call it before you add or edit a node. Its `fields` are the keys of the
+         *     node's `config`. Use `detail=full` only when you need help text and
+         *     examples.
          */
         get: operations["getWorkflowNodeType"];
         put?: never;
@@ -2402,7 +2500,11 @@ export interface paths {
         };
         /**
          * List choices for a node field
-         * @description The choices for one `ref` field of a node type, such as the phone numbers, agents or integrations in your account. Call it for every `ref` field and never guess an id. If it returns `400 no_options`, the field is not chosen from a list, so ask the user for the value.
+         * @description List the choices for one `ref` field of a node type.
+         *
+         *     Examples are the phone numbers, agents or integrations in your account. Call
+         *     it for every `ref` field and never guess an id. If it returns `400
+         *     no_options`, the field is not a list choice, so ask the user for the value.
          */
         get: operations["listWorkflowFieldOptions"];
         put?: never;
@@ -2422,13 +2524,19 @@ export interface paths {
         };
         /**
          * List workflows
-         * @description Your workflows, oldest first, one cursor page at a time. Use it to find a workflow id. Pass back `next_cursor` until it is `null`.
+         * @description List your workflows, oldest first, one cursor page at a time.
+         *
+         *     Use it to find a workflow id. Pass back `next_cursor` until it is `null`.
          */
         get: operations["listWorkflows"];
         put?: never;
         /**
          * Create a workflow
-         * @description Create a workflow with a draft. Without `graph`, the draft holds one `trigger` node, ready for `editWorkflow` ops. Pass `graph` only to start from a complete graph. The response carries the `revision` you need to edit.
+         * @description Create a workflow with a draft.
+         *
+         *     Without `graph`, the draft holds one `trigger` node, ready for
+         *     `editWorkflow` ops. Pass `graph` only to start from a complete graph. The
+         *     response carries the `revision` you need to edit.
          */
         post: operations["createWorkflow"];
         delete?: never;
@@ -2446,21 +2554,35 @@ export interface paths {
         };
         /**
          * Get a workflow
-         * @description One workflow with its draft, status and `revision`. Call it before every edit to get the current `revision`. Use `view=structure` to see nodes and edges without config on a large workflow. Secrets read back as `********`.
+         * @description Get one workflow with its draft, status and `revision`.
+         *
+         *     Call it before every edit to get the current `revision`. Use
+         *     `view=structure` to see nodes and edges without config on a large workflow.
+         *     Secrets read back as `********`.
          */
         get: operations["getWorkflow"];
         put?: never;
         post?: never;
         /**
          * Delete a workflow
-         * @description Delete a workflow. Its published version stops running. This cannot be undone, so confirm with the user first. To stop it without deleting, use `deactivateWorkflow`.
+         * @description Delete a workflow and stop its published version.
+         *
+         *     This cannot be undone, so confirm with the user first. To stop it without
+         *     deleting, use `deactivateWorkflow`.
          */
         delete: operations["deleteWorkflow"];
         options?: never;
         head?: never;
         /**
          * Edit a workflow draft
-         * @description Change the draft with a list of `ops`: add, update, move or delete nodes, and connect or disconnect them. The ops apply all together or not at all. You must send the `revision` from your last read. If you get `409 revision_conflict`, read the workflow again and retry. Secrets read back as `********`. Send them back unchanged to keep the stored value. This edits the draft only. Use `publishWorkflow` to make it live.
+         * @description Change the draft with a list of `ops`.
+         *
+         *     Ops add, update, move or delete nodes, and connect or disconnect them. They
+         *     apply all together or not at all. Send the `revision` from your last read.
+         *     On `409 revision_conflict`, read the workflow again and retry.
+         *
+         *     Secrets read back as `********`. Send them back unchanged to keep the stored
+         *     value. This edits the draft only. Use `publishWorkflow` to make it live.
          */
         patch: operations["editWorkflow"];
         trace?: never;
@@ -2476,7 +2598,10 @@ export interface paths {
         put?: never;
         /**
          * Validate a workflow draft
-         * @description Check the draft and list what blocks publish. It changes nothing. Call it after your edits and fix every error before `publishWorkflow`.
+         * @description Check the draft and list what blocks publish.
+         *
+         *     It changes nothing. Call it after your edits and fix every error before
+         *     `publishWorkflow`.
          */
         post: operations["validateWorkflow"];
         delete?: never;
@@ -2496,7 +2621,11 @@ export interface paths {
         put?: never;
         /**
          * Publish a workflow
-         * @description Make the draft the live version. Real events then run it, unless the workflow is paused. Run `validateWorkflow` first: publish is refused while the draft has errors. Ask the user before you publish.
+         * @description Make the draft the live version.
+         *
+         *     Real events then run it, unless the workflow is paused. Publish is refused
+         *     while the draft has errors, so run `validateWorkflow` first. Ask the user
+         *     before you publish.
          */
         post: operations["publishWorkflow"];
         delete?: never;
@@ -2536,7 +2665,10 @@ export interface paths {
         put?: never;
         /**
          * Deactivate a workflow
-         * @description Turn the published workflow off, so real events stop running it. The workflow and its draft stay. Use `activateWorkflow` to turn it back on.
+         * @description Turn the published workflow off.
+         *
+         *     Real events stop running it. The workflow and its draft stay. Use
+         *     `activateWorkflow` to turn it back on.
          */
         post: operations["deactivateWorkflow"];
         delete?: never;
@@ -2556,11 +2688,40 @@ export interface paths {
         put?: never;
         /**
          * Test a workflow
-         * @description Runs the draft once with payload as the trigger data. Every node runs for real: WhatsApp messages, SMS, emails and calls go out and CRM records change. Ask the user before calling it, and use their own phone number or email in the payload.
+         * @description Run the draft once with `payload` as the trigger data.
          *
-         *     It returns an `execution_id` at once. Poll `getWorkflowExecution` for the result.
+         *     Every node runs for real: WhatsApp messages, SMS, emails and calls go out,
+         *     and CRM records change. Ask the user first, and use their own phone number
+         *     or email in the payload.
+         *
+         *     It returns an `execution_id` at once. Poll `getWorkflowExecution` for the
+         *     result.
          */
         post: operations["testWorkflow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workflows/{workflow_id}/executions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List workflow runs
+         * @description List recent runs of a workflow, newest first, with the step that failed.
+         *
+         *     Use it to find the run behind "my workflow didn't run after the call":
+         *     filter by `state=failed`, or by the `call_sid` of the call that should
+         *     have started it. Read one run's steps with `getWorkflowExecution`.
+         */
+        get: operations["listWorkflowExecutions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2576,7 +2737,10 @@ export interface paths {
         };
         /**
          * Get a workflow run
-         * @description One run of a workflow, with the result of each step. Use it to read the outcome of `testWorkflow`. A run is finished when `state` is `completed`, `failed` or `cancelled`.
+         * @description Get one workflow run with the result of each step.
+         *
+         *     Use it to read the outcome of `testWorkflow`. The run is finished when
+         *     `state` is `completed`, `failed` or `cancelled`.
          */
         get: operations["getWorkflowExecution"];
         put?: never;
@@ -2596,28 +2760,31 @@ export interface paths {
         };
         /**
          * List WhatsApp numbers
-         * @description The WhatsApp numbers your API key can see, oldest first. Use it to find
-         *     a number id, then pass that id to the other routes. Each number carries
-         *     `capabilities`, which says what it can send. Archived numbers are left
-         *     out.
+         * @description List the WhatsApp numbers your API key can see.
+         *
+         *     Numbers come oldest first, and archived ones are left out. Use it to find a
+         *     number id for the other routes. Each number carries `capabilities`, which
+         *     says what it can send.
          */
         get: operations["listWhatsappNumbers"];
         put?: never;
         /**
          * Connect WhatsApp numbers
-         * @description Connects numbers from your own WhatsApp Business Account with your Meta
-         *     access token. List them first with
-         *     [Preview numbers](/docs/api-reference/whatsapp/previewWhatsappNumbers),
-         *     then pass the ids you want.
+         * @description Connect numbers from your WhatsApp Business Account with your Meta access
+         *     token.
          *
-         *     The token must never expire and must carry both WhatsApp permissions
-         *     (`whatsapp_business_management` and `whatsapp_business_messaging`). A
-         *     system user token does. Add `app_secret` to receive replies. Without
-         *     it the number can send but not receive.
+         *     List the numbers first with [Preview
+         *     numbers](/docs/api-reference/whatsapp/previewWhatsappNumbers), then pass the
+         *     ids you want.
          *
-         *     Connecting a number again updates it: send a new `access_token` or
-         *     `app_secret` the same way to change either. One number failing does
-         *     not stop the others. It is listed in `failed` with the reason.
+         *     The token must never expire and must carry both
+         *     `whatsapp_business_management` and `whatsapp_business_messaging`. A system
+         *     user token does. Add `app_secret` to receive replies. Without it the number
+         *     can send but not receive.
+         *
+         *     Connecting a number again updates it. Send a new `access_token` or
+         *     `app_secret` to change either. One number failing does not stop the others.
+         *     It is listed in `failed` with the reason.
          */
         post: operations["importWhatsappNumbers"];
         delete?: never;
@@ -2637,12 +2804,14 @@ export interface paths {
         put?: never;
         /**
          * Preview numbers to connect
-         * @description Lists the numbers on your WhatsApp Business Account with their health,
-         *     and connects nothing. The access token is checked first, against the
-         *     same rules as connecting, so a preview that passes can connect.
+         * @description List the numbers on your WhatsApp Business Account with their health.
+         *     Connects nothing.
          *
-         *     Connect a number with `needs_migration` or `needs_registration` only
-         *     after fixing it in WhatsApp Manager, or its sends fail.
+         *     The access token is checked first, against the same rules as connecting, so
+         *     a preview that passes can connect.
+         *
+         *     Fix a number with `needs_migration` or `needs_registration` in WhatsApp
+         *     Manager before you connect it, or its sends fail.
          */
         post: operations["previewWhatsappNumbers"];
         delete?: never;
@@ -2660,8 +2829,10 @@ export interface paths {
         };
         /**
          * Get a WhatsApp number
-         * @description One number, with its status, quality and messaging limit, and what it
-         *     can send. A number in another workspace answers `404`.
+         * @description Get one number with its status, quality, messaging limit and what it can
+         *     send.
+         *
+         *     A number in another workspace answers `404`.
          */
         get: operations["getWhatsappNumber"];
         put?: never;
@@ -2681,14 +2852,31 @@ export interface paths {
         };
         /**
          * List templates
-         * @description The number's message templates, as last synced, oldest first. Pass
-         *     `status=approved` to see exactly the templates a send accepts. Sync the
-         *     list with `syncWhatsappTemplates` first if a template you expect is
-         *     missing.
+         * @description List the number's message templates, as last synced, oldest first.
+         *
+         *     Pass `status=approved` to see exactly the templates a send accepts. If a
+         *     template you expect is missing, run `syncWhatsappTemplates` first.
          */
         get: operations["listWhatsappTemplates"];
         put?: never;
-        post?: never;
+        /**
+         * Create a template
+         * @description Create a message template on a direct Meta number and send it to WhatsApp
+         *     for review.
+         *
+         *     It answers the new template with status `pending`. WhatsApp usually
+         *     reviews it within minutes. Run `syncWhatsappTemplates` later to see the
+         *     result. Only an `approved` template can be sent.
+         *
+         *     The number must list `template_create` in its capabilities.
+         *
+         *     For an image or document header, upload the file with
+         *     `POST /whatsapp/media` first and pass its `media_id` in `header_media`.
+         *     AI assistants connected through MCP can't upload files, so they create
+         *     text headers only. Create a video header, an authentication template, or
+         *     a link that changes per message in the dashboard.
+         */
+        post: operations["createWhatsappTemplate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2706,13 +2894,39 @@ export interface paths {
         put?: never;
         /**
          * Sync templates
-         * @description Pull the number's templates and their review statuses from WhatsApp into
-         *     your list. Run it after you create or edit a template in Meta. It runs
-         *     at most once a minute per number: a second call inside that minute
-         *     answers `429`.
+         * @description Pull the number's templates and review statuses from WhatsApp into your
+         *     list.
+         *
+         *     Run it after you create or edit a template. It runs at most once a
+         *     minute per number. A second call inside that minute answers `429`.
          */
         post: operations["syncWhatsappTemplates"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp/numbers/{number_id}/templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a template
+         * @description Delete one template from WhatsApp and from your list.
+         *
+         *     It deletes only that language of the template. A post-call action that
+         *     uses it stops sending it. A template that a campaign uses is not deleted:
+         *     delete the campaign first. This cannot be undone, so confirm with the user
+         *     first.
+         */
+        delete: operations["deleteWhatsappTemplate"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2727,10 +2941,11 @@ export interface paths {
         };
         /**
          * Get calling settings
-         * @description Whether calling is on for this number and whether it can be turned on,
-         *     with the list of checks. A failing check does not fail the request: the
-         *     response stays `200` and names the check that blocks. Meta Cloud numbers
-         *     only. Calling must be included in your plan.
+         * @description Get whether calling is on for this number and whether it can be turned on.
+         *
+         *     The response lists the checks. A failing check does not fail the request: it
+         *     stays `200` and names the check that blocks. Meta Cloud numbers only. Your
+         *     plan must include calling.
          */
         get: operations["getWhatsappCalling"];
         put?: never;
@@ -2740,10 +2955,11 @@ export interface paths {
         head?: never;
         /**
          * Turn calling on or off
-         * @description Turn calling on or off for a Meta Cloud number. A customer calls this
-         *     number; it does not place calls. Turning it on requires every blocking
-         *     check to pass, or the request answers `409`. Turning it off is always
-         *     allowed.
+         * @description Turn calling on or off for a Meta Cloud number.
+         *
+         *     A customer calls this number. It does not place calls. Turning calling on
+         *     needs every blocking check to pass, or the request answers `409`. Turning it
+         *     off is always allowed.
          */
         patch: operations["setWhatsappCalling"];
         trace?: never;
@@ -2757,10 +2973,10 @@ export interface paths {
         };
         /**
          * List conversations
-         * @description A number's inbox, newest activity first. Poll it with `updated_since`
-         *     for changes since your last call, or page it with `cursor`. There are no
-         *     event webhooks, so polling is how an integration learns about new
-         *     messages.
+         * @description List a number's inbox, newest activity first.
+         *
+         *     There are no event webhooks, so poll with `updated_since` to learn about new
+         *     messages. Page with `cursor`.
          */
         get: operations["listWhatsappConversations"];
         put?: never;
@@ -2780,8 +2996,9 @@ export interface paths {
         };
         /**
          * Get a conversation
-         * @description One conversation: who owns it, the 24-hour window, whether the customer
-         *     opted out, and the unread count. Poll it while a person is answering.
+         * @description Get one conversation: owner, 24-hour window, opt-out state and unread count.
+         *
+         *     Poll it while a person is answering.
          */
         get: operations["getWhatsappConversation"];
         put?: never;
@@ -2804,7 +3021,9 @@ export interface paths {
         /**
          * Take over a conversation
          * @description Take the conversation from the agent, so it stops replying and your team
-         *     answers. Repeating it changes nothing. Hand it back with
+         *     answers.
+         *
+         *     Repeating it changes nothing. Hand it back with
          *     `handBackWhatsappConversation` when the person is done.
          */
         post: operations["takeOverWhatsappConversation"];
@@ -2825,8 +3044,9 @@ export interface paths {
         put?: never;
         /**
          * Hand a conversation back
-         * @description Give the conversation back to the agent, and clear a pause. The agent
-         *     answers the customer's next message. Repeating it changes nothing.
+         * @description Give the conversation back to the agent and clear any pause.
+         *
+         *     The agent answers the customer's next message. Repeating it changes nothing.
          */
         post: operations["handBackWhatsappConversation"];
         delete?: never;
@@ -2844,26 +3064,28 @@ export interface paths {
         };
         /**
          * List messages
-         * @description One conversation's messages, newest first. Poll forward with `after`
-         *     (the id of the newest message you already have) to get only new ones.
-         *     Page backward through history with `cursor`. Do not pass both.
+         * @description List one conversation's messages, newest first.
+         *
+         *     Poll forward with `after`, the id of the newest message you have, to get
+         *     only new ones. Page back through history with `cursor`. Do not pass both.
          */
         get: operations["listWhatsappMessages"];
         put?: never;
         /**
          * Send a message
-         * @description Send one message through `phone_number_id` to a customer, in a text,
-         *     a template, an image or a document. Set `type` and the matching field.
+         * @description Send a text, template, image or document message to a customer.
          *
-         *     Outside the 24-hour window, only a template goes through. A text, image
-         *     or document send is refused with `409 window_closed`. A template send
-         *     works any time and can start a new conversation.
+         *     It goes out from `phone_number_id`. Set `type` and the field that matches
+         *     it.
          *
-         *     The send does not take the conversation over, so the agent keeps
-         *     answering. Set `take_over: true` to stop the agent and answer yourself.
+         *     Outside the 24-hour window, only a template goes through. Text, image and
+         *     document sends are refused with `409 window_closed`. A template send works
+         *     any time and can start a new conversation.
          *
-         *     `Idempotency-Key` is required. The same key with the same body replays
-         *     the first answer instead of sending again.
+         *     A send does not take the conversation over, so the agent keeps answering.
+         *     Set `take_over: true` to stop the agent and answer yourself.
+         *
+         *     `Idempotency-Key` is required. The same key with the same body replays the first answer instead of sending again.
          */
         post: operations["sendWhatsappMessage"];
         delete?: never;
@@ -2881,9 +3103,11 @@ export interface paths {
         };
         /**
          * Get a message
-         * @description One message with its `timeline`: the delivery and read steps, oldest
-         *     first. Poll it after a send to learn whether the message was delivered
-         *     and read. Also shows what the send cost once it is charged.
+         * @description Get one message with its `timeline` of delivery and read steps, oldest
+         *     first.
+         *
+         *     Poll it after a send to learn whether the message was delivered and read. It
+         *     also shows what the send cost once charged.
          */
         get: operations["getWhatsappMessage"];
         put?: never;
@@ -2905,14 +3129,16 @@ export interface paths {
         put?: never;
         /**
          * Upload media
-         * @description Upload an image or a document, then send it by its `media_id` on
-         *     `sendWhatsappMessage`. Uploading costs nothing; only the send is
-         *     charged. The `media_id` works for 24 hours and only for the number and
-         *     type it was uploaded for.
+         * @description Upload an image or document, then send it by `media_id` with
+         *     `sendWhatsappMessage`, or use it as a template header with
+         *     `createWhatsappTemplate`. A template header file is at most 5 MB.
          *
-         *     Images can be JPEG, PNG or WebP up to 5 MB. Documents can be PDF, DOCX,
-         *     XLSX or plain text up to 16 MB. The file's type is read from its bytes,
-         *     not its name.
+         *     Uploading is free. Only the send is charged. The `media_id` works for 24
+         *     hours, only for the number and type it was uploaded for.
+         *
+         *     Images can be JPEG, PNG or WebP up to 5 MB. Documents can be PDF, DOCX, XLSX
+         *     or plain text up to 16 MB. The type is read from the file's bytes, not its
+         *     name.
          */
         post: operations["uploadWhatsappMedia"];
         delete?: never;
@@ -2937,10 +3163,10 @@ export interface paths {
         put?: never;
         /**
          * Block a customer
-         * @description Stop every message you start to this customer from this number, until
-         *     the block is lifted. The response is `201` when the block is new and
-         *     `200` when the customer was already blocked, in which case the entry is
-         *     returned unchanged.
+         * @description Block a customer from receiving messages you start from this number.
+         *
+         *     The block lasts until you lift it. The response is `201` for a new block. It
+         *     is `200` with the entry unchanged if the customer was already blocked.
          */
         post: operations["addWhatsappOptOut"];
         delete?: never;
@@ -2961,10 +3187,11 @@ export interface paths {
         post?: never;
         /**
          * Lift a block
-         * @description Lift a block you added, or a marketing block made in WhatsApp. The entry
-         *     stays in the list with `active: false`. A customer's own STOP cannot be
-         *     lifted over the API: only the customer lifting it in WhatsApp, or
-         *     messaging you again, brings them back.
+         * @description Lift a block you added, or a marketing block made in WhatsApp.
+         *
+         *     The entry stays in the list with `active: false`. You cannot lift a
+         *     customer's own STOP over the API. The customer must lift it in WhatsApp or
+         *     message you again.
          */
         delete: operations["liftWhatsappOptOut"];
         options?: never;
@@ -2987,9 +3214,10 @@ export interface paths {
         put?: never;
         /**
          * Create a campaign
-         * @description Create a campaign as a draft. It sends nothing until you launch it. Add
-         *     contacts and launch it in the next calls. Only an approved template can
-         *     be used, so every campaign starts with one. Scheduling is not offered.
+         * @description Create a draft campaign from an approved template. It sends nothing until
+         *     you launch it.
+         *
+         *     Add contacts and launch it with the next calls. Scheduling is not offered.
          */
         post: operations["createWhatsappCampaign"];
         delete?: never;
@@ -3007,9 +3235,11 @@ export interface paths {
         };
         /**
          * Get a campaign
-         * @description One campaign with its counts and analytics: per-source figures and the
-         *     failed contacts grouped by reason. `delivery_rate` and `read_rate` are
-         *     null on a number that does not report receipts.
+         * @description Get one campaign with its counts and analytics.
+         *
+         *     Analytics include per-source figures and failed contacts grouped by reason.
+         *     `delivery_rate` and `read_rate` are null on a number that does not report
+         *     receipts.
          */
         get: operations["getWhatsappCampaign"];
         put?: never;
@@ -3029,18 +3259,22 @@ export interface paths {
         };
         /**
          * List campaign contacts
-         * @description Per-contact status for a campaign, oldest first. A contact that read the
-         *     message and then replied STOP counts as read and opted out.
+         * @description List per-contact status for a campaign, oldest first.
+         *
+         *     A contact that read the message and then replied STOP counts as read and
+         *     opted out.
          */
         get: operations["listWhatsappCampaignContacts"];
         put?: never;
         /**
          * Add campaign contacts
-         * @description Add one contact, or up to 500 at once. On a draft they are stored for
-         *     launch. On a running campaign they are sent now. A contact already in
-         *     the campaign is skipped, so a retry is safe. Each contact needs a
-         *     `phone_number`; every other key is kept and can fill a template
-         *     parameter through `variable_mapping`.
+         * @description Add one contact, or up to 500 at once, to a campaign.
+         *
+         *     On a draft they are stored for launch. On a running campaign they are sent
+         *     now. A contact already in the campaign is skipped, so a retry is safe.
+         *
+         *     Each contact needs a `phone_number`. Every other key is kept and can fill a
+         *     template parameter through `variable_mapping`.
          */
         post: operations["addWhatsappCampaignContacts"];
         delete?: never;
@@ -3060,10 +3294,11 @@ export interface paths {
         put?: never;
         /**
          * Launch a campaign
-         * @description Start a draft campaign: every pending contact is queued once. Needs at
-         *     least one contact, unless the campaign's `data_source` is `webhook`. The
-         *     plan's monthly broadcast allowance and the wallet balance are checked
-         *     here. `Idempotency-Key` is required, so a retry does not start it twice.
+         * @description Start a draft campaign and queue every pending contact once.
+         *
+         *     It needs at least one contact, unless `data_source` is `webhook`. Launch
+         *     checks the plan's monthly broadcast allowance and the wallet balance.
+         *     `Idempotency-Key` is required, so a retry does not start it twice.
          */
         post: operations["launchWhatsappCampaign"];
         delete?: never;
@@ -3083,8 +3318,10 @@ export interface paths {
         put?: never;
         /**
          * Pause a campaign
-         * @description Stop sending until you resume. Only a running campaign can be paused. A
-         *     pause you make by hand is never resumed automatically.
+         * @description Stop sending until you resume.
+         *
+         *     Only a running campaign can be paused. A pause you make by hand is never
+         *     resumed automatically.
          */
         post: operations["pauseWhatsappCampaign"];
         delete?: never;
@@ -3104,9 +3341,10 @@ export interface paths {
         put?: never;
         /**
          * Resume a campaign
-         * @description Resume a paused campaign. Contacts still pending are sent; a contact
-         *     already sent is never sent again. The wallet and allowance are checked
-         *     again, so a resume can answer `402`.
+         * @description Resume a paused campaign.
+         *
+         *     Pending contacts are sent. A contact already sent is never sent again.
+         *     Resume checks the wallet and allowance again, so it can answer `402`.
          */
         post: operations["resumeWhatsappCampaign"];
         delete?: never;
@@ -3472,6 +3710,11 @@ export interface components {
             /** @description Step result, such as `success`, `error` or `waiting_time`. */
             status?: string;
             error?: string | null;
+            /**
+             * @description Set when the step got an HTTP error back but went on, for example a Custom API
+             *     call that got HTTP 404 while "fail on non-2xx" is off.
+             */
+            warning?: string | null;
             /** @description What the node produced. */
             output?: unknown;
         };
@@ -3482,6 +3725,30 @@ export interface components {
             /** @description True for a run started by `testWorkflow`. */
             test?: boolean;
             steps?: components["schemas"]["WorkflowExecutionStep"][];
+        };
+        WorkflowExecutionSummary: {
+            id?: number;
+            /** @enum {string} */
+            state?: "running" | "waiting" | "completed" | "failed" | "cancelled";
+            /** @description True for a run started by `testWorkflow`. */
+            test?: boolean;
+            /** @description The call that started the run, if a call did. */
+            call_sid?: string | null;
+            /** @description When the run started (UTC). */
+            started_at?: string;
+            /** @description When the run last changed (UTC). */
+            updated_at?: string;
+            /** @description The id of the first step that failed. */
+            failed_node?: string | null;
+            /** @description That step's error. */
+            error?: string | null;
+            /** @description The id of the first step that got an HTTP error back but went on. */
+            warning_node?: string | null;
+            /**
+             * @description Why that step needs a look, for example a Custom API call that got HTTP 404.
+             *     The run still reads completed when "fail on non-2xx" is off.
+             */
+            warning?: string | null;
         };
         /**
          * @description One line of a client's calls in a period. Each breakdown names its line
@@ -3726,6 +3993,8 @@ export interface components {
             /** @description Whether publishing and version history are enabled for this agent's organization. */
             can_publish?: boolean;
         };
+        /** @description Present only when part of the request was not saved as sent: a `call_type` other than `Incoming` or `Outgoing`, a block such as `voice` sent as text or a list, or a `context_breakdown` where no section has a `title` or a `body`. Everything else in the request is saved. Fix the named field and send it again. */
+        AgentSaveWarnings: string[];
         /** @description An agent as returned in the agent list. */
         AgentSummary: {
             id?: number;
@@ -3880,6 +4149,19 @@ export interface components {
             amd_detected?: boolean;
             hangup_source?: string | null;
             hangup_reason?: string | null;
+            /** @description The post-call actions this call was dialed with through `__post_call_actions` ([Per-call post-call actions](/docs/per-call-post-call-actions)). When `applied` is not empty, these replaced the agent's own post-call actions for this call, so the agent's Google Sheets, Slack, CRM and other actions did not run. `null` when the call ran the agent's own actions. */
+            post_call_override?: null | {
+                /** @description The deliveries that ran for this call (email and webhook). */
+                applied?: {
+                    [key: string]: unknown;
+                }[];
+                /** @description Items that were sent but dropped, each with its `channel`, `code` and `message`. */
+                ignored?: {
+                    [key: string]: unknown;
+                }[];
+            };
+            /** @description How the call was started: `campaign` (a bulk-call campaign), `workflow` (a workflow step), `dashboard_test` (a test call from the dashboard), `web_call` (a web or widget call), `chat` (a chat or widget chat), or `api` (anything else, such as the API or SDK). Null for a call with no call request, such as an inbound call. */
+            started_by?: ("campaign" | "workflow" | "dashboard_test" | "web_call" | "chat" | "api") | null;
             call_request_id?: {
                 [key: string]: unknown;
             };
@@ -3895,6 +4177,234 @@ export interface components {
             bulk_call_id?: number | null;
             /** @description Name of the bulk-call campaign that placed the call. Null when the call is not from a campaign. Returned by Get call log only. */
             bulk_call_name?: string | null;
+        };
+        /** @description Returned instead of `call_log_data` when `summary=day`. Counts only. */
+        CallLogDaySummary: {
+            /** Format: date */
+            date_from?: string;
+            /** Format: date */
+            date_to?: string;
+            /** @description Your account's time zone, which the days are counted in. */
+            time_zone?: string;
+            /** @description One entry per day that had calls, oldest first. */
+            days?: {
+                /** Format: date */
+                date?: string;
+                calls?: number;
+                /** @description Calls per `started_by` value. `none` counts calls with no call request, such as inbound calls. */
+                started_by?: {
+                    campaign?: number;
+                    workflow?: number;
+                    dashboard_test?: number;
+                    web_call?: number;
+                    chat?: number;
+                    api?: number;
+                    none?: number;
+                };
+                /** @description `with`: calls dialed with their own post-call actions, which replaced the agent's. `without`: the rest. */
+                post_call_override?: {
+                    with?: number;
+                    without?: number;
+                };
+                /** @description Per post-call channel used in the range (`webhook`, `email`, `hubspot`, `slack`, `salesforce`, `zoho_bigin`, `google_sheets`, `whatsapp`): calls with a `sent`, `failed`, `pending` (queued) or `other` delivery, and `none`, calls with no delivery on that channel. A call with a failed and a later sent delivery counts in both. Deliveries count on the day the delivery was created, usually minutes after the call, so a call just before midnight can count on the next day. */
+                deliveries?: {
+                    [key: string]: {
+                        sent?: number;
+                        failed?: number;
+                        pending?: number;
+                        other?: number;
+                        none?: number;
+                    };
+                };
+            }[];
+        };
+        /**
+         * @description What happened on one call, step by step, with the facts about how it
+         *     was answered and how it ended.
+         */
+        CallEvents: {
+            /** @description Id of the call log. */
+            call_id?: number;
+            /**
+             * @description Who picked up, as far as the call could tell.
+             * @enum {string}
+             */
+            answered_by?: "human" | "voicemail" | "unknown";
+            /** @description Whether answering machine detection ran on the call. */
+            amd_detected?: boolean;
+            /**
+             * @description Why the call ended.
+             * @enum {string}
+             */
+            end_reason?: "caller_hung_up" | "agent_ended" | "silence_timeout" | "voicemail" | "transferred" | "platform_ended" | "carrier_ended" | "screening" | "no_answer" | "busy" | "failed" | "canceled" | "unknown";
+            /** @description Call length in seconds. */
+            duration_s?: number;
+            /** @description Whether voicemail detection was on for this call. */
+            voicemail_detection_on?: boolean;
+            /** @description Whether the agent tried to transfer the call. */
+            transfer_attempted?: boolean;
+            /** @description Whether a transfer went through. */
+            transfer_connected?: boolean;
+            /**
+             * @description `false` for calls older than 30 days. Their `turns` then come from
+             *     the transcript only, with no times, latencies or events.
+             */
+            timeline_available?: boolean;
+            /** @description The call's steps, oldest first. At most 500. */
+            turns?: components["schemas"]["CallEventTurn"][];
+            /** @description `true` when the call had more than 500 steps and only the first 500 are listed. */
+            truncated?: boolean;
+        };
+        /** @description One step of a call. */
+        CallEventTurn: {
+            /** @description Milliseconds from the start of the call. `null` when the call has no timeline. */
+            t_ms?: number | null;
+            /** @enum {string} */
+            speaker?: "caller" | "agent" | "system";
+            /**
+             * @description What was said, for `speech`. For `tool_call`, the name of your custom
+             *     API tool; `null` for built-in tools.
+             */
+            text?: string | null;
+            /**
+             * @description - `speech`: the caller or the agent spoke.
+             *     - `tool_call`: the agent ran a tool.
+             *     - `transfer`: the agent started a transfer.
+             *     - `voicemail_detected`: the call reached voicemail.
+             *     - `language_switch`: the conversation changed language.
+             *     - `interrupt`: the caller spoke over the agent.
+             *     - `silence_nudge`: the agent prompted a silent caller.
+             *     - `hangup`: the call ended.
+             *     - `error`: something failed during the call.
+             * @enum {string}
+             */
+            kind?: "speech" | "tool_call" | "transfer" | "voicemail_detected" | "language_switch" | "interrupt" | "silence_nudge" | "hangup" | "error";
+            /**
+             * @description Set on `hangup` (the same values as `end_reason`), `error`
+             *     (`speech_recognition_error`, `voice_generation_error`,
+             *     `ai_response_error`, `tool_error`, `recording_error`,
+             *     `telephony_error`, `platform_error`), and on a failed `tool_call`
+             *     (`tool_failed`) or `transfer` (`transfer_failed`).
+             */
+            reason?: string | null;
+            /** @description On agent `speech`, the milliseconds between the caller finishing and the agent starting to speak. */
+            latency_ms?: number | null;
+            /** @description On `language_switch`, the language the conversation moved to. */
+            language?: string | null;
+        };
+        SupportCase: {
+            case_number: string;
+            title: string;
+            description: string;
+            /** @enum {string} */
+            type: "bug" | "feature_request";
+            /**
+             * @description You file with `critical`, `high` or `medium`; support may set `low`.
+             * @enum {string}
+             */
+            priority: "critical" | "high" | "medium" | "low";
+            status: string;
+            status_label: string;
+            /** Format: date-time */
+            created_at: string;
+            messages: {
+                /** Format: date-time */
+                date?: string;
+                author?: string;
+                body?: string;
+                from_customer?: boolean;
+                from_support?: boolean;
+            }[];
+        };
+        /**
+         * @description Your organization's plan, its add-ons, its concurrency, the features
+         *     the plan includes, and the phone numbers that renew soon.
+         */
+        AccountPlan: {
+            organization?: {
+                id?: number;
+                name?: string;
+            };
+            /** @description Facts about the account, for support. */
+            account?: {
+                /**
+                 * Format: date-time
+                 * @description When your organization was created.
+                 */
+                created_at?: string;
+                /** @description `true` when your organization has an active plan or any user of your organization has made a successful payment. */
+                paid?: boolean;
+                /** @description Your organization's calls in the last 7 calendar days (UTC), today included. */
+                calls_last_7_days?: number;
+                /** @description Your organization's calls in the last 30 calendar days (UTC), today included. */
+                calls_last_30_days?: number;
+            };
+            plan?: {
+                id?: number | null;
+                /** @description Name of the active plan. */
+                name?: string | null;
+                billing_interval?: string | null;
+                /** @description Whether calls are metered to your payment method instead of stopping at a zero balance. */
+                is_usage_based?: boolean;
+                /** @description Status of the plan's subscription, for example `active`, `past_due` or `canceled`. */
+                subscription_status?: string | null;
+                /**
+                 * Format: date-time
+                 * @description When an active subscription renews.
+                 */
+                renews_at?: string | null;
+                /**
+                 * Format: date-time
+                 * @description When a subscription that is not renewing runs out. `null` while it renews.
+                 */
+                expires_at?: string | null;
+            };
+            /** @description Concurrency add-ons that are live, plus the ones that ended in the last 30 days. */
+            add_ons?: {
+                /** @enum {string} */
+                type?: "concurrency";
+                /** @description Where the add-on came from, for example `Purchased Concurrency` or `Subscription Plan`. */
+                name?: string;
+                /** @description Concurrent calls the add-on gives. */
+                quantity?: number;
+                /** @enum {string} */
+                status?: "active" | "grace" | "expired";
+                /** Format: date-time */
+                expires_at?: string | null;
+                auto_renew?: boolean;
+            }[];
+            concurrency?: {
+                /** @description Calls your organization can run at once. */
+                limit?: number;
+                /** @description Calls running now. */
+                in_use?: number;
+                /** @description Calls you can start now. */
+                available?: number;
+            };
+            /** @description Each feature sold on plans, and whether your plan includes it. */
+            features?: {
+                /** @example whatsapp */
+                key?: string;
+                /** @example WhatsApp */
+                name?: string;
+                /** @description Whether your organization has the feature. */
+                available?: boolean;
+            }[];
+            /** @description Phone numbers bought from us that renew in the next 14 days, soonest first. */
+            numbers_renewing_soon?: {
+                phone_number?: string;
+                /** Format: date-time */
+                renews_at?: string;
+                /** @description `false` when the number is set to be released on its date instead. */
+                auto_renew?: boolean;
+                /** @description What the renewal costs. `0` when `auto_renew` is `false`. */
+                renewal_cost_usd?: number;
+                /**
+                 * @description Whether your balance covers this renewal, after the renewals
+                 *     due before it. `null` when `auto_renew` is `false`.
+                 */
+                wallet_covers?: boolean | null;
+            }[];
         };
         /** @description A bulk-call campaign. */
         BulkCallSummary: {
@@ -4230,6 +4740,12 @@ export interface components {
             phone_number?: string;
             /** @description ID of the agent currently attached to this number, or `false` if none. */
             active_bot_id?: number | boolean;
+            /** @description Name of the attached agent. `null` when none is attached, or when the agent belongs to another account. */
+            active_bot_name?: string | null;
+            /** @description Whether a number bought from us renews automatically at `expiry_date`. `null` for a number you imported. */
+            auto_renew?: boolean | null;
+            /** @description Status of the number owner's KYC (identity check) with the number's carrier, such as `not_started`, `pending` or `completed`. Values differ by carrier. `null` for an imported number, a carrier with no KYC check, or when the API key's user is not the number's owner. */
+            kyc_status?: string | null;
             /** @example 05/01/2026 11:04:56 */
             purchase_date?: string;
             expiry_date?: string | boolean;
@@ -4287,6 +4803,10 @@ export interface components {
             /** @description Identifier on the upstream provider. */
             external_id?: string;
             description?: string;
+            /** @description The voice's gender, such as `female` or `male`, or null when not set. */
+            gender?: string | null;
+            /** @description Languages this voice is recommended for, by display name. Empty for a voice that is not featured. */
+            featured_languages?: string[];
         };
         /** @description A single voice's metadata. */
         VoiceDetail: {
@@ -4837,7 +5357,7 @@ export interface components {
             dynamic_variables?: {
                 [key: string]: string;
             };
-            /** @description List of context breakdowns, each containing `title`, `body`, and optional `is_enabled`. */
+            /** @description The agent's prompt sections, each with `title`, `body` and optional `is_enabled`. Sending them replaces the whole list and rebuilds the prompt from the enabled sections in order: each `title` becomes a `# title` heading on its own line, with its `body` below it, the same layout the dashboard uses. A save without `context_breakdown` leaves the prompt unchanged. */
             context_breakdown?: {
                 /**
                  * @description Title of the breakdown.
@@ -4856,7 +5376,7 @@ export interface components {
                 is_enabled: boolean;
             }[];
             /**
-             * @description Call type of the assistant.
+             * @description `Incoming` for an agent that answers calls, `Outgoing` for one that places them, spelled exactly so. Any other value, `incoming` included, saves as `Outgoing` and the response lists it in `warnings`.
              * @enum {string}
              */
             call_type?: "Incoming" | "Outgoing";
@@ -4868,26 +5388,28 @@ export interface components {
             /** @description Configuration for the speech-to-text transcriber. */
             transcriber?: {
                 /**
-                 * @description The speech-to-text provider to use. Leave it out to use your organization's default transcriber. The STT providers list shows the ones your organization can use.
+                 * @description The speech-to-text provider to use: a `name` from the STT providers list, which returns the ones your organization can use. Leave it out to use your organization's default transcriber.
                  * @example deepgram_stream
-                 * @enum {string}
                  */
-                provider?: "deepgram_stream" | "cartesia" | "sarvam" | "azure_stream" | "soniox";
+                provider?: string;
                 /**
                  * @description Transcription model for the selected provider. For
-                 *     `deepgram_stream` this is `nova-3` or `nova-2`; other
-                 *     providers take their own model identifiers.
+                 *     `deepgram_stream` this is `nova-3` or `nova-2`. Saved only
+                 *     for `deepgram_stream`, `cartesia` and `sarvam`, and only
+                 *     when `provider` is in the same request.
                  * @example nova-3
                  */
                 model?: string;
                 /**
                  * @description Language code for the transcriber. Format and supported
                  *     values depend on the provider (e.g. `en-US` for Deepgram,
-                 *     `hi-IN` for Sarvam). Applies regardless of which
-                 *     `provider` is selected.
+                 *     `hi-IN` for Sarvam). `soniox` takes a list of codes, such as
+                 *     `["en", "hi"]`, and an empty list detects the language. Saved only when `provider` is in the
+                 *     same request and is `deepgram_stream`, `cartesia`, `sarvam`,
+                 *     `azure` or `soniox`.
                  * @example en-US
                  */
-                language?: string;
+                language?: string | string[];
                 /**
                  * @description Silence timeout in milliseconds.
                  * @example 400
@@ -4896,8 +5418,14 @@ export interface components {
                 /** @description Reduce background noise on the inbound audio stream before transcription. */
                 should_apply_noise_reduction?: boolean;
                 /**
-                 * @description Minimum number of words the caller must say before their speech is treated as an interruption.
-                 * @example 2
+                 * @description How noise reduction works when it is on. `standard` removes background noise and keeps every voice on the call. `advanced` also removes other voices to focus on one primary speaker, which helps in noisy places but can cut out some words. New agents start on `standard`.
+                 * @example advanced
+                 * @enum {string}
+                 */
+                noise_reduction_mode?: "standard" | "advanced";
+                /**
+                 * @description Minimum number of words the caller must say before their speech is treated as an interruption. New agents start at 3.
+                 * @example 3
                  */
                 interruption_min_words?: number;
                 /**
@@ -4929,11 +5457,10 @@ export interface components {
             /** @description Configuration for the language model. */
             model?: {
                 /**
-                 * @description The language model to use. Leave it out to use your organization's default model. Only models your organization can use are accepted: the LLM providers list returns exactly those.
+                 * @description The language model to use: a `name` from the LLM providers list, which returns exactly the models your organization can use. Leave it out to use your organization's default model.
                  * @example gpt-4.1-mini
-                 * @enum {string}
                  */
-                model?: "azure-gpt-4.1-mini" | "azure-gpt-4.1-nano" | "azure-gpt-4o" | "azure-gpt-4o-mini" | "gemini-2.5-flash" | "gemini-2.5-flash-lite" | "gpt-3.5-turbo" | "gpt-4.1-mini" | "gpt-4.1-nano" | "gpt-4o" | "gpt-4o-mini" | "gpt-5.1" | "llama-3.3-70b-versatile";
+                model?: string;
                 /**
                  * @description Controls randomness in the model's output (0.0 to 1.0).
                  * @example 0.7
@@ -4943,11 +5470,10 @@ export interface components {
             /** @description Configuration for the text-to-speech voice. `provider` and `voice_id` identify the voice together, so send both to change it. `provider` on its own is not accepted, and a `voice_id` on its own leaves the voice as it was. The other fields here apply independently. Leave out `provider` and `voice_id` to use your organization's default voice. */
             voice?: {
                 /**
-                 * @description The voice provider to use. The current catalog is returned by the TTS providers list. Send `voice_id` alongside it. An agent created without `voice` gets the platform default, a Cartesia voice, which every account can use.
+                 * @description The voice provider to use: the `service` of a voice from the voices list, which returns only voices your organization can use. Send `voice_id` alongside it. `provider=featured` lists OmniDimension voices. An agent created without `voice` gets the platform default, a Cartesia voice, which every account can use.
                  * @example cartesia
-                 * @enum {string}
                  */
-                provider?: "cartesia" | "sarvam" | "eleven_labs" | "google";
+                provider?: string;
                 /**
                  * @description The provider's voice identifier, returned in the `name` field of the voices list (not the numeric `id`). Takes effect when `provider` is sent alongside it.
                  * @example faf0731e-dfb9-4cfc-8119-259a79b27e12
@@ -5004,6 +5530,7 @@ export interface components {
             };
             /** @description Hang up automatically when a condition is met. */
             end_call?: {
+                /** @description Turn ending the call on or off. Leave it out to keep the current setting. `false` also clears `condition` and `message`. */
                 enabled?: boolean;
                 /**
                  * @description Natural-language condition that triggers ending the call. Only evaluated when `enabled` is true.
@@ -5048,7 +5575,7 @@ export interface components {
             };
             /** @description Plays a ringing tone after the call is picked up, until the agent starts speaking. */
             initial_ringing_sound_enabled?: boolean;
-            /** @description Voicemail / answering-machine handling for outbound calls. Set this with the nested object shown here; the agent object returns these values as the flat fields `voicemail_enabled` and `voicemail_message`. Voicemail detection is an access-gated feature. If it isn't enabled for your account, [request access](https://omnidim.io/contact-us?reason=product&lock=1). */
+            /** @description Voicemail / answering-machine handling for outbound calls. Set this with the nested object shown here; the agent object returns these values as the flat fields `voicemail_enabled` and `voicemail_message`. Voicemail detection is turned on per account. If it is off for yours, ask OmniDimension support to turn it on. */
             voicemail?: {
                 /** @description Detect voicemail and leave your message instead of speaking to a machine. */
                 enabled?: boolean;
@@ -5056,7 +5583,7 @@ export interface components {
                 message?: string;
             };
             /**
-             * @description Languages the agent should support. Pass each language as a display-name string exactly as it appears in the dashboard's language picker. Unrecognized names are skipped.
+             * @description Languages the agent should support. Pass each language as a display-name string exactly as it appears in the dashboard's language picker. Unrecognized names are skipped, and the request is refused when none is recognized. The order is not kept.
              * @example [
              *       "English (India)",
              *       "Hindi"
@@ -5296,6 +5823,8 @@ export interface components {
             delivery_status?: "push" | "polled" | "none";
             /** @description Templates can be pulled from the provider with `syncWhatsappTemplates`. */
             template_sync?: boolean;
+            /** @description Templates can be created with `createWhatsappTemplate` and deleted with `deleteWhatsappTemplate`. Direct Meta numbers only. */
+            template_create?: boolean;
         };
         WhatsappTemplate: {
             id?: number;
@@ -5322,7 +5851,7 @@ export interface components {
             /** @description The values you fill in when you send this template. */
             fields?: components["schemas"]["WhatsappTemplateField"][];
             buttons?: components["schemas"]["WhatsappTemplateButton"][];
-            /** @description When this template was last pulled from the provider. */
+            /** @description When a sync of this number last pulled this template from the provider. `null` until the number is synced again; editing a template doesn't change it. */
             synced_at?: string | null;
         };
         /** @description One value a send must provide for this template. */
@@ -5469,7 +5998,7 @@ export interface components {
             } | null;
             /** @description Why a send failed, present only when `status` is `failed`. */
             failure?: {
-                /** @description The provider's failure code, when there is one. */
+                /** @description The provider's failure code, when there is one, such as Meta's `131049` (stored when the failure happened, so it doesn't depend on the reason's wording). */
                 code?: string | null;
                 reason?: string | null;
                 /**
@@ -5705,6 +6234,66 @@ export interface components {
         };
     };
     responses: {
+        /** @description A bad parameter. `error_description` says which. */
+        ApiBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "invalid_request",
+                 *       "error_description": "pagesize must be between 1 and 150."
+                 *     }
+                 */
+                "application/json": components["schemas"]["SessionError"];
+            };
+        };
+        /** @description Missing or invalid API key. */
+        ApiUnauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "unauthorized",
+                 *       "error_description": "Missing or invalid API key"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SessionError"];
+            };
+        };
+        /** @description This API key can't use this endpoint. */
+        ApiForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "forbidden",
+                 *       "error_description": "Support cases are not available to this credential."
+                 *     }
+                 */
+                "application/json": components["schemas"]["SessionError"];
+            };
+        };
+        /** @description Not found, or not yours. The two look the same, so an id says nothing about other accounts. */
+        ApiNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": "not_found",
+                 *       "error_description": "Support case not found."
+                 *     }
+                 */
+                "application/json": components["schemas"]["SessionError"];
+            };
+        };
         /** @description A bad parameter or body. `code` says which, such as `invalid_parameter`, `invalid_json`, `invalid_limit` or `invalid_cursor`. */
         WhatsappBadRequest: {
             headers: {
@@ -5847,6 +6436,8 @@ export interface components {
         /**
          * @description A provider problem: `send_failed` (the message reached nothing),
          *     `template_sync_failed` (the template list is unchanged),
+         *     `template_create_failed` (no template was made),
+         *     `template_delete_failed` (the template is unchanged),
          *     `upstream_error` (a calling change), as `502`.
          */
         WhatsappUpstream: {
@@ -6294,12 +6885,12 @@ export interface operations {
                      *           "language": [
                      *             "English"
                      *           ],
-                     *           "voice": "cgSgspJ2msm6clMCkdW9",
-                     *           "voice_provider": "deepgram",
-                     *           "voice_external_id": "aura-asteria-en",
+                     *           "voice": "b521b304-7672-4cf9-9a34-b4eb1df1bde0",
+                     *           "voice_provider": "cartesia",
+                     *           "voice_external_id": "b521b304-7672-4cf9-9a34-b4eb1df1bde0",
                      *           "eleven_lab_voice_public_owner_id": false,
                      *           "english_voice_accent": "en-IN",
-                     *           "voice_name": "asteria",
+                     *           "voice_name": "Aadya",
                      *           "llm_service": "gpt-4.1-mini",
                      *           "llm_straming_enabled": true,
                      *           "allow_to_delete": true,
@@ -6439,6 +7030,7 @@ export interface operations {
                         name?: string;
                         /** @description Build state of the agent. Always `Completed` for newly created agents. */
                         status?: string;
+                        warnings?: components["schemas"]["AgentSaveWarnings"];
                     };
                 };
             };
@@ -6557,12 +7149,12 @@ export interface operations {
                      *       "llm_service": "gpt-4.1-mini",
                      *       "asr_service": "deepgram_stream",
                      *       "llm_straming_enabled": true,
-                     *       "voice": 8,
-                     *       "voice_provider": "deepgram",
-                     *       "voice_external_id": "aura-asteria-en",
+                     *       "voice": 8079,
+                     *       "voice_provider": "cartesia",
+                     *       "voice_external_id": "b521b304-7672-4cf9-9a34-b4eb1df1bde0",
                      *       "eleven_lab_voice_public_owner_id": false,
                      *       "english_voice_accent": "en-IN",
-                     *       "voice_name": "asteria",
+                     *       "voice_name": "Aadya",
                      *       "languages": [
                      *         {
                      *           "value": 1,
@@ -6643,7 +7235,8 @@ export interface operations {
                      *       "vad_confidence_threshold_when_bot_speaking": 0.6,
                      *       "min_speech_duration_ms_speaking": 300,
                      *       "should_apply_noise_reduction": true,
-                     *       "interruption_min_words": 2,
+                     *       "noise_reduction_mode": "advanced",
+                     *       "interruption_min_words": 3,
                      *       "max_call_duration_in_sec": 600,
                      *       "user_idle_threshold_sec": 10,
                      *       "first_ideal_message": "Are you still there?",
@@ -6736,6 +7329,7 @@ export interface operations {
                         name?: string;
                         /** @description Build state of the agent after the update. Always `Completed` once the operation returns. */
                         status?: string;
+                        warnings?: components["schemas"]["AgentSaveWarnings"];
                     };
                 };
             };
@@ -7513,9 +8107,9 @@ export interface operations {
                      *         {
                      *           "id": 4809,
                      *           "version_number": 4,
-                     *           "name": "Auto-saved",
+                     *           "name": "Backup before restoring version 3",
                      *           "note": "",
-                     *           "kind": "auto",
+                     *           "kind": "system",
                      *           "created_by": {
                      *             "id": 1234,
                      *             "name": "Demo User"
@@ -7540,7 +8134,7 @@ export interface operations {
                      *       "total_count": 5,
                      *       "counts": {
                      *         "all": 5,
-                     *         "manual": 2,
+                     *         "manual": 4,
                      *         "system": 1
                      *       },
                      *       "page": 1,
@@ -7565,7 +8159,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Version history is not enabled for this organization. */
+            /** @description Version history is not enabled for this organization (`feature_disabled`), or the plan does not include it (`feature_not_entitled`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7674,7 +8268,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Version history is not enabled for this organization. */
+            /** @description Version history is not enabled for this organization (`feature_disabled`), or the plan does not include it (`feature_not_entitled`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7769,7 +8363,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Version history is not enabled for this organization. */
+            /** @description Version history is not enabled for this organization (`feature_disabled`), or the plan does not include it (`feature_not_entitled`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7880,7 +8474,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Version history is not enabled for this organization. */
+            /** @description Version history is not enabled for this organization (`feature_disabled`), or the plan does not include it (`feature_not_entitled`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -8016,7 +8610,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Version history is not enabled for this organization. */
+            /** @description Version history is not enabled for this organization (`feature_disabled`), or the plan does not include it (`feature_not_entitled`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -8109,7 +8703,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Version history is not enabled for this organization. */
+            /** @description Version history is not enabled for this organization (`feature_disabled`), or the plan does not include it (`feature_not_entitled`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -8297,6 +8891,18 @@ export interface operations {
                 call_status?: "completed" | "busy" | "failed" | "no-answer";
                 /** @description Filter by bulk-call campaign ID. Takes one ID. */
                 bulk_call_id?: number;
+                /** @description Only calls on or after this day (`YYYY-MM-DD`), in your account's time zone. */
+                date_from?: string;
+                /** @description Only calls on or before this day (`YYYY-MM-DD`), in your account's time zone. Can't be before `date_from`. */
+                date_to?: string;
+                /** @description Only calls to this phone number. Digits with an optional leading `+`; part of a number matches too, so `5551234567` also finds `+15551234567`. */
+                to_number?: string;
+                /** @description Only calls from this phone number. Same format as `to_number`. */
+                from_number?: string;
+                /** @description Only inbound or only outbound calls. */
+                call_direction?: "inbound" | "outbound";
+                /** @description Set to `day` for per-day counts for one agent instead of call rows. Needs `agentid`, `date_from` and `date_to` (at most 31 days and 20,000 calls). Other filters and pagination don't apply. */
+                summary?: "day";
                 /**
                  * @description Set to `false` for a lighter list. Each row then leaves out
                  *     `call_conversation`, `sentiment_analysis_details`, `llm_prompt`,
@@ -8357,7 +8963,7 @@ export interface operations {
                      *           "llm_prompt": false,
                      *           "model_name": "gpt-4o",
                      *           "asr_service": "deepgram_stream",
-                     *           "tts_service": "eleven_labs",
+                     *           "tts_service": "cartesia",
                      *           "has_issue": false,
                      *           "is_simulation": false,
                      *           "json_evolution_matrix_score": {},
@@ -8383,6 +8989,7 @@ export interface operations {
                      *           "voicemail_type": false,
                      *           "hangup_source": null,
                      *           "hangup_reason": null,
+                     *           "started_by": "chat",
                      *           "user_name": "Demo User",
                      *           "call_cost": 0,
                      *           "call_request_id": {
@@ -8535,9 +9142,42 @@ export interface operations {
                     "application/json": {
                         call_log_data?: components["schemas"]["Call"][];
                         total_records?: number;
+                        summary?: components["schemas"]["CallLogDaySummary"];
                     };
                 };
             };
+        };
+    };
+    getCallEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the call log, as returned by the call log list. */
+                call_log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The call's steps and how it ended. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallEvents"];
+                };
+            };
+            401: components["responses"]["ApiUnauthorized"];
+            404: components["responses"]["ApiNotFound"];
         };
     };
     getCallLog: {
@@ -8605,7 +9245,7 @@ export interface operations {
                      *           "llm_prompt": false,
                      *           "model_name": "gpt-4o",
                      *           "asr_service": "deepgram_stream",
-                     *           "tts_service": "eleven_labs",
+                     *           "tts_service": "cartesia",
                      *           "has_issue": false,
                      *           "is_simulation": false,
                      *           "json_evolution_matrix_score": {},
@@ -8631,6 +9271,7 @@ export interface operations {
                      *           "voicemail_type": false,
                      *           "hangup_source": null,
                      *           "hangup_reason": null,
+                     *           "started_by": "chat",
                      *           "user_name": "Demo User",
                      *           "call_cost": 0,
                      *           "call_request_id": {
@@ -10672,6 +11313,9 @@ export interface operations {
                      *           "is_manually_imported": false,
                      *           "telephony_did_id": null,
                      *           "expiry_date": "",
+                     *           "active_bot_name": null,
+                     *           "auto_renew": null,
+                     *           "kyc_status": null,
                      *           "health_score": null,
                      *           "health_score_computed_at": null,
                      *           "health_score_details": null
@@ -10683,6 +11327,93 @@ export interface operations {
                         success?: boolean;
                         phone_numbers?: components["schemas"]["PhoneNumber"][];
                     };
+                };
+            };
+        };
+    };
+    listReleasedPhoneNumbers: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+                /** @description How many days back to look. */
+                days?: number;
+                /** @description Page number. */
+                pageno?: number;
+                /** @description Numbers per page. */
+                pagesize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The released numbers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "released_numbers": [
+                     *         {
+                     *           "phone_number": "+15551234567",
+                     *           "released_at": "2026-11-20T00:05:12Z",
+                     *           "reason": "renewal_failed",
+                     *           "reason_text": "The renewal failed: your balance did not cover the renewal when the number expired."
+                     *         }
+                     *       ],
+                     *       "total_records": 1
+                     *     }
+                     */
+                    "application/json": {
+                        released_numbers?: {
+                            phone_number?: string;
+                            /** Format: date-time */
+                            released_at?: string;
+                            /** @enum {string} */
+                            reason?: "renewal_failed" | "auto_renew_off" | "on_request";
+                            /** @description The reason in one plain sentence. */
+                            reason_text?: string;
+                        }[];
+                        total_records?: number;
+                    };
+                };
+            };
+            /** @description `days` is not a number from 1 to 90, or `pageno` or `pagesize` is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "days must be a number from 1 to 90"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
                 };
             };
         };
@@ -11819,15 +12550,19 @@ export interface operations {
     listVoices: {
         parameters: {
             query?: {
-                /** @description TTS provider to list voices from. Omit to list across all providers. */
-                provider?: "eleven_labs" | "google" | "deepgram" | "cartesia" | "sarvam" | "rime" | "playht" | "hume" | "inworld" | "smallest";
-                /** @description Substring match against voice name or description. ElevenLabs and Cartesia. */
+                /**
+                 * @description Provider to list voices from. Omit to list every voice your organization can use.
+                 *     `featured` lists OmniDimension voices. A provider your organization cannot use
+                 *     returns a 400.
+                 */
+                provider?: string;
+                /** @description Substring match against voice name or description. Cartesia and ElevenLabs. */
                 search?: string;
-                /** @description ISO language code (e.g. `en`, `hi`, `es`). ElevenLabs and Cartesia. */
+                /** @description ISO language code (e.g. `en`, `hi`, `es`). Cartesia and ElevenLabs. */
                 language?: string;
-                /** @description Accent label (e.g. `american`, `british`). ElevenLabs and Cartesia. */
+                /** @description Accent label (e.g. `american`, `british`). Cartesia and ElevenLabs. */
                 accent?: string;
-                /** @description Filter voices by gender. ElevenLabs and Cartesia. */
+                /** @description Filter voices by gender. Cartesia and ElevenLabs. */
                 gender?: "male" | "female";
                 /** @description 1-indexed page number. */
                 page?: number;
@@ -11850,26 +12585,27 @@ export interface operations {
                      * @example {
                      *       "voices": [
                      *         {
-                     *           "id": 1,
-                     *           "name": "aura-luna-en",
-                     *           "display_name": "luna",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565351/aura/luna_docs_clom0e.wav",
-                     *           "tags": [
-                     *             "feminine",
-                     *             "Young Adult",
-                     *             "en-us",
-                     *             "American",
-                     *             "Friendly, Natural, Engaging",
-                     *             "IVR"
-                     *           ]
+                     *           "id": 8079,
+                     *           "name": "b521b304-7672-4cf9-9a34-b4eb1df1bde0",
+                     *           "display_name": "Aadya",
+                     *           "service": "cartesia",
+                     *           "sample_url": "https://backend.omnidim.io/web/content/bot.voice/8079/sample_audio",
+                     *           "tags": []
+                     *         },
+                     *         {
+                     *           "id": 8085,
+                     *           "name": "bfa64e07-6cd9-4865-a5a9-cdcb09714b83",
+                     *           "display_name": "Wren",
+                     *           "service": "cartesia",
+                     *           "sample_url": "https://backend.omnidim.io/web/content/bot.voice/8085/sample_audio",
+                     *           "tags": []
                      *         }
                      *       ],
-                     *       "total": 30,
+                     *       "total": 2,
                      *       "page": 1,
-                     *       "page_size": 30,
+                     *       "page_size": 2,
                      *       "filters_applied": {
-                     *         "provider": null,
+                     *         "provider": "featured",
                      *         "search": null,
                      *         "language": null,
                      *         "accent": null,
@@ -12007,45 +12743,9 @@ export interface operations {
                      *       "services": {
                      *         "LLM": [
                      *           {
-                     *             "id": 8,
-                     *             "name": "gemini-2.5-flash",
-                     *             "display_name": "gemini-2.5-flash",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 44,
-                     *             "name": "gpt-5.4",
-                     *             "display_name": "gpt-5.4",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 6,
-                     *             "name": "gemini-1.5-pro",
-                     *             "display_name": "gemini-1.5-pro",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 7,
-                     *             "name": "gemini-2.0-flash",
-                     *             "display_name": "gemini-2.0-flash",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 9,
-                     *             "name": "gemini-2.5-pro",
-                     *             "display_name": "gemini-2.5-pro",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
                      *             "id": 10,
                      *             "name": "gemini-2.5-flash-lite",
                      *             "display_name": "gemini-2.5-flash-lite",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 11,
-                     *             "name": "gpt-4o",
-                     *             "display_name": "gpt-4o",
                      *             "service_type": "LLM"
                      *           },
                      *           {
@@ -12055,137 +12755,23 @@ export interface operations {
                      *             "service_type": "LLM"
                      *           },
                      *           {
-                     *             "id": 13,
-                     *             "name": "gpt-3.5-turbo",
-                     *             "display_name": "gpt-3.5-turbo",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 14,
-                     *             "name": "azure-gpt-4o",
-                     *             "display_name": "azure-gpt-4o",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 15,
-                     *             "name": "azure-gpt-4o-mini",
-                     *             "display_name": "azure-gpt-4o-mini",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 16,
-                     *             "name": "azure-gpt-4.1-nano",
-                     *             "display_name": "azure-gpt-4.1-nano",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
                      *             "id": 17,
                      *             "name": "azure-gpt-4.1-mini",
                      *             "display_name": "azure-gpt-4.1-mini",
                      *             "service_type": "LLM"
                      *           },
                      *           {
-                     *             "id": 18,
-                     *             "name": "llama3-8b-8192",
-                     *             "display_name": "llama3-8b-8192",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 19,
-                     *             "name": "llama3-70b-8192",
-                     *             "display_name": "llama3-70b-8192",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 20,
-                     *             "name": "llama-3.3-70b-versatile",
-                     *             "display_name": "llama-3.3-70b-versatile",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 21,
-                     *             "name": "gemma2-9b-it",
-                     *             "display_name": "gemma2-9b-it",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 22,
-                     *             "name": "claude-opus-4-0",
-                     *             "display_name": "claude-opus-4-0",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 23,
-                     *             "name": "claude-sonnet-4-0",
-                     *             "display_name": "claude-sonnet-4-0",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 24,
-                     *             "name": "claude-3-7-sonnet-latest",
-                     *             "display_name": "claude-3-7-sonnet-latest",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 25,
-                     *             "name": "claude-3-5-sonnet-latest",
-                     *             "display_name": "claude-3-5-sonnet-latest",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 26,
-                     *             "name": "claude-3-5-haiku-latest",
-                     *             "display_name": "claude-3-5-haiku-latest",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 27,
-                     *             "name": "claude-3-opus-latest",
-                     *             "display_name": "claude-3-opus-latest",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 28,
-                     *             "name": "Your own LLM",
-                     *             "display_name": "Your own LLM",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
-                     *             "id": 39,
-                     *             "name": "gemini-3-flash-preview",
-                     *             "display_name": "gemini-3-flash-preview",
-                     *             "service_type": "LLM"
-                     *           },
-                     *           {
                      *             "id": 40,
-                     *             "name": "gemini-3-pro-preview",
-                     *             "display_name": "gemini-3-pro-preview",
+                     *             "name": "gpt-4.1-mini",
+                     *             "display_name": "gpt-4.1-mini",
                      *             "service_type": "LLM"
                      *           }
                      *         ],
                      *         "TTS": [
                      *           {
-                     *             "id": 41,
-                     *             "name": "timepay",
-                     *             "display_name": "timepay",
-                     *             "service_type": "TTS"
-                     *           },
-                     *           {
-                     *             "id": 29,
-                     *             "name": "deepgram",
-                     *             "display_name": "deepgram",
-                     *             "service_type": "TTS"
-                     *           },
-                     *           {
                      *             "id": 30,
                      *             "name": "google",
                      *             "display_name": "google",
-                     *             "service_type": "TTS"
-                     *           },
-                     *           {
-                     *             "id": 31,
-                     *             "name": "eleven_labs",
-                     *             "display_name": "eleven_labs",
                      *             "service_type": "TTS"
                      *           },
                      *           {
@@ -12199,67 +12785,13 @@ export interface operations {
                      *             "name": "sarvam",
                      *             "display_name": "sarvam",
                      *             "service_type": "TTS"
-                     *           },
-                     *           {
-                     *             "id": 35,
-                     *             "name": "hume",
-                     *             "display_name": "hume",
-                     *             "service_type": "TTS"
-                     *           },
-                     *           {
-                     *             "id": 33,
-                     *             "name": "rime",
-                     *             "display_name": "rime",
-                     *             "service_type": "TTS"
-                     *           },
-                     *           {
-                     *             "id": 38,
-                     *             "name": "openAI",
-                     *             "display_name": "openAI",
-                     *             "service_type": "TTS"
-                     *           },
-                     *           {
-                     *             "id": 34,
-                     *             "name": "playht",
-                     *             "display_name": "playht",
-                     *             "service_type": "TTS"
-                     *           },
-                     *           {
-                     *             "id": 36,
-                     *             "name": "inworld",
-                     *             "display_name": "inworld",
-                     *             "service_type": "TTS"
                      *           }
                      *         ],
                      *         "STT": [
                      *           {
-                     *             "id": 42,
-                     *             "name": "Soniox",
-                     *             "display_name": "Soniox",
-                     *             "service_type": "STT"
-                     *           },
-                     *           {
-                     *             "id": 43,
-                     *             "name": "Speechmatics",
-                     *             "display_name": "Speechmatics",
-                     *             "service_type": "STT"
-                     *           },
-                     *           {
-                     *             "id": 1,
-                     *             "name": "whisper",
-                     *             "display_name": "whisper",
-                     *             "service_type": "STT"
-                     *           },
-                     *           {
                      *             "id": 2,
                      *             "name": "deepgram_stream",
                      *             "display_name": "deepgram_stream",
-                     *             "service_type": "STT"
-                     *           },
-                     *           {
-                     *             "id": 3,
-                     *             "name": "Cartesia",
-                     *             "display_name": "Cartesia",
                      *             "service_type": "STT"
                      *           },
                      *           {
@@ -12269,1109 +12801,31 @@ export interface operations {
                      *             "service_type": "STT"
                      *           },
                      *           {
-                     *             "id": 5,
-                     *             "name": "Azure",
-                     *             "display_name": "Azure",
+                     *             "id": 49,
+                     *             "name": "Soniox",
+                     *             "display_name": "Soniox",
                      *             "service_type": "STT"
                      *           }
                      *         ]
                      *       },
                      *       "voices": [
                      *         {
-                     *           "id": 1,
-                     *           "name": "aura-luna-en",
-                     *           "display_name": "luna",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565351/aura/luna_docs_clom0e.wav"
-                     *         },
-                     *         {
-                     *           "id": 2,
-                     *           "name": "aura-stella-en",
-                     *           "display_name": "stella",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565349/aura/stella_docs_xh5jbv.wav"
-                     *         },
-                     *         {
-                     *           "id": 3,
-                     *           "name": "en-IN-Neural2-A",
-                     *           "display_name": "Neural2 A (Female)",
-                     *           "service": "google",
-                     *           "sample_url": ""
-                     *         },
-                     *         {
-                     *           "id": 4,
-                     *           "name": "aura-asteria-en",
-                     *           "display_name": "asteria",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565353/aura/asteria_docs_venw0r.wav"
-                     *         },
-                     *         {
-                     *           "id": 5,
-                     *           "name": "aura-hera-en",
-                     *           "display_name": "hera",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565347/aura/hera_docs_xjkt4x.wav"
-                     *         },
-                     *         {
-                     *           "id": 7,
-                     *           "name": "en-IN-Journey-O",
-                     *           "display_name": "Journey (IN)",
-                     *           "service": "google",
-                     *           "sample_url": "http://backend.omnidim.io/web/content/bot.voice/7/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 8,
-                     *           "name": "cgSgspJ2msm6clMCkdW9",
-                     *           "display_name": "Jessica",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/cgSgspJ2msm6clMCkdW9/56a97bf8-b69b-448f-846c-c3a11683d45a.mp3"
-                     *         },
-                     *         {
-                     *           "id": 9,
-                     *           "name": "en-US-Journey-F",
-                     *           "display_name": "Journey(US-Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 10,
-                     *           "name": "aura-athena-en",
-                     *           "display_name": "athena",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565613/aura/athena_docs_wyznud.wav"
-                     *         },
-                     *         {
-                     *           "id": 11,
-                     *           "name": "aura-orion-en",
-                     *           "display_name": "orion",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565346/aura/orion_docs_aljv1q.mp3"
-                     *         },
-                     *         {
-                     *           "id": 12,
-                     *           "name": "aura-arcas-en",
-                     *           "display_name": "arcas",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565348/aura/arcas_docs_pc9hxp.mp3"
-                     *         },
-                     *         {
-                     *           "id": 13,
-                     *           "name": "aura-perseus-en",
-                     *           "display_name": "perseus",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565350/aura/perseus_docs_ap7fc0.wav"
-                     *         },
-                     *         {
-                     *           "id": 14,
-                     *           "name": "aura-angus-en",
-                     *           "display_name": "angus",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565352/aura/angus_docs_lgse2b.wav"
-                     *         },
-                     *         {
-                     *           "id": 15,
-                     *           "name": "aura-orpheus-en",
-                     *           "display_name": "orpheus",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565350/aura/orpheus_docs_zdlpcf.wav"
-                     *         },
-                     *         {
-                     *           "id": 16,
-                     *           "name": "aura-helios-en",
-                     *           "display_name": "helios",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565346/aura/helios_docs_ycjwoo.wav"
-                     *         },
-                     *         {
-                     *           "id": 17,
-                     *           "name": "aura-zeus-en",
-                     *           "display_name": "zeus",
-                     *           "service": "deepgram",
-                     *           "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565347/aura/zeus_docs_fupdiv.wav"
-                     *         },
-                     *         {
-                     *           "id": 32,
-                     *           "name": "9BWtsMINqrJLrRacOk9x",
-                     *           "display_name": "Aria",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/9BWtsMINqrJLrRacOk9x/405766b8-1f4e-4d3c-aba1-6f25333823ec.mp3"
-                     *         },
-                     *         {
-                     *           "id": 33,
-                     *           "name": "CwhRBWXzGAHq8TQ4Fs17",
-                     *           "display_name": "Roger",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/CwhRBWXzGAHq8TQ4Fs17/58ee3ff5-f6f2-4628-93b8-e38eb31806b0.mp3"
-                     *         },
-                     *         {
-                     *           "id": 34,
-                     *           "name": "EXAVITQu4vr4xnSDxMaL",
-                     *           "display_name": "Sarah",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/01a3e33c-6e99-4ee7-8543-ff2216a32186.mp3"
-                     *         },
-                     *         {
-                     *           "id": 35,
-                     *           "name": "FGY2WhTYpPnrIDTdsKH5",
-                     *           "display_name": "Laura",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/FGY2WhTYpPnrIDTdsKH5/67341759-ad08-41a5-be6e-de12fe448618.mp3"
-                     *         },
-                     *         {
-                     *           "id": 36,
-                     *           "name": "IKne3meq5aSn9XLyUdCD",
-                     *           "display_name": "Charlie",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/IKne3meq5aSn9XLyUdCD/102de6f2-22ed-43e0-a1f1-111fa75c5481.mp3"
-                     *         },
-                     *         {
-                     *           "id": 37,
-                     *           "name": "JBFqnCBsd6RMkjVDRZzb",
-                     *           "display_name": "George",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/JBFqnCBsd6RMkjVDRZzb/e6206d1a-0721-4787-aafb-06a6e705cac5.mp3"
-                     *         },
-                     *         {
-                     *           "id": 38,
-                     *           "name": "N2lVS1w4EtoT3dr4eOWO",
-                     *           "display_name": "Callum",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/N2lVS1w4EtoT3dr4eOWO/ac833bd8-ffda-4938-9ebc-b0f99ca25481.mp3"
-                     *         },
-                     *         {
-                     *           "id": 39,
-                     *           "name": "SAz9YHcvj6GT2YYXdXww",
-                     *           "display_name": "River",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/SAz9YHcvj6GT2YYXdXww/e6c95f0b-2227-491a-b3d7-2249240decb7.mp3"
-                     *         },
-                     *         {
-                     *           "id": 40,
-                     *           "name": "TX3LPaxmHKxFdv7VOQHJ",
-                     *           "display_name": "Liam",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/TX3LPaxmHKxFdv7VOQHJ/63148076-6363-42db-aea8-31424308b92c.mp3"
-                     *         },
-                     *         {
-                     *           "id": 41,
-                     *           "name": "XB0fDUnXU5powFXDhCwa",
-                     *           "display_name": "Charlotte",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/XB0fDUnXU5powFXDhCwa/942356dc-f10d-4d89-bda5-4f8505ee038b.mp3"
-                     *         },
-                     *         {
-                     *           "id": 42,
-                     *           "name": "Xb7hH8MSUJpSbSDYk0k2",
-                     *           "display_name": "Alice",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/Xb7hH8MSUJpSbSDYk0k2/d10f7534-11f6-41fe-a012-2de1e482d336.mp3"
-                     *         },
-                     *         {
-                     *           "id": 43,
-                     *           "name": "XrExE9yKIg1WjnnlVkGX",
-                     *           "display_name": "Matilda",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/XrExE9yKIg1WjnnlVkGX/b930e18d-6b4d-466e-bab2-0ae97c6d8535.mp3"
-                     *         },
-                     *         {
-                     *           "id": 44,
-                     *           "name": "bIHbv24MWmeRgasZH58o",
-                     *           "display_name": "Will",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/bIHbv24MWmeRgasZH58o/8caf8f3d-ad29-4980-af41-53f20c72d7a4.mp3"
-                     *         },
-                     *         {
-                     *           "id": 45,
-                     *           "name": "cjVigY5qzO86Huf0OWal",
-                     *           "display_name": "Eric",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/cjVigY5qzO86Huf0OWal/d098fda0-6456-4030-b3d8-63aa048c9070.mp3"
-                     *         },
-                     *         {
-                     *           "id": 46,
-                     *           "name": "iP95p4xoKVk53GoZ742B",
-                     *           "display_name": "Chris",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/iP95p4xoKVk53GoZ742B/3f4bde72-cc48-40dd-829f-57fbf906f4d7.mp3"
-                     *         },
-                     *         {
-                     *           "id": 47,
-                     *           "name": "nPczCjzI2devNBz1zQrb",
-                     *           "display_name": "Brian",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/nPczCjzI2devNBz1zQrb/2dd3e72c-4fd3-42f1-93ea-abc5d4e5aa1d.mp3"
-                     *         },
-                     *         {
-                     *           "id": 48,
-                     *           "name": "onwK4e9ZLuTAKqWW03F9",
-                     *           "display_name": "Daniel",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/onwK4e9ZLuTAKqWW03F9/7eee0236-1a72-4b86-b303-5dcadc007ba9.mp3"
-                     *         },
-                     *         {
-                     *           "id": 49,
-                     *           "name": "pFZP5JQG7iQjIQuC4Bku",
-                     *           "display_name": "Lily",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/89b68b35-b3dd-4348-a84a-a3c13a3c2b30.mp3"
-                     *         },
-                     *         {
-                     *           "id": 50,
-                     *           "name": "pqHfZKP75CvOlQylNhV4",
-                     *           "display_name": "Bill",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/pqHfZKP75CvOlQylNhV4/d782b3ff-84ba-4029-848c-acf01285524d.mp3"
-                     *         },
-                     *         {
-                     *           "id": 51,
-                     *           "name": "anushka",
-                     *           "display_name": "Anushka",
-                     *           "service": "sarvam",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 52,
-                     *           "name": "manisha",
-                     *           "display_name": "Manisha",
-                     *           "service": "sarvam",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 53,
-                     *           "name": "vidya",
-                     *           "display_name": "Vidya",
-                     *           "service": "sarvam",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 54,
-                     *           "name": "arya",
-                     *           "display_name": "Arya",
-                     *           "service": "sarvam",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 55,
-                     *           "name": "abhilash",
-                     *           "display_name": "Abhilash",
-                     *           "service": "sarvam",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 56,
-                     *           "name": "karun",
-                     *           "display_name": "Karun",
-                     *           "service": "sarvam",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 57,
-                     *           "name": "hitesh",
-                     *           "display_name": "Hitesh",
-                     *           "service": "sarvam",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 58,
-                     *           "name": "en-IN-Chirp-HD-D",
-                     *           "display_name": "Chirp HD D (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 59,
-                     *           "name": "en-IN-Chirp-HD-F",
-                     *           "display_name": "Chirp HD F (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 60,
-                     *           "name": "en-IN-Chirp-HD-O",
-                     *           "display_name": "Chirp HD O (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 61,
-                     *           "name": "en-IN-Chirp3-HD-Achernar",
-                     *           "display_name": "Achernar (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 62,
-                     *           "name": "en-IN-Chirp3-HD-Achird",
-                     *           "display_name": "Achird (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 63,
-                     *           "name": "en-IN-Chirp3-HD-Algenib",
-                     *           "display_name": "Algenib (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 64,
-                     *           "name": "en-IN-Chirp3-HD-Algieba",
-                     *           "display_name": "Algieba (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 65,
-                     *           "name": "en-IN-Chirp3-HD-Alnilam",
-                     *           "display_name": "Alnilam (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 66,
-                     *           "name": "en-IN-Chirp3-HD-Aoede",
-                     *           "display_name": "Aoede (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 67,
-                     *           "name": "en-IN-Chirp3-HD-Autonoe",
-                     *           "display_name": "Autonoe (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 68,
-                     *           "name": "en-IN-Chirp3-HD-Callirrhoe",
-                     *           "display_name": "Callirrhoe (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 69,
-                     *           "name": "en-IN-Chirp3-HD-Charon",
-                     *           "display_name": "Charon (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 70,
-                     *           "name": "en-IN-Chirp3-HD-Despina",
-                     *           "display_name": "Despina (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 71,
-                     *           "name": "en-IN-Chirp3-HD-Enceladus",
-                     *           "display_name": "Enceladus (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 72,
-                     *           "name": "en-IN-Chirp3-HD-Erinome",
-                     *           "display_name": "Erinome (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 73,
-                     *           "name": "en-IN-Chirp3-HD-Fenrir",
-                     *           "display_name": "Fenrir (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 74,
-                     *           "name": "en-IN-Chirp3-HD-Gacrux",
-                     *           "display_name": "Gacrux (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 75,
-                     *           "name": "en-IN-Chirp3-HD-Iapetus",
-                     *           "display_name": "Iapetus (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 76,
-                     *           "name": "en-IN-Chirp3-HD-Kore",
-                     *           "display_name": "Kore (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 77,
-                     *           "name": "en-IN-Chirp3-HD-Laomedeia",
-                     *           "display_name": "Laomedeia (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 78,
-                     *           "name": "en-IN-Chirp3-HD-Leda",
-                     *           "display_name": "Leda (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 79,
-                     *           "name": "en-IN-Chirp3-HD-Orus",
-                     *           "display_name": "Orus (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 80,
-                     *           "name": "en-IN-Chirp3-HD-Puck",
-                     *           "display_name": "Puck (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 81,
-                     *           "name": "en-IN-Chirp3-HD-Pulcherrima",
-                     *           "display_name": "Pulcherrima (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 82,
-                     *           "name": "en-IN-Chirp3-HD-Rasalgethi",
-                     *           "display_name": "Rasalgethi (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 83,
-                     *           "name": "en-IN-Chirp3-HD-Sadachbia",
-                     *           "display_name": "Sadachbia (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 84,
-                     *           "name": "en-IN-Chirp3-HD-Sadaltager",
-                     *           "display_name": "Sadaltager (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 85,
-                     *           "name": "en-IN-Chirp3-HD-Schedar",
-                     *           "display_name": "Schedar (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 86,
-                     *           "name": "en-IN-Chirp3-HD-Sulafat",
-                     *           "display_name": "Sulafat (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 87,
-                     *           "name": "en-IN-Chirp3-HD-Umbriel",
-                     *           "display_name": "Umbriel (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 88,
-                     *           "name": "en-IN-Chirp3-HD-Vindemiatrix",
-                     *           "display_name": "Vindemiatrix (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 89,
-                     *           "name": "en-IN-Chirp3-HD-Zephyr",
-                     *           "display_name": "Zephyr (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 90,
-                     *           "name": "en-IN-Chirp3-HD-Zubenelgenubi",
-                     *           "display_name": "Zubenelgenubi (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 91,
-                     *           "name": "en-IN-Neural2-B",
-                     *           "display_name": "Neural2 B (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 92,
-                     *           "name": "en-IN-Neural2-C",
-                     *           "display_name": "Neural2 C (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 93,
-                     *           "name": "en-IN-Neural2-D",
-                     *           "display_name": "Neural2 D (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 94,
-                     *           "name": "en-IN-Standard-A",
-                     *           "display_name": "Standard A (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 95,
-                     *           "name": "en-IN-Standard-B",
-                     *           "display_name": "Standard B (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 96,
-                     *           "name": "en-IN-Standard-C",
-                     *           "display_name": "Standard C (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 97,
-                     *           "name": "en-IN-Standard-D",
-                     *           "display_name": "Standard D (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 98,
-                     *           "name": "en-IN-Standard-E",
-                     *           "display_name": "Standard E (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 99,
-                     *           "name": "en-IN-Standard-F",
-                     *           "display_name": "Standard F (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 100,
-                     *           "name": "en-IN-Wavenet-A",
-                     *           "display_name": "Wavenet A (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 101,
-                     *           "name": "en-IN-Wavenet-B",
-                     *           "display_name": "Wavenet B (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 102,
-                     *           "name": "en-IN-Wavenet-C",
-                     *           "display_name": "Wavenet C (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 103,
-                     *           "name": "en-IN-Wavenet-D",
-                     *           "display_name": "Wavenet D (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 104,
-                     *           "name": "en-IN-Wavenet-E",
-                     *           "display_name": "Wavenet E (Female)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 105,
-                     *           "name": "en-IN-Wavenet-F",
-                     *           "display_name": "Wavenet F (Male)",
-                     *           "service": "google",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 172,
-                     *           "name": "f8f5f1b2-f02d-4d8e-a40d-fd850a487b3d",
-                     *           "display_name": "Kiara - Joyful Woman",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/172/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 173,
-                     *           "name": "d7e54830-4754-4b17-952c-bcdb7e80a2fb",
-                     *           "display_name": "Mabel - Grandma",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/173/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 174,
-                     *           "name": "e00d0e4c-a5c8-443f-a8a3-473eb9a62355",
-                     *           "display_name": "Zeke - Friendly Sidekick",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/174/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 175,
-                     *           "name": "42b39f37-515f-4eee-8546-73e841679c1d",
-                     *           "display_name": "James - Navigator",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/175/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 176,
-                     *           "name": "a38e4e85-e815-43ab-acf1-907c4688dd6c",
-                     *           "display_name": "Lindsey - Relaxed Rep",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/176/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 177,
-                     *           "name": "41534e16-2966-4c6b-9670-111411def906",
-                     *           "display_name": "Clarence - Newsman",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/177/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 178,
-                     *           "name": "f31cc6a7-c1e8-4764-980c-60a361443dd1",
-                     *           "display_name": "Olivia - Sunny Woman",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/178/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 179,
-                     *           "name": "21b81c14-f85b-436d-aff5-43f2e788ecf8",
-                     *           "display_name": "Riley - Chill Friend",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/179/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 180,
-                     *           "name": "1259b7e3-cb8a-43df-9446-30971a46b8b0",
-                     *           "display_name": "Devansh - Warm Support Agent",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/180/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 181,
-                     *           "name": "9cebb910-d4b7-4a4a-85a4-12c79137724c",
-                     *           "display_name": "Aarti - Conversationalist",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/181/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 182,
-                     *           "name": "4df027cb-2920-4a1f-8c34-f21529d5c3fe",
-                     *           "display_name": "Carson - Friendly Support",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/182/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 183,
-                     *           "name": "0418348a-0ca2-4e90-9986-800fb8b3bbc0",
-                     *           "display_name": "Antoine - Stern Man",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/183/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 184,
-                     *           "name": "1fc31370-81b1-4588-9c1a-f93793c6e01d",
-                     *           "display_name": "Carlo - Roman Guide",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/184/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 185,
-                     *           "name": "87bc56aa-ab01-4baa-9071-77d497064686",
-                     *           "display_name": "Jordan - Chill Pal",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/185/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 186,
-                     *           "name": "bec003e2-3cb3-429c-8468-206a393c67ad",
-                     *           "display_name": "Parvati - Friendly Supporter",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/186/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 187,
-                     *           "name": "f6141af3-5f94-418c-80ed-a45d450e7e2e",
-                     *           "display_name": "Priya - Trusted Operator",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/187/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 188,
-                     *           "name": "8985388c-1332-4ce7-8d55-789628aa3df4",
-                     *           "display_name": "Robyn - Storycrafter",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/188/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 189,
-                     *           "name": "79743797-2087-422f-8dc7-86f9efca85f1",
-                     *           "display_name": "Fran - Confident Young Professional",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/189/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 190,
-                     *           "name": "d718e944-b313-4998-b011-d1cc078d4ef3",
-                     *           "display_name": "Liv - Casual Friend",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/190/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 191,
-                     *           "name": "043cfc81-d69f-4bee-ae1e-7862cb358650",
-                     *           "display_name": "Amelia - Instructor",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/191/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 192,
-                     *           "name": "1d3ba41a-96e6-44ad-aabb-9817c56caa68",
-                     *           "display_name": "Mia - Agent",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/192/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 193,
-                     *           "name": "38aabb6a-f52b-4fb0-a3d1-988518f4dc06",
-                     *           "display_name": "Alina - Engaging Assistant",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/193/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 194,
-                     *           "name": "82a7fc13-2927-4e42-9b8a-bb1f9e506521",
-                     *           "display_name": "Tomek - Casual Companion",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/194/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 195,
-                     *           "name": "c8605446-247c-4d39-acd4-8f4c28aa363c",
-                     *           "display_name": "Edith - Matriarch",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/195/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 196,
-                     *           "name": "f114a467-c40a-4db8-964d-aaba89cd08fa",
-                     *           "display_name": "Miles - Yogi",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/196/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 197,
-                     *           "name": "607167f6-9bf2-473c-accc-ac7b3b66b30b",
-                     *           "display_name": "Brenda - Host",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/197/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 198,
-                     *           "name": "064b17af-d36b-4bfb-b003-be07dba1b649",
-                     *           "display_name": "Tatiana - Friendly Storyteller",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/198/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 199,
-                     *           "name": "cccc21e8-5bcf-4ff0-bc7f-be4e40afc544",
-                     *           "display_name": "Avery - Gaming Girl",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/199/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 200,
-                     *           "name": "c0c374aa-09be-42d9-9828-4d2d7df86962",
-                     *           "display_name": "Isabel - Teacher",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/200/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 201,
-                     *           "name": "55deba52-bc73-4481-ab69-9c8831c8a7c3",
-                     *           "display_name": "Camille - Friendly Expert",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/201/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 202,
-                     *           "name": "bd9120b6-7761-47a6-a446-77ca49132781",
-                     *           "display_name": "Owen - Tutorial Man",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/202/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 203,
-                     *           "name": "701a96e1-7fdd-4a6c-a81e-a4a450403599",
-                     *           "display_name": "Rowan - Team Leader",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/203/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 204,
-                     *           "name": "1cf751f6-8749-43ab-98bd-230dd633abdb",
-                     *           "display_name": "Ana Paula - Marketer",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/204/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 205,
-                     *           "name": "3f4ade23-6eb4-4279-ab05-6a144947c4d5",
-                     *           "display_name": "Karin - Companion",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/205/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 206,
-                     *           "name": "8832a0b5-47b2-4751-bb22-6a8e2149303d",
-                     *           "display_name": "French Narrator Lady",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/206/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 207,
-                     *           "name": "3e1ed423-17e5-4773-b87c-25b031106e41",
-                     *           "display_name": "Paul - Straight Talker",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/207/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 208,
-                     *           "name": "2695b6b5-5543-4be1-96d9-3967fb5e7fec",
-                     *           "display_name": "Agustin - Clear Storyteller",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/208/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 209,
-                     *           "name": "700d1ee3-a641-4018-ba6e-899dcadc9e2b",
-                     *           "display_name": "Luana - Public Speaker",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/209/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 210,
-                     *           "name": "996a8b96-4804-46f0-8e05-3fd4ef1a87cd",
-                     *           "display_name": "Darla - Resolution Agent",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/210/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 211,
-                     *           "name": "da4a4eff-3b7e-4846-8f70-f075ff61222c",
-                     *           "display_name": "Callum - Brand Spokesperson",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/211/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 212,
-                     *           "name": "fb26447f-308b-471e-8b00-8e9f04284eb5",
-                     *           "display_name": "Thistle - Troublemaker",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/212/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 213,
-                     *           "name": "bf991597-6c13-47e4-8411-91ec2de5c466",
-                     *           "display_name": "Carol - Task Coach",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/213/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 214,
-                     *           "name": "5c3c89e5-535f-43ef-b14d-f8ffe148c1f0",
-                     *           "display_name": "French Narrator Man",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/214/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 215,
-                     *           "name": "ab7c61f5-3daa-47dd-a23b-4ac0aac5f5c3",
-                     *           "display_name": "Friendly French Man",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/215/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 216,
-                     *           "name": "f91ab3e6-5071-4e15-b016-cde6f2bcd222",
-                     *           "display_name": "Aadhya - Soother",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/216/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 217,
-                     *           "name": "e07c00bc-4134-4eae-9ea4-1a55fb45746b",
-                     *           "display_name": "Brooke - Big Sister",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/217/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 218,
-                     *           "name": "228fca29-3a0a-435c-8728-5cb483251068",
-                     *           "display_name": "Kiefer",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/218/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 219,
-                     *           "name": "ec1e269e-9ca0-402f-8a18-58e0e022355a",
-                     *           "display_name": "Ariana",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/219/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 220,
-                     *           "name": "5cad89c9-d88a-4832-89fb-55f2f16d13d3",
-                     *           "display_name": "Brandon",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/220/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 221,
-                     *           "name": "03496517-369a-4db1-8236-3d3ae459ddf7",
-                     *           "display_name": "Calypso - ASMR Lady",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/221/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 222,
-                     *           "name": "e8e5fffb-252c-436d-b842-8879b84445b6",
-                     *           "display_name": "Cathy - Coworker",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/222/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 223,
-                     *           "name": "f786b574-daa5-4673-aa0c-cbe3e8534c02",
-                     *           "display_name": "Katie - Friendly Fixer",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/223/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 224,
-                     *           "name": "6ccbfb76-1fc6-48f7-b71d-91ac6298247b",
-                     *           "display_name": "Tessa",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/224/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 225,
-                     *           "name": "66c6b81c-ddb7-4892-bdd5-19b5a7be38e7",
-                     *           "display_name": "Dorothy",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/225/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 226,
-                     *           "name": "w99aEsEd2KhfXwCmjAn4",
-                     *           "display_name": "Jordan - Kind and Friendly",
-                     *           "service": "eleven_labs",
-                     *           "sample_url": false
-                     *         },
-                     *         {
-                     *           "id": 227,
-                     *           "name": "2b568345-1d48-4047-b25f-7baccf842eb0",
-                     *           "display_name": "Yumiko - Friendly Agent",
-                     *           "service": "cartesia",
-                     *           "sample_url": "https://192d-2401-4900-8f60-ac89-8959-6836-5aed-73c7.ngrok-free.app/web/content/bot.voice/227/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 228,
-                     *           "name": "498e7f37-7fa3-4e2c-b8e2-8b6e9276f956",
-                     *           "display_name": "Aiko - Calming Voice",
-                     *           "service": "cartesia",
-                     *           "sample_url": "https://192d-2401-4900-8f60-ac89-8959-6836-5aed-73c7.ngrok-free.app/web/content/bot.voice/228/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 229,
-                     *           "name": "31c55968-a9f4-4115-8831-3a16952179c8",
-                     *           "display_name": "Ayumi - Sales Guide",
-                     *           "service": "cartesia",
-                     *           "sample_url": "https://192d-2401-4900-8f60-ac89-8959-6836-5aed-73c7.ngrok-free.app/web/content/bot.voice/229/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 230,
-                     *           "name": "62ae83ad-4f6a-430b-af41-a9bede9286ca",
-                     *           "display_name": "Gemma - Decisive Agent",
-                     *           "service": "cartesia",
-                     *           "sample_url": "https://192d-2401-4900-8f60-ac89-8959-6836-5aed-73c7.ngrok-free.app/web/content/bot.voice/230/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 231,
-                     *           "name": "2f251ac3-89a9-4a77-a452-704b474ccd01",
-                     *           "display_name": "Lucy - Capable Coordinator",
-                     *           "service": "cartesia",
-                     *           "sample_url": "https://192d-2401-4900-8f60-ac89-8959-6836-5aed-73c7.ngrok-free.app/web/content/bot.voice/231/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 232,
-                     *           "name": "97e7d7a9-dfaa-4758-a936-f5f844ac34cc",
-                     *           "display_name": "Fuji - Positive Colleague",
-                     *           "service": "cartesia",
-                     *           "sample_url": "https://192d-2401-4900-8f60-ac89-8959-6836-5aed-73c7.ngrok-free.app/web/content/bot.voice/232/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 233,
-                     *           "name": "9e7ef2cf-b69c-46ac-9e35-bbfd73ba82af",
-                     *           "display_name": "Ren - High-Energy Character",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/233/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 234,
-                     *           "name": "a759ecc5-ac21-487e-88c7-288bdfe76999",
-                     *           "display_name": "Daichi - Baritone Narrator",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/234/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 235,
-                     *           "name": "7c58f4a4-a72c-42fa-a503-41b9408820f3",
-                     *           "display_name": "Inès\t- Poised Communicator",
-                     *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/235/sample_audio"
-                     *         },
-                     *         {
-                     *           "id": 236,
-                     *           "name": "791d5162-d5eb-40f0-8189-f19db44611d8",
-                     *           "display_name": "Ayush - Friendly Neighbor",
+                     *           "id": 8079,
+                     *           "name": "b521b304-7672-4cf9-9a34-b4eb1df1bde0",
+                     *           "display_name": "Aadya",
                      *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/236/sample_audio"
+                     *           "sample_url": "https://backend.omnidim.io/web/content/bot.voice/8079/sample_audio"
                      *         },
                      *         {
-                     *           "id": 237,
-                     *           "name": "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4",
-                     *           "display_name": "Skylar - Friendly Guide",
+                     *           "id": 8085,
+                     *           "name": "bfa64e07-6cd9-4865-a5a9-cdcb09714b83",
+                     *           "display_name": "Wren",
                      *           "service": "cartesia",
-                     *           "sample_url": "http://localhost:8069/web/content/bot.voice/237/sample_audio"
+                     *           "sample_url": "https://backend.omnidim.io/web/content/bot.voice/8085/sample_audio"
                      *         }
                      *       ],
-                     *       "total_services": 44,
-                     *       "total_voices": 156
+                     *       "total_services": 10,
+                     *       "total_voices": 2
                      *     }
                      */
                     "application/json": unknown;
@@ -13399,11 +12853,11 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "id": 1,
-                     *       "name": "aura-luna-en",
-                     *       "display_name": "luna",
-                     *       "service": "deepgram",
-                     *       "sample_url": "https://res.cloudinary.com/deepgram/video/upload/v1709565351/aura/luna_docs_clom0e.wav"
+                     *       "id": 8079,
+                     *       "name": "b521b304-7672-4cf9-9a34-b4eb1df1bde0",
+                     *       "display_name": "Aadya",
+                     *       "service": "cartesia",
+                     *       "sample_url": "https://backend.omnidim.io/web/content/bot.voice/8079/sample_audio"
                      *     }
                      */
                     "application/json": components["schemas"]["VoiceDetail"];
@@ -13420,668 +12874,6 @@ export interface operations {
                         error?: string;
                     };
                 };
-            };
-        };
-    };
-    listSimulations: {
-        parameters: {
-            query?: {
-                /** @description Page number for pagination. */
-                pageno?: number;
-                /** @description Items per page (max 150). */
-                pagesize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Paginated list of simulations. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "records": [],
-                     *       "total_records": 0
-                     *     }
-                     */
-                    "application/json": {
-                        records?: components["schemas"]["Simulation"][];
-                        total_records?: number;
-                    };
-                };
-            };
-        };
-    };
-    createSimulation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /**
-                     * @description Name of the simulation.
-                     * @example My Simulation
-                     */
-                    name: string;
-                    /**
-                     * @description ID of the agent to test.
-                     * @example 158910
-                     */
-                    agent_id: number;
-                    /**
-                     * @description Number of calls to make per scenario (default 1, max 3).
-                     * @default 1
-                     */
-                    number_of_call_to_make?: number;
-                    /**
-                     * @description Number of concurrent calls to run (default 3, max 3).
-                     * @default 3
-                     */
-                    concurrent_call_count?: number;
-                    /**
-                     * @description Maximum duration for each call in minutes (default 3, max 10).
-                     * @default 3
-                     */
-                    max_call_duration_in_minutes?: number;
-                    /** @description List of test scenarios to execute. */
-                    scenarios?: {
-                        /**
-                         * @description Name of the test scenario.
-                         * @example Polite cancellation
-                         */
-                        name: string;
-                        /**
-                         * @description Detailed instructions for the test scenario.
-                         * @example Ask to cancel a subscription, but be friendly.
-                         */
-                        description: string;
-                        /**
-                         * @description Expected outcome or behavior from the agent.
-                         * @example Agent acknowledges the request and routes to retention.
-                         */
-                        expected_result: string;
-                        /** @description Voice configurations for the test calls. If multiple voices are selected, the agent randomly picks one per call per scenario. */
-                        selected_voices?: {
-                            /** @description Voice ID from the provider. */
-                            id: string;
-                            /**
-                             * @example eleven_labs
-                             * @enum {string}
-                             */
-                            provider: "eleven_labs" | "play_ht" | "deepgram" | "cartesia" | "rime";
-                        }[];
-                    }[];
-                };
-            };
-        };
-        responses: {
-            /** @description Simulation created. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "simulation": {
-                     *         "id": 456,
-                     *         "name": "Customer Support Test",
-                     *         "bot_id": {
-                     *           "id": 1234,
-                     *           "name": "Customer Support Agent"
-                     *         },
-                     *         "scenarios_ids": [],
-                     *         "status": "Draft",
-                     *         "number_of_call_to_make": 1,
-                     *         "concurrent_call_count": 3,
-                     *         "max_call_duration_in_minutes": 3,
-                     *         "what_went_wrong": false,
-                     *         "suggestions_for_improvement": false,
-                     *         "prompt_suggestion": false,
-                     *         "is_auto_prompt_suggestions_applied": false,
-                     *         "how_many_scenario_to_generate": 0,
-                     *         "summary": false,
-                     *         "analyticsData": {
-                     *           "Positive": 0,
-                     *           "Negative": 0,
-                     *           "Neutral": 0
-                     *         },
-                     *         "total_simulation_remaining_records": 0,
-                     *         "total_simulation_in_progress_records": 0,
-                     *         "total_simulation_finished_records": 0,
-                     *         "total_records": 0,
-                     *         "progress": [
-                     *           0
-                     *         ],
-                     *         "create_date": "05/08/2026 09:10:29",
-                     *         "simulation_call_recording": [],
-                     *         "can_stop": false,
-                     *         "active_calls_count": 0
-                     *       }
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        simulation?: components["schemas"]["Simulation"];
-                    };
-                };
-            };
-        };
-    };
-    getSimulation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Simulation details. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "simulation": {
-                     *         "id": 456,
-                     *         "name": "Customer Support Test",
-                     *         "bot_id": {
-                     *           "id": 1234,
-                     *           "name": "Customer Support Agent"
-                     *         },
-                     *         "scenarios_ids": [],
-                     *         "status": "Draft",
-                     *         "number_of_call_to_make": 1,
-                     *         "concurrent_call_count": 3,
-                     *         "max_call_duration_in_minutes": 3,
-                     *         "what_went_wrong": false,
-                     *         "suggestions_for_improvement": false,
-                     *         "prompt_suggestion": false,
-                     *         "is_auto_prompt_suggestions_applied": false,
-                     *         "how_many_scenario_to_generate": 0,
-                     *         "summary": false,
-                     *         "analyticsData": {
-                     *           "Positive": 0,
-                     *           "Negative": 0,
-                     *           "Neutral": 0
-                     *         },
-                     *         "total_simulation_remaining_records": 0,
-                     *         "total_simulation_in_progress_records": 0,
-                     *         "total_simulation_finished_records": 0,
-                     *         "total_records": 0,
-                     *         "progress": [
-                     *           0
-                     *         ],
-                     *         "create_date": "05/08/2026 09:10:29",
-                     *         "simulation_call_recording": [],
-                     *         "can_stop": false,
-                     *         "active_calls_count": 0
-                     *       }
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        simulation?: components["schemas"]["Simulation"];
-                    };
-                };
-            };
-        };
-    };
-    updateSimulation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /**
-                     * @description Name of the simulation for identification.
-                     * @example Pricing objection run
-                     */
-                    name?: string;
-                    /**
-                     * @description ID of the agent to test.
-                     * @example 158910
-                     */
-                    agent_id?: number;
-                    /** @description Number of calls to make per scenario (default 1, max 3). */
-                    number_of_call_to_make?: number;
-                    /** @description Number of concurrent calls to run (default 3, max 3). */
-                    concurrent_call_count?: number;
-                    /** @description Maximum duration for each call in minutes (default 3, max 10). */
-                    max_call_duration_in_minutes?: number;
-                    /** @description Full scenario list. Include existing scenarios you want to keep, plus any new or updated ones. */
-                    scenarios?: {
-                        /** @description Include this to update an existing scenario; omit it to add a new one. */
-                        id?: number;
-                        /** @description Name of the test scenario. */
-                        name: string;
-                        /** @description Updated instructions for the test scenario. */
-                        description: string;
-                        /** @description Updated expected outcome from the agent. */
-                        expected_result: string;
-                        /** @description Updated voice configurations for the test calls. */
-                        selected_voices?: {
-                            /** @description Voice ID from the provider. */
-                            id: string;
-                            /** @enum {string} */
-                            provider: "eleven_labs" | "play_ht" | "deepgram" | "cartesia" | "rime";
-                        }[];
-                    }[];
-                };
-            };
-        };
-        responses: {
-            /** @description Updated simulation. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "simulation": {
-                     *         "id": 456,
-                     *         "name": "Customer Support Test (Updated)",
-                     *         "bot_id": {
-                     *           "id": 1234,
-                     *           "name": "Customer Support Agent"
-                     *         },
-                     *         "status": "Draft",
-                     *         "number_of_call_to_make": 1,
-                     *         "concurrent_call_count": 3,
-                     *         "max_call_duration_in_minutes": 5
-                     *       }
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        simulation?: components["schemas"]["Simulation"];
-                    };
-                };
-            };
-        };
-    };
-    deleteSimulation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Simulation deleted. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "message": "Simulation deleted successfully"
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        message?: string;
-                    };
-                };
-            };
-        };
-    };
-    startSimulation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": {
-                    /** @description Optional array of scenarios to update before starting. */
-                    scenarios?: {
-                        /** @description Include this to update an existing scenario; omit it to add a new one. */
-                        id?: number;
-                        /** @example Customer asks about pricing */
-                        name: string;
-                        /**
-                         * @description Updated instructions for the test scenario.
-                         * @example Caller pushes back on the monthly price.
-                         */
-                        description: string;
-                        /**
-                         * @description Updated expected outcome from the agent.
-                         * @example Agent explains the tiers without discounting.
-                         */
-                        expected_result: string;
-                        /** @description Updated voice configurations for the test calls. */
-                        selected_voices?: {
-                            /** @description Voice ID from the provider. */
-                            id: string;
-                            /** @enum {string} */
-                            provider: "eleven_labs" | "play_ht" | "deepgram" | "cartesia" | "rime";
-                        }[];
-                    }[];
-                };
-            };
-        };
-        responses: {
-            /** @description Simulation started. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "message": "Simulation started successfully",
-                     *       "simulation": {
-                     *         "id": 456,
-                     *         "name": "Customer Support Test",
-                     *         "status": "Pending",
-                     *         "number_of_call_to_make": 1,
-                     *         "concurrent_call_count": 3,
-                     *         "max_call_duration_in_minutes": 3
-                     *       }
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        message?: string;
-                        simulation?: components["schemas"]["Simulation"];
-                    };
-                };
-            };
-        };
-    };
-    stopSimulation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /**
-             * @description Stop attempted. `success: true` when the simulation was
-             *     running and is now stopped; `success: false` (still HTTP
-             *     200) when the simulation isn't in a stoppable state; the
-             *     `message` explains why. `disconnect_results` is only
-             *     present on the success path.
-             */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "message": "Simulation stopped successfully",
-                     *       "disconnect_results": {
-                     *         "successful_disconnects": 0,
-                     *         "failed_disconnects": 0,
-                     *         "pending_stopped": 0
-                     *       }
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        message?: string;
-                        /** @description Per-recording stop counts. Only present when `success` is true. */
-                        disconnect_results?: {
-                            successful_disconnects?: number;
-                            failed_disconnects?: number;
-                            pending_stopped?: number;
-                        };
-                    };
-                };
-            };
-        };
-    };
-    enhancePrompt: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /**
-             * @description Enhanced prompt suggestions. The simulation must be in
-             *     `Completed` status; otherwise the API returns 400.
-             */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "previous_context": [
-                     *         {
-                     *           "title": "Purpose",
-                     *           "prompt": "This agent helps customers with product inquiries and support issues."
-                     *         }
-                     *       ],
-                     *       "prompt_breakdown": [
-                     *         {
-                     *           "title": "Purpose",
-                     *           "prompt": "This agent helps customers with product inquiries, support issues, and frequently asked product questions."
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        /** @description The agent's existing context-breakdown sections. */
-                        previous_context?: {
-                            title?: string;
-                            prompt?: string;
-                        }[];
-                        /** @description Suggested replacement sections, structured the same way. */
-                        prompt_breakdown?: {
-                            title?: string;
-                            prompt?: string;
-                        }[];
-                    };
-                };
-            };
-            /**
-             * @description Simulation is not in `Completed` status. Body:
-             *     `{"error": "invalid_state", "error_description": "Enhanced prompt suggestions are only available for completed simulations"}`.
-             */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    applyEnhancedPrompt: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                simulation_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The agent's prompt sections were replaced. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "message": "Enhanced prompt applied to agent successfully",
-                     *       "agent_id": 123
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        message?: string;
-                        /** @description The agent whose prompt changed. */
-                        agent_id?: number;
-                    };
-                };
-            };
-            /**
-             * @description The simulation has no prompt suggestions yet. They are written when
-             *     the simulation completes.
-             */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Missing or invalid API key. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The API key's user cannot run simulations. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Simulation not found or access denied. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    generateAutoScenarios: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the agent. */
-                agent_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "number_of_scenarios": 5
-                 *     }
-                 */
-                "application/json": {
-                    /** @description How many scenarios to write. */
-                    number_of_scenarios: number;
-                };
-            };
-        };
-        responses: {
-            /** @description The generated scenarios. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "scenarios": [
-                     *         {
-                     *           "name": "Reschedule an appointment",
-                     *           "description": "Ask to move tomorrow's appointment to Friday afternoon.",
-                     *           "expected_result": "The agent confirms the new slot and repeats the date and time."
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": {
-                        success?: boolean;
-                        scenarios?: {
-                            name?: string;
-                            /** @description The steps the simulated caller follows. */
-                            description?: string;
-                            /** @description How the agent should respond. */
-                            expected_result?: string;
-                        }[];
-                    };
-                };
-            };
-            /** @description `number_of_scenarios` is missing. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Missing or invalid API key. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The API key's user cannot run simulations. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Agent not found or access denied. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -16916,6 +15708,216 @@ export interface operations {
             };
         };
     };
+    getPlanAndAddons: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account's plan and what runs out soon. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPlan"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The API key's user does not have Billing access. If Billing is
+             *     enabled for your organization, an administrator can grant it; if it
+             *     is not, contact support.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have access to Billing. If Billing is enabled for your organization, an administrator can grant it."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getReferrals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Your referrals. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "program_available": true,
+                     *       "code": "k7m2pq9x",
+                     *       "url": "https://omnidim.io/r/k7m2pq9x",
+                     *       "minutes_per_referral": 30,
+                     *       "joined_count": 2,
+                     *       "rewarded_count": 1,
+                     *       "minutes_earned": 30,
+                     *       "referees": [
+                     *         {
+                     *           "label": "Priya",
+                     *           "status": "withheld",
+                     *           "minutes": 30,
+                     *           "status_text": "This reward is on hold while the referral is reviewed. Contact support if you think this is a mistake."
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        program_available?: boolean;
+                        code?: string;
+                        /** @description Your referral link. */
+                        url?: string;
+                        minutes_per_referral?: number;
+                        joined_count?: number;
+                        rewarded_count?: number;
+                        minutes_earned?: number;
+                        /** @description Your 10 most recent referrals. */
+                        referees?: {
+                            /** @description The name the person signed up with. */
+                            label?: string | null;
+                            /** @enum {string} */
+                            status?: "pending" | "granted" | "withheld" | "expired";
+                            minutes?: number;
+                            /** @description Present when the reward is on hold (`withheld`). */
+                            status_text?: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    listSupportCases: {
+        parameters: {
+            query?: {
+                /** @description Page number. */
+                pageno?: number;
+                /** @description Cases per page. */
+                pagesize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cases, one page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        cases?: {
+                            case_number?: string;
+                            title?: string;
+                            /** @enum {string} */
+                            type?: "bug" | "feature_request";
+                            /** @enum {string} */
+                            status?: "new" | "in_progress" | "waiting" | "resolved" | "closed" | "reopened";
+                            /** @example Waiting on Customer */
+                            status_label?: string;
+                            /** Format: date-time */
+                            created_at?: string;
+                            /** Format: date-time */
+                            resolved_at?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description When the last message you or support posted on the case was sent. `null` when there is none yet.
+                             */
+                            last_public_message_at?: string | null;
+                        }[];
+                        total_records?: number;
+                    };
+                };
+            };
+            400: components["responses"]["ApiBadRequest"];
+            401: components["responses"]["ApiUnauthorized"];
+            403: components["responses"]["ApiForbidden"];
+        };
+    };
+    getSupportCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The case number, as List support cases returns it. */
+                case_number: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The case. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportCase"];
+                };
+            };
+            400: components["responses"]["ApiBadRequest"];
+            401: components["responses"]["ApiUnauthorized"];
+            403: components["responses"]["ApiForbidden"];
+            404: components["responses"]["ApiNotFound"];
+        };
+    };
     getAccountBalance: {
         parameters: {
             query?: never;
@@ -16965,6 +15967,249 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["AccountBalance"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The API key's user does not have Billing access. If Billing is
+             *     enabled for your organization, an administrator can grant it; if it
+             *     is not, contact support.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have access to Billing. If Billing is enabled for your organization, an administrator can grant it."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    listPayments: {
+        parameters: {
+            query?: {
+                /** @description Page number. */
+                pageno?: number;
+                /** @description Payments per page. */
+                pagesize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of payments. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "payments": [
+                     *         {
+                     *           "date": "2026-11-20T09:12:00Z",
+                     *           "payment_type": "one_time",
+                     *           "item": "Balance top-up",
+                     *           "status": "Failed",
+                     *           "subscription_status": null,
+                     *           "amount_paid": 0,
+                     *           "currency": "USD",
+                     *           "period_start": null,
+                     *           "period_end": null,
+                     *           "failure_reason": "insufficient_funds"
+                     *         }
+                     *       ],
+                     *       "total_records": 1
+                     *     }
+                     */
+                    "application/json": {
+                        payments?: {
+                            /** Format: date-time */
+                            date?: string;
+                            /** @enum {string} */
+                            payment_type?: "one_time" | "subscription";
+                            /** @description The plan or top-up the payment was for. */
+                            item?: string | null;
+                            /** @enum {string} */
+                            status?: "Pending" | "Success" | "Failed";
+                            /** @description For a subscription, its status, such as `active`, `past_due` or `canceled`. */
+                            subscription_status?: string | null;
+                            amount_paid?: number;
+                            /** @example USD */
+                            currency?: string | null;
+                            /** Format: date-time */
+                            period_start?: string | null;
+                            /** Format: date-time */
+                            period_end?: string | null;
+                            /** @description Why the payment provider refused the payment, such as `insufficient_funds` or `Your card has insufficient funds.` `null` when it did not fail, no reason was given, or it was a one-time payment through Razorpay (which reports no reason we can match to the payment). */
+                            failure_reason?: string | null;
+                        }[];
+                        total_records?: number;
+                    };
+                };
+            };
+            /** @description A page out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "pagesize must be between 1 and 150"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /** @description Missing or invalid API key. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "unauthorized",
+                     *       "error_description": "Missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+            /**
+             * @description The API key's user does not have Billing access. If Billing is
+             *     enabled for your organization, an administrator can grant it; if it
+             *     is not, contact support.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "forbidden",
+                     *       "error_description": "You do not have access to Billing. If Billing is enabled for your organization, an administrator can grant it."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
+                };
+            };
+        };
+    };
+    getBalanceHistory: {
+        parameters: {
+            query?: {
+                /** @description First day (`YYYY-MM-DD`). Defaults to 30 days before `date_to`. */
+                date_from?: string;
+                /** @description Last day (`YYYY-MM-DD`), included. Defaults to today. */
+                date_to?: string;
+                /** @description Page number. */
+                pageno?: number;
+                /** @description Entries per page. */
+                pagesize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of balance entries. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "entries": [
+                     *         {
+                     *           "date": "2026-11-26T10:15:02Z",
+                     *           "amount_usd": -0.21,
+                     *           "balance_after_usd": 42.29,
+                     *           "kind": "call_cost",
+                     *           "label": "Call Cost"
+                     *         },
+                     *         {
+                     *           "date": "2026-11-25T08:00:00Z",
+                     *           "amount_usd": 25,
+                     *           "balance_after_usd": 42.5,
+                     *           "kind": "recharge",
+                     *           "label": "Recharge / Credit"
+                     *         }
+                     *       ],
+                     *       "total_records": 2,
+                     *       "date_from": "2026-10-28",
+                     *       "date_to": "2026-11-27",
+                     *       "time_zone": "Asia/Kolkata"
+                     *     }
+                     */
+                    "application/json": {
+                        entries?: {
+                            /** Format: date-time */
+                            date?: string;
+                            /** @description Signed change in USD. Negative for charges, positive for credits. */
+                            amount_usd?: number;
+                            /** @description Your balance in USD right after this entry. */
+                            balance_after_usd?: number;
+                            /**
+                             * @description What the entry was, such as `call_cost`, `recharge`, `did_purchase`, `did_renewal`, `subscription`, `credit_transfer`, `referral_reward`, `whatsapp_message` or `adjustment`. New values may be added.
+                             * @example call_cost
+                             */
+                            kind?: string;
+                            /**
+                             * @description The kind in words.
+                             * @example Call Cost
+                             */
+                            label?: string;
+                        }[];
+                        total_records?: number;
+                        /** Format: date */
+                        date_from?: string;
+                        /** Format: date */
+                        date_to?: string;
+                        time_zone?: string;
+                    };
+                };
+            };
+            /** @description A bad date, a range over 31 days, or a page out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": "invalid_request",
+                     *       "error_description": "the range covers at most 31 days"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SessionError"];
                 };
             };
             /** @description Missing or invalid API key. */
@@ -18343,6 +17588,54 @@ export interface operations {
             };
         };
     };
+    listWorkflowExecutions: {
+        parameters: {
+            query?: {
+                /** @description Only runs in this state. */
+                state?: "running" | "waiting" | "completed" | "failed" | "cancelled";
+                /** @description Only runs started by this call. */
+                call_sid?: string;
+                /** @description How many runs to return. */
+                limit?: number;
+                /**
+                 * @description Reseller keys only: act as one of your clients by its user id. Omit
+                 *     it to act on your own account.
+                 *     [How acting for a client works](/docs/reseller/your-clients/acting-as-clients).
+                 */
+                user_id?: components["parameters"]["ClientUserId"];
+            };
+            header?: never;
+            path: {
+                /** @description Id of the workflow. */
+                workflow_id: components["parameters"]["WorkflowId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The runs, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        executions?: components["schemas"]["WorkflowExecutionSummary"][];
+                    };
+                };
+            };
+            /** @description A filter is not valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["WorkflowUnauthorized"];
+            403: components["responses"]["WorkflowForbidden"];
+            404: components["responses"]["WorkflowNotFound"];
+        };
+    };
     getWorkflowExecution: {
         parameters: {
             query?: {
@@ -18357,7 +17650,7 @@ export interface operations {
             path: {
                 /** @description Id of the workflow. */
                 workflow_id: components["parameters"]["WorkflowId"];
-                /** @description The `execution_id` from `testWorkflow`. */
+                /** @description The `execution_id` from `testWorkflow` or `listWorkflowExecutions`. */
                 execution_id: number;
             };
             cookie?: never;
@@ -18574,6 +17867,129 @@ export interface operations {
             500: components["responses"]["WhatsappServerError"];
         };
     };
+    createWhatsappTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Lower-case letters, digits and underscores, such as `order_update`. It must not be on the number already, in any language. */
+                    name: string;
+                    /** @description WhatsApp language code, such as `en`, `en_US` or `hi`. */
+                    language: string;
+                    /**
+                     * @description `utility` is for an update the customer expects, such as an order or
+                     *     appointment. `marketing` is for anything else. WhatsApp can change the
+                     *     category when it reviews the template.
+                     * @enum {string}
+                     */
+                    category: "marketing" | "utility";
+                    /** @description Optional header text. It can hold one placeholder, `{{1}}`. Send `header` or `header_media`, not both. */
+                    header?: string;
+                    /**
+                     * @description Optional image or document header. Upload the file with
+                     *     `POST /whatsapp/media` first: the `media_id` works for 24
+                     *     hours. A header image is JPEG, PNG or WebP, and a header
+                     *     document is PDF, Word (.docx), Excel (.xlsx) or plain text.
+                     *     A header file is at most 5 MB. The file becomes a public link,
+                     *     because WhatsApp fetches header media from one, and every send
+                     *     of the template shows it.
+                     */
+                    header_media?: {
+                        /** @enum {string} */
+                        type: "image" | "document";
+                        /** @description The `media_id` from `POST /whatsapp/media`, uploaded with the same type and number. */
+                        media_id: string;
+                    };
+                    /** @description Sample value for the header's `{{1}}`. Required when the header has one. */
+                    header_example?: string;
+                    /**
+                     * @description The message text. Placeholders are numbered from `{{1}}` with no
+                     *     gaps, such as `Hi {{1}}, your order {{2}} has shipped.`
+                     */
+                    body: string;
+                    /** @description One sample value per body placeholder, in order. Required when the body has placeholders. */
+                    body_examples?: string[];
+                    /** @description Optional footer text, with no placeholders. */
+                    footer?: string;
+                    buttons?: {
+                        /** @enum {string} */
+                        type: "quick_reply" | "url" | "phone_number";
+                        /** @description The button label. */
+                        text: string;
+                        /** @description Required for `url`. A fixed link, with no placeholder. */
+                        url?: string;
+                        /** @description Required for `phone_number`, in international format, such as `+919876543210`. */
+                        phone_number?: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The template was created and is waiting for review. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappTemplate"];
+                };
+            };
+            /**
+             * @description `invalid_parameter`: the draft is not valid, and the message says what
+             *     to change. `template_rejected`: WhatsApp refused the template's
+             *     content, and the message gives WhatsApp's reason.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            /**
+             * @description `number_not_found`: the number is not yours. `media_not_found`: no
+             *     upload of that type has that `media_id` on this number, or it is
+             *     older than 24 hours.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            /**
+             * @description `template_exists`: a template with this name is already on the number,
+             *     in any language. `not_supported`: this number cannot create templates.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+            502: components["responses"]["WhatsappUpstream"];
+        };
+    };
     syncWhatsappTemplates: {
         parameters: {
             query?: never;
@@ -18619,6 +18035,57 @@ export interface operations {
             500: components["responses"]["WhatsappServerError"];
             502: components["responses"]["WhatsappUpstream"];
             503: components["responses"]["WhatsappUnavailable"];
+        };
+    };
+    deleteWhatsappTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Id of a WhatsApp number in your workspace, from
+                 *     [listWhatsappNumbers](/docs/api-reference/whatsapp/listWhatsappNumbers).
+                 *     A number in another workspace answers `404`.
+                 */
+                number_id: components["parameters"]["WhatsappNumberId"];
+                /** @description The template's `id` from `listWhatsappTemplates`. */
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The template was deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: number;
+                        deleted?: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["WhatsappUnauthorized"];
+            403: components["responses"]["WhatsappForbidden"];
+            404: components["responses"]["WhatsappNotFound"];
+            /**
+             * @description `template_in_use`: a campaign uses this template, so nothing was
+             *     deleted. `template_not_synced`: the template has no WhatsApp id yet:
+             *     run `syncWhatsappTemplates`, then try again. `not_supported`: this
+             *     number cannot delete templates.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappError"];
+                };
+            };
+            500: components["responses"]["WhatsappServerError"];
+            502: components["responses"]["WhatsappUpstream"];
         };
     };
     getWhatsappCalling: {
